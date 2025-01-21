@@ -1,16 +1,17 @@
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Sphere, OrbitControls } from '@react-three/drei';
+import { Sphere, OrbitControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import Atmosphere from './Atmosphere';
 
 const Earth: React.FC = () => {
   const earthRef = useRef<THREE.Mesh>(null);
-  const [colorMap, normalMap, roughnessMap] = [
-    new THREE.TextureLoader().load('/textures/earth_daymap.jpg'),
-    new THREE.TextureLoader().load('/textures/earth_normal_map.jpg'),
-    new THREE.TextureLoader().load('/textures/earth_roughness_map.jpg')
-  ];
+  
+  const [colorMap, normalMap, roughnessMap] = useTexture([
+    '/textures/earth_daymap.jpg',
+    '/textures/earth_normal_map.jpg',
+    '/textures/earth_roughness_map.jpg'
+  ]);
 
   useFrame(() => {
     if (earthRef.current && !earthRef.current.userData.isDragging) {
@@ -36,7 +37,7 @@ const Earth: React.FC = () => {
       <group>
         <Atmosphere />
         <Sphere ref={earthRef} args={[1, 64, 64]}>
-          <meshPhysicalMaterial
+          <meshStandardMaterial
             map={colorMap}
             normalMap={normalMap}
             roughnessMap={roughnessMap}
