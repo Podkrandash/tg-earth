@@ -29,32 +29,42 @@ function App() {
         tg.requestFullscreen();
       }
     }
+
+    // Prevent default touch behavior
+    const preventDefault = (e: TouchEvent) => e.preventDefault();
+    document.addEventListener('touchmove', preventDefault, { passive: false });
+    
+    return () => {
+      document.removeEventListener('touchmove', preventDefault);
+    };
   }, []);
 
   return (
-    <div className="App">
-      <Canvas
-        camera={{ position: [0, 2, 5], fov: 60 }}
-        style={{ height: '100vh', width: '100vw', background: '#000' }}
-      >
-        <Environment preset="city" />
-        <Grid infiniteGrid position={[0, -1, 0]} />
-        <Earth />
-        <Atmosphere />
-        <OrbitControls 
-          enableZoom={true} 
-          enablePan={true} 
-          enableRotate={true}
-          minDistance={2}
-          maxDistance={10}
-          enableDamping={true}
-          dampingFactor={0.05}
-          rotateSpeed={0.5}
-          zoomSpeed={0.5}
-        />
-      </Canvas>
+    <>
+      <div className="App">
+        <Canvas
+          camera={{ position: [0, 2, 5], fov: 60 }}
+          style={{ height: '100vh', width: '100vw', background: '#000' }}
+        >
+          <Environment preset="city" />
+          <Grid infiniteGrid position={[0, -1, 0]} />
+          <Earth />
+          <Atmosphere />
+          <OrbitControls 
+            enableZoom={true} 
+            enablePan={true} 
+            enableRotate={true}
+            minDistance={2}
+            maxDistance={10}
+            enableDamping={true}
+            dampingFactor={0.05}
+            rotateSpeed={0.5}
+            zoomSpeed={0.5}
+          />
+        </Canvas>
+      </div>
       <NavigationPanel />
-    </div>
+    </>
   );
 }
 
