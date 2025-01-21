@@ -9,6 +9,7 @@ declare global {
     TelegramGameProxy?: {
       initParams: () => { [key: string]: string };
       onEvent: (eventName: string, eventData?: string) => void;
+      shareScore: () => void;
     };
   }
 }
@@ -17,11 +18,6 @@ function App() {
   useEffect(() => {
     // Initialize game
     if (window.TelegramGameProxy) {
-      // Get initial parameters
-      const params = window.TelegramGameProxy.initParams();
-      console.log('Game initialized with params:', params);
-
-      // Report game loaded
       window.TelegramGameProxy.onEvent('game_loaded');
     }
   }, []);
