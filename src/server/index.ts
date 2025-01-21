@@ -15,7 +15,7 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // Конфигурация игры
-const GAME_SHORT_NAME = 'notEarthBot';
+const GAME_SHORT_NAME = 'Earth';
 const GAME_URL = process.env.GAME_URL || 'https://your-domain.com'; // Замените на ваш домен
 
 app.use(cors());
@@ -45,7 +45,14 @@ bot.command('play', async (ctx) => {
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
   try {
-    const gameUrl = `${GAME_URL}?id=${ctx.callbackQuery.inline_message_id}`;
+    const params = new URLSearchParams({
+      id: ctx.callbackQuery.inline_message_id || '',
+      user: ctx.from?.id?.toString() || '',
+      score: '0',
+      game: GAME_SHORT_NAME
+    });
+    
+    const gameUrl = `${GAME_URL}?${params.toString()}`;
     await ctx.answerGameQuery(gameUrl);
   } catch (e) {
     console.error('Error answering game query:', e);
