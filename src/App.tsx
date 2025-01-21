@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment } from '@react-three/drei';
 import Earth from './components/Earth';
@@ -7,8 +7,7 @@ import './styles/App.css';
 
 interface TelegramGameProxy {
   initParams: () => Record<string, string>;
-  onEvent: (eventName: string, eventData?: string) => void;
-  shareScore?: () => void;
+  onEvent: (eventName: string) => void;
   requestFullscreen?: () => void;
 }
 
@@ -21,37 +20,14 @@ declare global {
 function App() {
   useEffect(() => {
     const tg = window.TelegramGameProxy;
-    const urlParams = new URLSearchParams(window.location.search);
-    const isTelegramGame = urlParams.get('TELEGRAM_GAME_URL') === 'true';
-
-    if (tg && isTelegramGame) {
-      // Initialize game
+    if (tg) {
       tg.initParams();
-      
-      // Report game loaded
       tg.onEvent('game_loaded');
-
-      // Request fullscreen on first touch/click
-      const requestFullscreen = () => {
-        if (tg.requestFullscreen) {
-          tg.requestFullscreen();
-          // Remove event listeners after first interaction
-          document.removeEventListener('touchstart', requestFullscreen);
-          document.removeEventListener('click', requestFullscreen);
-        }
-      };
-
-      document.addEventListener('touchstart', requestFullscreen);
-      document.addEventListener('click', requestFullscreen);
+      
+      if (tg.requestFullscreen) {
+        tg.requestFullscreen();
+      }
     }
-
-    // Prevent default touch behavior
-    const preventDefault = (e: TouchEvent) => e.preventDefault();
-    document.addEventListener('touchmove', preventDefault, { passive: false });
-
-    return () => {
-      document.removeEventListener('touchmove', preventDefault);
-    };
   }, []);
 
   return (
