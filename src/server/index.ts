@@ -45,15 +45,7 @@ bot.command('play', async (ctx) => {
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
   try {
-    const params = new URLSearchParams({
-      id: ctx.callbackQuery.inline_message_id || '',
-      user: ctx.from?.id?.toString() || '',
-      score: '0',
-      game: GAME_SHORT_NAME
-    });
-    
-    const gameUrl = `${GAME_URL}?${params.toString()}`;
-    await ctx.answerGameQuery(gameUrl);
+    await ctx.answerGameQuery(GAME_URL);
   } catch (e) {
     console.error('Error answering game query:', e);
   }

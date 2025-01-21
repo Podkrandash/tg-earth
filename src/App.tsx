@@ -7,34 +7,22 @@ import './styles/App.css';
 declare global {
   interface Window {
     TelegramGameProxy?: {
-      initGame: () => void;
-      shareScore?: () => void;
-      paymentFormClosed?: () => void;
-      postEvent?: (eventName: string, eventData?: any) => void;
+      initParams: () => { [key: string]: string };
+      onEvent: (eventName: string, eventData?: string) => void;
     };
   }
 }
 
 function App() {
   useEffect(() => {
-    // Get URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const gameId = urlParams.get('id');
-    const userId = urlParams.get('user');
-    const gameName = urlParams.get('game');
-
     // Initialize game
-    if (window.TelegramGameProxy?.initGame) {
-      window.TelegramGameProxy.initGame();
-      
+    if (window.TelegramGameProxy) {
+      // Get initial parameters
+      const params = window.TelegramGameProxy.initParams();
+      console.log('Game initialized with params:', params);
+
       // Report game loaded
-      if (window.TelegramGameProxy.postEvent) {
-        window.TelegramGameProxy.postEvent('GAME_LOADED', {
-          gameId,
-          userId,
-          gameName
-        });
-      }
+      window.TelegramGameProxy.onEvent('GAME_LOADED');
     }
 
     // Prevent default touch behavior
