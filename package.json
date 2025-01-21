@@ -25,7 +25,7 @@
     "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server": "NODE_OPTIONS=\"--loader ts-node/esm\" nodemon src/server/index.ts",
+    "server": "cross-env NODE_OPTIONS=--loader=ts-node/esm nodemon src/server/index.ts",
     "dev": "concurrently \"npm run start\" \"npm run server\"",
     "vercel-build": "rm -rf build && CI=false npm run build"
   },
@@ -51,6 +51,7 @@
     "@types/express": "^4.17.21",
     "@types/three": "^0.160.0",
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "nodemon": "^3.0.2",
     "ts-node": "^10.9.2"
   }
