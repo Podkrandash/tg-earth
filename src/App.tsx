@@ -6,27 +6,32 @@ import './styles/App.css';
 
 declare global {
   interface Window {
-    TelegramGameProxy?: {
-      initGame: () => void;
-      postEvent: (type: string, data?: any) => void;
+    Telegram?: {
+      WebApp: {
+        ready: () => void;
+        expand: () => void;
+        enableClosingConfirmation: () => void;
+        isExpanded: boolean;
+      };
     };
   }
 }
 
 function App() {
   useEffect(() => {
-    // Prevent default touch behavior
-    document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-    
-    // Initialize game
-    if (window.TelegramGameProxy?.initGame) {
-      window.TelegramGameProxy.initGame();
-      // Notify game is ready
-      window.TelegramGameProxy.postEvent('GAME_READY');
+    // Initialize WebApp
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      window.Telegram.WebApp.enableClosingConfirmation();
     }
 
+    // Prevent default touch behavior
+    const preventDefault = (e: TouchEvent) => e.preventDefault();
+    document.addEventListener('touchmove', preventDefault, { passive: false });
+
     return () => {
-      document.removeEventListener('touchmove', (e) => e.preventDefault());
+      document.removeEventListener('touchmove', preventDefault);
     };
   }, []);
 
