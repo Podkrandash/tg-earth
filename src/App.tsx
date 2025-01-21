@@ -8,16 +8,26 @@ declare global {
   interface Window {
     TelegramGameProxy?: {
       initGame: () => void;
+      postEvent: (type: string, data?: any) => void;
     };
   }
 }
 
 function App() {
   useEffect(() => {
+    // Prevent default touch behavior
+    document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    
     // Initialize game
     if (window.TelegramGameProxy?.initGame) {
       window.TelegramGameProxy.initGame();
+      // Notify game is ready
+      window.TelegramGameProxy.postEvent('GAME_READY');
     }
+
+    return () => {
+      document.removeEventListener('touchmove', (e) => e.preventDefault());
+    };
   }, []);
 
   return (
@@ -36,6 +46,10 @@ function App() {
           enableRotate={true}
           minDistance={2}
           maxDistance={10}
+          enableDamping={true}
+          dampingFactor={0.05}
+          rotateSpeed={0.5}
+          zoomSpeed={0.5}
         />
       </Canvas>
     </div>
