@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment } from '@react-three/drei';
 import Earth from './components/Earth';
 import Atmosphere from './components/Atmosphere';
+import NavigationPanel from './components/NavigationPanel';
 import './styles/App.css';
 
 interface TelegramGameProxy {
@@ -52,6 +53,7 @@ function App() {
           zoomSpeed={0.5}
         />
       </Canvas>
+      <NavigationPanel />
     </div>
   );
 }

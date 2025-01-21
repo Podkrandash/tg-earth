@@ -59,4 +59,17 @@
   justify-content: center;
   align-items: center;
   color: white;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+button:active {
+  transform: scale(0.95);
+  background-color: rgba(255, 255, 255, 0.3) !important;
 } 
