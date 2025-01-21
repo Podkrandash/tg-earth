@@ -5,10 +5,10 @@ const Earth: React.FC = () => {
   return (
     <mesh position={[0, 0, 0]}>
       <sphereGeometry args={[1, 32, 32]} />
-      <meshPhongMaterial 
-        color="blue"
-        side={THREE.DoubleSide}
-        shininess={50}
+      <meshStandardMaterial 
+        color="royalblue"
+        metalness={0.5}
+        roughness={0.5}
       />
     </mesh>
   );
