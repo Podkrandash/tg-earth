@@ -45,12 +45,8 @@ bot.command('play', async (ctx) => {
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
   try {
-    const params = new URLSearchParams({
-      tgShareScoreUrl: `${GAME_URL}/share`,
-      userId: ctx.from?.id?.toString() || '',
-      score: '0'
-    });
-    await ctx.answerGameQuery(`${GAME_URL}?${params.toString()}`);
+    // Отправляем только URL игры без параметров
+    await ctx.answerGameQuery(GAME_URL);
   } catch (e) {
     console.error('Error answering game query:', e);
   }
