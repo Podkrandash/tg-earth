@@ -23,8 +23,13 @@ app.use(express.json());
 app.use(express.static(join(__dirname, '../../build')));
 
 // Обработка команды старт
-bot.command('start', (ctx) => {
-  ctx.reply('Добро пожаловать в Earth Explorer! Используйте /play чтобы начать игру.');
+bot.command('start', async (ctx) => {
+  try {
+    await ctx.replyWithGame(GAME_SHORT_NAME);
+  } catch (e) {
+    console.error('Error sending game:', e);
+    ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
+  }
 });
 
 // Команда для запуска игры
