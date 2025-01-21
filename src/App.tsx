@@ -16,10 +16,11 @@ function App() {
         Tokens: {WebApp.initDataUnsafe.user?.id ? '0' : 'Loading...'}
       </div>
       <Canvas
-        camera={{ position: [0, 0, 5], fov: 75 }}
+        camera={{ position: [0, 0, 3], fov: 75 }}
         style={{ height: '100vh', background: '#000' }}
       >
-        <ambientLight intensity={1} />
+        <ambientLight intensity={2} />
+        <pointLight position={[10, 10, 10]} intensity={1} />
         <Earth />
       </Canvas>
       <div className="navigation-panel">
