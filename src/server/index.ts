@@ -2,7 +2,11 @@ import express from 'express';
 import { Telegraf } from 'telegraf';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -12,7 +16,7 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../../build')));
+app.use(express.static(join(__dirname, '../../build')));
 
 // Обработка команды старт
 bot.command('start', (ctx) => {

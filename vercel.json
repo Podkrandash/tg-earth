@@ -2,6 +2,7 @@
   "version": 2,
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "build",
+  "cleanUrls": true,
   "routes": [
     {
       "src": "/static/(.*)",
