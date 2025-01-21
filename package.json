@@ -25,7 +25,7 @@
     "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server": "nodemon --exec ts-node src/server/index.ts",
+    "server": "NODE_OPTIONS=\"--loader ts-node/esm\" nodemon src/server/index.ts",
     "dev": "concurrently \"npm run start\" \"npm run server\"",
     "vercel-build": "rm -rf build && CI=false npm run build"
   },
