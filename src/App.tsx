@@ -17,10 +17,9 @@ function App() {
       </div>
       <Canvas
         camera={{ position: [0, 0, 5], fov: 75 }}
-        style={{ height: '100vh' }}
+        style={{ height: '100vh', background: '#000' }}
       >
-        <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} />
+        <ambientLight intensity={1} />
         <Earth />
       </Canvas>
       <div className="navigation-panel">
