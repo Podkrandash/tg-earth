@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" content="#000000" />
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>Earth Explorer</title>
     <style>
       body {
@@ -28,25 +26,12 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
-        z-index: 1;
-      }
-      .game-menu {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 9999;
-        pointer-events: none;
-      }
-      .game-menu * {
-        pointer-events: auto;
       }
     </style>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div class="game-menu"></div>
     <div id="root"></div>
+    <script async src="https://telegram.org/js/games.js"></script>
   </body>
 </html> 

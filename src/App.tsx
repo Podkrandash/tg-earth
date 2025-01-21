@@ -6,24 +6,18 @@ import './styles/App.css';
 
 declare global {
   interface Window {
-    Telegram?: {
-      WebApp: {
-        ready: () => void;
-        expand: () => void;
-        enableClosingConfirmation: () => void;
-        isExpanded: boolean;
-      };
+    TelegramGameProxy?: {
+      initGame: () => void;
+      shareScore?: () => void;
     };
   }
 }
 
 function App() {
   useEffect(() => {
-    // Initialize WebApp
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
-      window.Telegram.WebApp.enableClosingConfirmation();
+    // Initialize game
+    if (window.TelegramGameProxy?.initGame) {
+      window.TelegramGameProxy.initGame();
     }
 
     // Prevent default touch behavior

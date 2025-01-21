@@ -6,7 +6,6 @@
   "dependencies": {
     "@react-three/drei": "^9.92.7",
     "@react-three/fiber": "^8.15.12",
-    "@twa-dev/sdk": "^6.9.0",
     "@types/node": "^18.15.11",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
