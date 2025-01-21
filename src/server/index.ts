@@ -45,7 +45,9 @@ bot.command('play', async (ctx) => {
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
   try {
-    await ctx.answerGameQuery(GAME_URL);
+    const gameUrl = new URL(GAME_URL);
+    gameUrl.searchParams.set('TELEGRAM_GAME_URL', 'true');
+    await ctx.answerGameQuery(gameUrl.toString());
   } catch (e) {
     console.error('Error answering game query:', e);
   }

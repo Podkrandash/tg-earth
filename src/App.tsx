@@ -21,19 +21,28 @@ declare global {
 function App() {
   useEffect(() => {
     const tg = window.TelegramGameProxy;
-    if (tg) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isTelegramGame = urlParams.get('TELEGRAM_GAME_URL') === 'true';
+
+    if (tg && isTelegramGame) {
       // Initialize game
       tg.initParams();
       
       // Report game loaded
       tg.onEvent('game_loaded');
-      
-      // Request fullscreen after a short delay
-      setTimeout(() => {
+
+      // Request fullscreen on first touch/click
+      const requestFullscreen = () => {
         if (tg.requestFullscreen) {
           tg.requestFullscreen();
+          // Remove event listeners after first interaction
+          document.removeEventListener('touchstart', requestFullscreen);
+          document.removeEventListener('click', requestFullscreen);
         }
-      }, 100);
+      };
+
+      document.addEventListener('touchstart', requestFullscreen);
+      document.addEventListener('click', requestFullscreen);
     }
 
     // Prevent default touch behavior
