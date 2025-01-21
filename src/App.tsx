@@ -7,9 +7,7 @@ import './styles/App.css';
 declare global {
   interface Window {
     TelegramGameProxy?: {
-      initParams: () => { [key: string]: string };
-      onEvent: (eventName: string, eventData?: string) => void;
-      shareScore: () => void;
+      initGame: () => void;
     };
   }
 }
@@ -17,8 +15,8 @@ declare global {
 function App() {
   useEffect(() => {
     // Initialize game
-    if (window.TelegramGameProxy) {
-      window.TelegramGameProxy.onEvent('game_loaded');
+    if (window.TelegramGameProxy?.initGame) {
+      window.TelegramGameProxy.initGame();
     }
   }, []);
 

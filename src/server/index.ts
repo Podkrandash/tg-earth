@@ -45,7 +45,7 @@ bot.command('play', async (ctx) => {
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
   try {
-    const gameUrl = `${GAME_URL}?userId=${ctx.from.id}&chatId=${ctx.chat?.id}`;
+    const gameUrl = `${GAME_URL}?id=${ctx.callbackQuery.inline_message_id}`;
     await ctx.answerGameQuery(gameUrl);
   } catch (e) {
     console.error('Error answering game query:', e);
