@@ -9,6 +9,7 @@ interface TelegramGameProxy {
   initParams: () => Record<string, string>;
   onEvent: (eventName: string, eventData?: string) => void;
   shareScore?: () => void;
+  requestFullscreen?: () => void;
 }
 
 declare global {
@@ -18,21 +19,20 @@ declare global {
 }
 
 function App() {
-  const [gameParams, setGameParams] = useState<Record<string, string>>({});
-
   useEffect(() => {
     const tg = window.TelegramGameProxy;
     if (tg) {
-      // Get game parameters
-      const params = tg.initParams();
-      setGameParams(params);
+      // Initialize game
+      tg.initParams();
       
       // Report game loaded
       tg.onEvent('game_loaded');
       
-      // Report game ready
+      // Request fullscreen after a short delay
       setTimeout(() => {
-        tg?.onEvent('game_ready');
+        if (tg.requestFullscreen) {
+          tg.requestFullscreen();
+        }
       }, 100);
     }
 
@@ -49,7 +49,7 @@ function App() {
     <div className="App">
       <Canvas
         camera={{ position: [0, 2, 5], fov: 60 }}
-        style={{ height: '100vh', background: '#000' }}
+        style={{ height: '100vh', width: '100vw', background: '#000' }}
       >
         <Environment preset="city" />
         <Grid infiniteGrid position={[0, -1, 0]} />

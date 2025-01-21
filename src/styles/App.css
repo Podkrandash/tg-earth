@@ -1,9 +1,37 @@
 .App {
   width: 100vw;
   height: 100vh;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
   overflow: hidden;
+  touch-action: none;
   background-color: #000;
+}
+
+/* Стили для полноэкранного режима */
+:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+:-moz-full-screen {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+:-ms-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
 }
 
 .token-counter {

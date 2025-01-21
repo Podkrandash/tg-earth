@@ -16,7 +16,7 @@ const port = process.env.PORT || 3001;
 
 // Конфигурация игры
 const GAME_SHORT_NAME = 'Earth';
-const GAME_URL = process.env.GAME_URL || 'https://your-domain.com'; // Замените на ваш домен
+const GAME_URL = process.env.GAME_URL || 'https://your-domain.com';
 
 app.use(cors());
 app.use(express.json());
@@ -45,7 +45,6 @@ bot.command('play', async (ctx) => {
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
   try {
-    // Отправляем только URL игры без параметров
     await ctx.answerGameQuery(GAME_URL);
   } catch (e) {
     console.error('Error answering game query:', e);
