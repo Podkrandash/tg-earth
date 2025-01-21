@@ -23,23 +23,17 @@ function App() {
   useEffect(() => {
     const tg = window.TelegramGameProxy;
     if (tg) {
-      // Get URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const userId = urlParams.get('userId') || '';
-      const messageId = urlParams.get('messageId') || '';
-      const chatId = urlParams.get('chatId') || '';
-
       // Get game parameters
       const params = tg.initParams();
-      setGameParams({ ...params, userId, messageId, chatId });
+      setGameParams(params);
       
       // Report game loaded
-      tg.onEvent('LOADED');
+      tg.onEvent('game_loaded');
       
       // Report game ready
       setTimeout(() => {
-        tg?.onEvent('READY');
-      }, 1000);
+        tg?.onEvent('game_ready');
+      }, 100);
     }
 
     // Prevent default touch behavior

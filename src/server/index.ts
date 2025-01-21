@@ -1,5 +1,5 @@
-import express from 'express';
-import { Telegraf } from 'telegraf';
+import express, { Request, Response } from 'express';
+import { Telegraf, Context } from 'telegraf';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -28,7 +28,7 @@ bot.command('start', async (ctx) => {
     await ctx.replyWithGame(GAME_SHORT_NAME);
   } catch (e) {
     console.error('Error sending game:', e);
-    ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
+    await ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
   }
 });
 
@@ -38,7 +38,7 @@ bot.command('play', async (ctx) => {
     await ctx.replyWithGame(GAME_SHORT_NAME);
   } catch (e) {
     console.error('Error sending game:', e);
-    ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
+    await ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
   }
 });
 
@@ -52,7 +52,7 @@ bot.gameQuery(async (ctx) => {
 });
 
 // API эндпоинты
-app.get('/game', (req, res) => {
+app.get('/game', (req: Request, res: Response) => {
   res.sendFile(join(__dirname, '../../build/index.html'));
 });
 
