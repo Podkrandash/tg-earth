@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import WebApp from '@twa-dev/sdk';
 import Earth from './components/Earth';
 import './styles/App.css';
@@ -22,6 +23,7 @@ function App() {
         <ambientLight intensity={2} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         <Earth />
+        <OrbitControls enableZoom={true} enablePan={true} enableRotate={true} />
       </Canvas>
       <div className="navigation-panel">
         Navigation Panel

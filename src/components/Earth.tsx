@@ -1,12 +1,16 @@
 import React from 'react';
-import { Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 
 const Earth: React.FC = () => {
   return (
-    <Sphere args={[1, 32, 32]} position={[0, 0, 0]}>
-      <meshBasicMaterial color="blue" side={THREE.DoubleSide} />
-    </Sphere>
+    <mesh position={[0, 0, 0]}>
+      <sphereGeometry args={[1, 32, 32]} />
+      <meshPhongMaterial 
+        color="blue"
+        side={THREE.DoubleSide}
+        shininess={50}
+      />
+    </mesh>
   );
 };
 
