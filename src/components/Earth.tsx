@@ -1,17 +1,29 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 
 const Earth = () => {
-  const material = new THREE.MeshStandardMaterial({
-    color: "royalblue",
-    metalness: 0.5,
-    roughness: 0.5
+  const earthRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state, delta) => {
+    if (earthRef.current) {
+      earthRef.current.rotation.y += delta * 0.2;
+    }
   });
 
   return (
-    <Sphere args={[1, 32, 32]} material={material} />
+    <Sphere
+      ref={earthRef}
+      args={[1, 32, 32]}
+      material={
+        new THREE.MeshPhongMaterial({
+          color: "royalblue",
+          shininess: 30,
+          specular: new THREE.Color(0x444444)
+        })
+      }
+    />
   );
 };
 
