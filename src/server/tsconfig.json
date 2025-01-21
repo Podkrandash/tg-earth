@@ -3,10 +3,15 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "node",
-    "target": "es2020",
+    "target": "ES2020",
     "outDir": "../../dist",
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   },
   "include": [
     "."

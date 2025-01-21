@@ -1,16 +1,17 @@
 import React from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 
-const Earth: React.FC = () => {
+const Earth = () => {
+  const material = new THREE.MeshStandardMaterial({
+    color: "royalblue",
+    metalness: 0.5,
+    roughness: 0.5
+  });
+
   return (
-    <mesh position={[0, 0, 0]}>
-      <sphereGeometry args={[1, 32, 32]} />
-      <meshStandardMaterial 
-        color="royalblue"
-        metalness={0.5}
-        roughness={0.5}
-      />
-    </mesh>
+    <Sphere args={[1, 32, 32]} material={material} />
   );
 };
 
