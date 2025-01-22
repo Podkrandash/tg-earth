@@ -50,6 +50,8 @@ class Earth {
         // Интеграция с Telegram
         if (window.TelegramGameProxy) {
             window.TelegramGameProxy.onEvent('game_loaded');
+            // Автоматический полноэкранный режим
+            window.TelegramGameProxy.requestFullscreen();
         }
     }
 
@@ -111,16 +113,6 @@ class Earth {
                 this.controls.reset();
             };
         }
-
-        // Обработка полноэкранного режима для Telegram
-        const handleInteraction = () => {
-            if (window.TelegramGameProxy?.requestFullscreen) {
-                window.TelegramGameProxy.requestFullscreen();
-            }
-        };
-
-        this.container.addEventListener('touchstart', handleInteraction, { once: true });
-        this.container.addEventListener('click', handleInteraction, { once: true });
     }
 
     onWindowResize() {
