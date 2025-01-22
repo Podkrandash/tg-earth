@@ -425,10 +425,10 @@
             position: absolute;
             top: 16px;
             right: 16px;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border: none;
-            border-radius: 50%;
+            border-radius: 12px;
             background: rgba(18, 18, 23, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -441,23 +441,33 @@
             transition: all 0.2s ease;
             z-index: 1002;
             pointer-events: auto;
-            -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
             padding: 0;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-        .close-button:active {
-            transform: scale(0.92);
-            background: rgba(255, 255, 255, 0.12);
+        .connect-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+            width: 100%;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
-        .close-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.12);
-            transform: scale(1.05);
-        }
-        .close-button i {
-            font-size: 24px;
-            transition: transform 0.2s ease;
+        .connect-button:active {
+            transform: scale(0.98);
+            background: #0077b5;
         }
         @media (max-width: 480px) {
             .profile-header {
@@ -593,21 +603,38 @@
                     content += `
                         <div class="profile-connecting">
                             <i class="material-icons">telegram</i>
-                            <h4>Connecting to Telegram...</h4>
-                            <p>Please wait while we connect to your Telegram account</p>
+                            <h4>Connect to Telegram</h4>
+                            <p>Click the button below to connect your Telegram account</p>
+                            <button class="connect-button">
+                                <i class="material-icons">link</i>
+                                Connect Telegram
+                            </button>
                         </div>
                     `;
                     tabInner.innerHTML = content;
                     
+                    // Добавляем обработчик для кнопки подключения
+                    const connectButton = document.querySelector('.connect-button');
+                    connectButton.addEventListener('click', async () => {
+                        connectButton.disabled = true;
                     const user = await connectToTelegram();
-                    if (!user) {
+                        if (user) {
+                            isProfileConnected = true;
+                            showProfile(); // Перезагружаем профиль с данными
+                        } else {
+                            connectButton.disabled = false;
                         document.querySelector('.profile-connecting').innerHTML = `
                             <i class="material-icons">error_outline</i>
                             <h4>Connection Failed</h4>
-                            <p>Unable to connect to Telegram. Please try again later.</p>
-                        `;
+                                <p>Unable to connect to Telegram. Please try again.</p>
+                                <button class="connect-button">
+                                    <i class="material-icons">refresh</i>
+                                    Try Again
+                                </button>
+                            `;
+                        }
+                    });
                         return;
-                    }
                 }
 
                 // Показываем профиль с данными
@@ -717,13 +744,16 @@
                     tabInner.innerHTML = content;
                 }
                 
+                // Обновляем обработчик закрытия
                 const closeButton = tabInner.querySelector('.close-button');
-                closeButton.addEventListener('click', (e) => {
+                ['touchstart', 'click'].forEach(eventType => {
+                    closeButton.addEventListener(eventType, (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     tabContent.classList.remove('active');
                     clickedButton.classList.remove('active');
                     tabInner.style.opacity = '0';
+                    }, { passive: false });
                 });
                 
                 requestAnimationFrame(() => {
