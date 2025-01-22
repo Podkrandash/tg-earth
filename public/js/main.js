@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Замедляем вращение Земли
-const ROTATION_SPEED = 0.00005;
+// Константы для вращения
+const DAY_MS = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
+const ROTATION_SPEED = (2 * Math.PI) / DAY_MS; // Полный оборот за 24 часа
+const EARTH_TILT = 23.5 * Math.PI / 180; // Наклон оси Земли
 
 class Earth {
     constructor() {
@@ -22,7 +24,8 @@ class Earth {
 
         // Настройка рендерера
         this.renderer = new THREE.WebGLRenderer({ 
-            antialias: true
+            antialias: true,
+            alpha: true
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -33,8 +36,9 @@ class Earth {
         this.sunLight.position.set(50, 0, 0);
         this.scene.add(this.sunLight);
 
-        // Создаем группу для Земли
+        // Создаем группу для Земли с наклоном оси
         this.earthGroup = new THREE.Group();
+        this.earthGroup.rotation.z = EARTH_TILT;
         this.scene.add(this.earthGroup);
 
         // Настройка контролей орбиты
@@ -58,13 +62,32 @@ class Earth {
         // Обработчики событий
         window.addEventListener('resize', () => this.onWindowResize());
 
-        // Интеграция с Telegram
+        // Расширенная интеграция с Telegram
         if (window.TelegramGameProxy) {
+            // Сообщаем о загрузке игры
             window.TelegramGameProxy.onEvent('game_loaded');
+            
+            // Запрашиваем полноэкранный режим
             window.TelegramGameProxy.requestFullscreen();
+
+            // Отправляем счет (в данном случае просто 1, так как это не игра на очки)
+            window.TelegramGameProxy.setScore(1);
+
+            // Добавляем обработчики событий Telegram
+            window.TelegramGameProxy.onEvent('game_over', () => {
+                console.log('Game over event');
+            });
+
+            window.TelegramGameProxy.onEvent('game_quit', () => {
+                console.log('Game quit event');
+            });
+
+            // Сообщаем о готовности игры
+            window.TelegramGameProxy.onEvent('game_ready');
         }
 
         // Запускаем анимацию
+        this.startTime = Date.now();
         this.animate();
     }
 
@@ -78,15 +101,18 @@ class Earth {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        // Медленное вращение Земли
+        const currentTime = Date.now();
+        const elapsed = currentTime - this.startTime;
+        
+        // Вращение Земли (один оборот за 24 часа)
         if (this.earth) {
-            this.earth.rotation.y += ROTATION_SPEED;
+            this.earth.rotation.y = (elapsed * ROTATION_SPEED) % (2 * Math.PI);
             
-            // Обновляем позицию солнца относительно вращения Земли
-            const time = Date.now() * 0.001;
+            // Обновляем позицию солнца (противоположно вращению Земли)
             const radius = 50;
-            this.sunLight.position.x = Math.cos(time * 0.05) * radius;
-            this.sunLight.position.z = Math.sin(time * 0.05) * radius;
+            const sunAngle = -this.earth.rotation.y;
+            this.sunLight.position.x = Math.cos(sunAngle) * radius;
+            this.sunLight.position.z = Math.sin(sunAngle) * radius;
             
             // Обновляем uniform для шейдера
             if (this.earth.material.uniforms) {
@@ -156,15 +182,15 @@ class Earth {
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Более резкий переход между днем и ночью
-                    float transition = smoothstep(-0.1, 0.1, cosAngle);
+                    // Делаем более жесткий переход между днем и ночью
+                    float transition = smoothstep(-0.05, 0.05, cosAngle);
                     
-                    // Делаем ночную сторону темнее и усиливаем огни
-                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(3.0, 2.5, 2.0, 1.0);
-                    vec4 baseColor = mix(vec4(0.0, 0.0, 0.0, 1.0), dayColor, transition);
+                    // Ночная сторона полностью черная, только огни городов
+                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(5.0, 4.0, 3.0, 1.0);
+                    vec4 baseColor = mix(vec4(0.0, 0.0, 0.0, 1.0), dayColor, pow(transition, 1.5));
                     
-                    // Финальный цвет
-                    gl_FragColor = baseColor + nightLights;
+                    // Финальный цвет: черная ночь + яркие огни
+                    gl_FragColor = baseColor + (nightLights * pow(1.0 - transition, 2.0));
                 }
             `
         });
