@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "build": "echo 'No build step required'",
+    "build": "npm install",
     "start": "node server.js",
+    "vercel-build": "echo 'Build completed'",
     "bot": "node server.js"
   },
   "engines": {
