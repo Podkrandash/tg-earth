@@ -22,11 +22,16 @@ function App() {
   useEffect(() => {
     const tg = window.TelegramGameProxy;
     if (tg) {
-      tg.initParams();
+      const params = tg.initParams();
+      
+      // Отправляем событие о загрузке игры
       tg.onEvent('game_loaded');
       
-      if (tg.requestFullscreen) {
-        tg.requestFullscreen();
+      // Запрашиваем полноэкранный режим только если игра запущена через бота
+      if (params.tgw_l === 'true' && tg.requestFullscreen) {
+        setTimeout(() => {
+          tg.requestFullscreen();
+        }, 100);
       }
     }
 

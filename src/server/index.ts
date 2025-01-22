@@ -47,6 +47,7 @@ bot.gameQuery(async (ctx) => {
   try {
     const gameUrl = new URL(GAME_URL);
     gameUrl.searchParams.set('TELEGRAM_GAME_URL', 'true');
+    gameUrl.searchParams.set('tgw_l', 'true');
     await ctx.answerGameQuery(gameUrl.toString());
   } catch (e) {
     console.error('Error answering game query:', e);
