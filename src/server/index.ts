@@ -46,8 +46,9 @@ bot.command('play', async (ctx) => {
 bot.gameQuery(async (ctx) => {
   try {
     const gameUrl = new URL(GAME_URL);
-    gameUrl.searchParams.set('TELEGRAM_GAME_URL', 'true');
-    gameUrl.searchParams.set('tgw_l', 'true');
+    // Добавляем параметры для полноэкранного режима
+    gameUrl.searchParams.set('playGame', 'true');
+    gameUrl.searchParams.set('tgw', '1');
     await ctx.answerGameQuery(gameUrl.toString());
   } catch (e) {
     console.error('Error answering game query:', e);

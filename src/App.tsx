@@ -28,8 +28,8 @@ function App() {
       // Отправляем событие о загрузке игры
       tg.onEvent('game_loaded');
       
-      // Запрашиваем полноэкранный режим только если игра запущена через бота
-      if (params.tgw_l === 'true' && requestFs) {
+      // Запрашиваем полноэкранный режим для всех запусков через бота
+      if ((params.playGame === 'true' || params.tgw === '1') && requestFs) {
         setTimeout(() => {
           requestFs();
         }, 100);
