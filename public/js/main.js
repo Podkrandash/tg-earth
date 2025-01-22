@@ -10,6 +10,16 @@ const MOON_TILT = 5.14 * Math.PI / 180; // Наклон орбиты Луны к
 
 class Earth {
     constructor() {
+        // Проверяем, запущено ли приложение в Telegram
+        this.isTelegram = window.TelegramGameProxy !== undefined;
+        
+        // Инициализация только после загрузки всех ресурсов
+        window.addEventListener('load', () => {
+            this.initGame();
+        });
+    }
+
+    initGame() {
         // Инициализация сцены
         this.container = document.getElementById('scene-container');
         this.scene = new THREE.Scene();
@@ -57,16 +67,33 @@ class Earth {
 
         // Настройка контролей для камеры
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        
+        // Базовые настройки
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        this.controls.rotateSpeed = isMobile() ? 0.3 : 0.5;
-        this.controls.enableZoom = true;
-        this.controls.zoomSpeed = isMobile() ? 0.5 : 0.8;
+        
+        // Настройки для мобильных устройств
+        if (isMobile()) {
+            this.controls.rotateSpeed = 0.5;
+            this.controls.zoomSpeed = 0.8;
+            this.controls.touchAngularSpeed = 0.4; // Скорость вращения при касании
+            this.controls.touchZoomSpeed = 2; // Скорость зума при касании
+            this.controls.screenSpacePanning = true; // Улучшенный панорамный режим для тачскрина
+        } else {
+            this.controls.rotateSpeed = 0.8;
+            this.controls.zoomSpeed = 1.0;
+        }
+        
+        // Общие ограничения
         this.controls.enablePan = false;
         this.controls.minDistance = 4;
-        this.controls.maxDistance = 20;
+        this.controls.maxDistance = 30; // Увеличиваем максимальное расстояние
         this.controls.minPolarAngle = Math.PI * 0.1;
         this.controls.maxPolarAngle = Math.PI * 0.9;
+        this.controls.enableZoom = true;
+        this.controls.enabled = true;
+        
+        // Сброс позиции камеры
         this.controls.target.set(0, 0, 0);
         this.controls.update();
 
@@ -81,10 +108,33 @@ class Earth {
         window.addEventListener('resize', () => this.onWindowResize());
 
         // Интеграция с Telegram
-        if (window.TelegramGameProxy) {
-            window.TelegramGameProxy.onEvent('game_loaded');
-            window.TelegramGameProxy.requestFullscreen();
-            window.TelegramGameProxy.setScore(1);
+        if (this.isTelegram) {
+            try {
+                // Сообщаем Telegram, что игра загружена
+                window.TelegramGameProxy.postEvent('GAME_LOADED');
+                
+                // Запрашиваем полноэкранный режим
+                window.TelegramGameProxy.postEvent('REQUESTED_FULLSCREEN');
+
+                // Устанавливаем начальный счет
+                window.TelegramGameProxy.postEvent('SET_SCORE', 1);
+                
+                // Добавляем обработчик сообщений от Telegram
+                window.TelegramGameProxy.receiveEvent = (eventName, eventData) => {
+                    console.log('Received event from Telegram:', eventName, eventData);
+                    switch(eventName) {
+                        case 'GAME_LOADED':
+                            console.log('Game loaded in Telegram');
+                            break;
+                        case 'GAME_STARTED':
+                            console.log('Game started in Telegram');
+                            break;
+                        // Добавьте другие обработчики событий по необходимости
+                    }
+                };
+            } catch (error) {
+                console.error('Error initializing Telegram integration:', error);
+            }
         }
 
         // Запускаем анимацию
