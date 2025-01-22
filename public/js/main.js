@@ -87,6 +87,14 @@ class Earth {
         const loadingContainer = document.getElementById('loading-container');
         const loadingMoon = document.getElementById('loading-moon');
         const loadingEarth = document.getElementById('loading-earth');
+        const sceneContainer = document.getElementById('scene-container');
+        const navPanel = document.querySelector('.nav-panel');
+
+        // Сначала скрываем основную сцену и панель навигации
+        sceneContainer.style.opacity = '0';
+        sceneContainer.style.display = 'block';
+        navPanel.style.display = 'none';
+        navPanel.style.opacity = '0';
 
         // Запускаем пиксельную анимацию вращения
         loadingEarth.style.animation = 'rotate 2s steps(4) infinite';
@@ -134,18 +142,28 @@ class Earth {
             loadingEarth.style.animation = 'explosion 0.5s forwards';
             loadingMoon.style.animation = 'explosion 0.5s forwards';
 
-            // Переходим к основной сцене
+            // Плавно показываем основную сцену
                 setTimeout(() => {
-                    const sceneContainer = document.getElementById('scene-container');
-                    const navPanel = document.querySelector('.nav-panel');
+                // Сначала показываем сцену
+                sceneContainer.style.opacity = '1';
                     
+                // Через небольшую задержку скрываем загрузочный экран
+                setTimeout(() => {
                     loadingScreen.style.opacity = '0';
-                    sceneContainer.style.opacity = '1';
-                    navPanel.classList.add('visible');
                     
+                    // После исчезновения загрузочного экрана показываем панель навигации
+                    setTimeout(() => {
+                        navPanel.style.display = 'flex';
+                        requestAnimationFrame(() => {
+                            navPanel.style.opacity = '1';
+                        });
+                        
+                        // Полностью удаляем загрузочный экран
         setTimeout(() => {
                         loadingScreen.style.display = 'none';
                     }, 500);
+                    }, 500);
+                }, 200);
             }, 1000);
         }, 4000);
     }
@@ -215,31 +233,28 @@ class Earth {
                 TWO: THREE.TOUCH.DOLLY_PAN
             };
             
-            // Добавляем обработчики для предотвращения зависания
-            let isZooming = false;
-            let zoomTimeout;
+            // Предотвращаем быстрые свайпы
+            let lastTouchY = 0;
+            let touchStartTime = 0;
             
-            this.controls.addEventListener('start', () => {
-                if (this.controls.touches.TWO === THREE.TOUCH.DOLLY_PAN) {
-                    isZooming = true;
-                }
-            });
+            this.renderer.domElement.addEventListener('touchstart', (e) => {
+                lastTouchY = e.touches[0].clientY;
+                touchStartTime = Date.now();
+            }, { passive: false });
             
-            this.controls.addEventListener('end', () => {
-                if (isZooming) {
-                    // Сбрасываем предыдущий таймаут если он есть
-                    if (zoomTimeout) clearTimeout(zoomTimeout);
-                    
-                    // Временно отключаем управление
-                    this.controls.enabled = false;
-                    
-                    // Включаем управление через небольшую задержку
-                    zoomTimeout = setTimeout(() => {
-                        this.controls.enabled = true;
-                        isZooming = false;
-                    }, 100);
+            this.renderer.domElement.addEventListener('touchmove', (e) => {
+                const currentY = e.touches[0].clientY;
+                const deltaY = currentY - lastTouchY;
+                const deltaTime = Date.now() - touchStartTime;
+                
+                // Если свайп слишком быстрый - отменяем его
+                if (Math.abs(deltaY) > 50 && deltaTime < 200) {
+                    e.preventDefault();
+                    e.stopPropagation();
                 }
-            });
+                
+                lastTouchY = currentY;
+            }, { passive: false });
         } else {
             this.controls.rotateSpeed = 0.8;
             this.controls.zoomSpeed = 1.0;
