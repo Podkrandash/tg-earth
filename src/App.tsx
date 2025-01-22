@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment } from '@react-three/drei';
 import Earth from './components/Earth';
@@ -19,6 +19,8 @@ declare global {
 }
 
 function App() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => {
     const tg = window.TelegramGameProxy;
     if (tg) {
@@ -28,29 +30,45 @@ function App() {
       // Отправляем событие о загрузке игры
       tg.onEvent('game_loaded');
       
-      // Запрашиваем полноэкранный режим для всех запусков через бота
-      if ((params.playGame === 'true' || params.tgw === '1') && requestFs) {
-        setTimeout(() => {
+      // Запрашиваем полноэкранный режим при первом взаимодействии
+      const handleInteraction = () => {
+        if (requestFs && !isFullscreen) {
           requestFs();
-        }, 100);
-      }
-    }
+          setIsFullscreen(true);
+        }
+      };
 
-    // Prevent default touch behavior
-    const preventDefault = (e: TouchEvent) => e.preventDefault();
+      window.addEventListener('touchstart', handleInteraction, { once: true });
+      window.addEventListener('click', handleInteraction, { once: true });
+
+      return () => {
+        window.removeEventListener('touchstart', handleInteraction);
+        window.removeEventListener('click', handleInteraction);
+      };
+    }
+  }, [isFullscreen]);
+
+  // Предотвращаем скролл и другие жесты
+  useEffect(() => {
+    const preventDefault = (e: Event) => e.preventDefault();
+    
     document.addEventListener('touchmove', preventDefault, { passive: false });
+    document.addEventListener('touchstart', preventDefault, { passive: false });
+    document.addEventListener('touchend', preventDefault, { passive: false });
     
     return () => {
       document.removeEventListener('touchmove', preventDefault);
+      document.removeEventListener('touchstart', preventDefault);
+      document.removeEventListener('touchend', preventDefault);
     };
   }, []);
 
   return (
-    <>
-      <div className="App">
+    <div className="App">
+      <div className="canvas-container">
         <Canvas
           camera={{ position: [0, 2, 5], fov: 60 }}
-          style={{ height: '100vh', width: '100vw', background: '#000' }}
+          style={{ background: '#000' }}
         >
           <Environment preset="city" />
           <Grid infiniteGrid position={[0, -1, 0]} />
@@ -70,7 +88,7 @@ function App() {
         </Canvas>
       </div>
       <NavigationPanel />
-    </>
+    </div>
   );
 }
 
