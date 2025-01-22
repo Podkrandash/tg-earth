@@ -339,24 +339,6 @@ class Earth {
             this.earthGroup.add(atmosphere);
         }
 
-        // Настройка освещения
-        this.ambientLight = new THREE.AmbientLight(0x404040, 0.2);
-        this.scene.add(this.ambientLight);
-
-        // Направленный свет от Солнца
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        this.directionalLight.position.set(100, 10, 100);
-        this.directionalLight.castShadow = true;
-        this.directionalLight.shadow.mapSize.width = 2048;
-        this.directionalLight.shadow.mapSize.height = 2048;
-        this.directionalLight.shadow.camera.near = 0.1;
-        this.directionalLight.shadow.camera.far = 1000;
-        this.directionalLight.shadow.bias = -0.001;
-        this.scene.add(this.directionalLight);
-        
-        // Добавляем цель для направленного света
-        this.directionalLight.target = this.earth;
-
         // Включаем тени в рендерере
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -407,7 +389,6 @@ class Earth {
         if (this.sun) {
             const sunWorldPosition = new THREE.Vector3();
             this.sun.getWorldPosition(sunWorldPosition);
-            this.directionalLight.position.copy(sunWorldPosition);
             
             // Обновляем шейдеры короны солнца
             this.sun.children.forEach(child => {
@@ -455,17 +436,15 @@ class Earth {
         // Обновляем контроли камеры
         this.controls.update();
         
-        // Обновляем направление солнца для шейдеров
-        if (this.earth && this.earth.material.uniforms) {
-            const sunDirection = new THREE.Vector3(100 * Math.cos(Date.now() * 0.0001), 0, 100 * Math.sin(Date.now() * 0.0001));
-            this.earth.material.uniforms.sunDirection.value = sunDirection;
-            if (this.atmosphere) {
-                this.atmosphere.material.uniforms.sunDirection.value = sunDirection;
-            }
-        }
-        
         // Рендерим сцену
         this.renderer.render(this.scene, this.camera);
+
+        // В методе animate добавляем обновление позиции солнца для шейдера
+        if (this.earth && this.earth.material.uniforms && this.sun) {
+            const sunWorldPosition = new THREE.Vector3();
+            this.sun.getWorldPosition(sunWorldPosition);
+            this.earth.material.uniforms.sunPosition.value.copy(sunWorldPosition);
+        }
     }
 
     createSun() {
@@ -483,8 +462,8 @@ class Earth {
         
         this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
         
-        // Добавляем точечный свет от солнца с меньшей интенсивностью
-        const sunLight = new THREE.PointLight(0xffffff, 0.8, 2000);
+        // Усиливаем точечный свет от солнца
+        const sunLight = new THREE.PointLight(0xffffff, 2.0, 3000);
         sunLight.position.set(0, 0, 0);
         this.sun.add(sunLight);
         
@@ -716,19 +695,19 @@ class Earth {
                 nightTexture: { value: nightTexture },
                 normalMap: { value: normalTexture },
                 roughnessMap: { value: roughnessTexture },
-                sunDirection: { value: new THREE.Vector3(100, 0, 0) }
+                sunPosition: { value: new THREE.Vector3() }
             },
             vertexShader: `
                 varying vec2 vUv;
                 varying vec3 vNormal;
-                varying vec3 vViewPosition;
+                varying vec3 vPosition;
 
                 void main() {
                     vUv = uv;
-                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-                    vViewPosition = -mvPosition.xyz;
                     vNormal = normalize(normalMatrix * normal);
-                    gl_Position = projectionMatrix * mvPosition;
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
             fragmentShader: `
@@ -736,43 +715,32 @@ class Earth {
                 uniform sampler2D nightTexture;
                 uniform sampler2D normalMap;
                 uniform sampler2D roughnessMap;
-                uniform vec3 sunDirection;
+                uniform vec3 sunPosition;
 
                 varying vec2 vUv;
                 varying vec3 vNormal;
+                varying vec3 vPosition;
 
                 void main() {
-                    vec3 normal = normalize(vNormal);
-                    float cosAngle = dot(normal, normalize(sunDirection));
+                    vec3 sunDirection = normalize(sunPosition - vPosition);
+                    float cosAngle = dot(vNormal, sunDirection);
                     
                     // Получаем цвета из текстур
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Делаем ночные огни видимыми только в полной темноте
-                    vec4 brightNightColor = nightColor * vec4(20.0, 15.0, 10.0, 1.0);
+                    // Определяем освещенность поверхности
+                    float lightIntensity = max(0.0, cosAngle);
                     
-                    // Жёсткий переход между днём и ночью, основанный строго на угле падения света
-                    float transition = step(0.0, cosAngle);
+                    // На темной стороне используем только ночные огни
+                    float nightSide = max(0.0, -cosAngle);
+                    vec4 nightLights = nightColor * nightSide * vec4(15.0, 12.0, 8.0, 1.0);
                     
-                    // Ночное свечение только там, где нет солнечного света
-                    float nightGlow = max(0.0, -cosAngle);
-                    vec4 nightGlowColor = brightNightColor * nightGlow;
+                    // Освещенная сторона без дополнительного освещения
+                    vec4 litSurface = dayColor * lightIntensity;
                     
-                    // Делаем тёмную сторону почти полностью чёрной
-                    vec4 darkSide = vec4(0.0, 0.0, 0.0, 1.0);
-                    
-                    // Дневная сторона без примеси огней
-                    vec4 dayWithoutLights = dayColor;
-                    
-                    // Минимальное амбиентное освещение для тёмной стороны
-                    vec3 ambientLight = vec3(0.01, 0.01, 0.015);
-                    
-                    // Финальное смешивание: день или ночь, без промежуточных состояний
-                    vec4 finalColor = mix(darkSide + nightGlowColor, dayWithoutLights, transition);
-                    finalColor.rgb += ambientLight * (1.0 - transition);
-                    
-                    gl_FragColor = finalColor;
+                    // Финальный цвет - смесь освещенной поверхности и ночных огней
+                    gl_FragColor = litSurface + nightLights;
                 }
             `
         });
