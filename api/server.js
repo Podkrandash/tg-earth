@@ -17,15 +17,12 @@ bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     console.log('Received /start command from chat:', chatId);
 
-    const botInfo = await bot.getMe();
-    const appUrl = `https://tg-earth.vercel.app/app`;
-    
     bot.sendMessage(chatId, 'Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
         reply_markup: {
             inline_keyboard: [[
                 {
                     text: '🌍 Играть',
-                    url: appUrl
+                    callback_game: 'earth3d'
                 }
             ]]
         }
@@ -36,11 +33,6 @@ bot.onText(/\/start/, async (msg) => {
 bot.on('callback_query', function onCallbackQuery(callbackQuery) {
     const chatId = callbackQuery.message.chat.id;
     console.log('Received callback query from chat:', chatId);
-
-    if (callbackQuery.game_short_name !== gameShortName) {
-        console.log('Unexpected game short name:', callbackQuery.game_short_name);
-        return;
-    }
 
     const gameUrl = process.env.GAME_URL || 'https://tg-earth.vercel.app/';
     console.log('Sending game URL:', gameUrl);
