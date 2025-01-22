@@ -3,9 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Lensflare, LensflareElement } from 'three/addons/objects/Lensflare.js';
 
 // Константы для вращения
-const BASE_ROTATION_SPEED = 0.001;
-const ORBIT_SPEED_FACTOR = 100; // Замедляем орбитальное движение
-const SELF_ROTATION_FACTOR = 50; // Фактор для собственного вращения планет
+const BASE_ROTATION_SPEED = 0.0001;
+const ORBIT_SPEED_FACTOR = 500;
+const SELF_ROTATION_FACTOR = 200;
 
 // Загрузчик текстур
 const textureLoader = new THREE.TextureLoader();
@@ -749,32 +749,28 @@ class Earth {
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Делаем ночные огни яркими только на тёмной стороне
-                    vec4 brightNightColor = nightColor * vec4(25.0, 20.0, 15.0, 1.0);
+                    // Делаем ночные огни видимыми только в полной темноте
+                    vec4 brightNightColor = nightColor * vec4(20.0, 15.0, 10.0, 1.0);
                     
-                    // Более резкий переход между днём и ночью
-                    float transition = smoothstep(-0.1, 0.1, cosAngle);
+                    // Жёсткий переход между днём и ночью, основанный строго на угле падения света
+                    float transition = step(0.0, cosAngle);
                     
-                    // Ночное свечение только на тёмной стороне
-                    float nightGlow = pow(max(0.0, -cosAngle), 1.5);
+                    // Ночное свечение только там, где нет солнечного света
+                    float nightGlow = max(0.0, -cosAngle);
                     vec4 nightGlowColor = brightNightColor * nightGlow;
                     
-                    // Делаем тёмную сторону действительно тёмной
-                    vec4 darkSide = dayColor * 0.02;
+                    // Делаем тёмную сторону почти полностью чёрной
+                    vec4 darkSide = vec4(0.0, 0.0, 0.0, 1.0);
                     
-                    // Чистый дневной цвет без примеси огней
+                    // Дневная сторона без примеси огней
                     vec4 dayWithoutLights = dayColor;
                     
                     // Минимальное амбиентное освещение для тёмной стороны
-                    vec3 ambientLight = vec3(0.02, 0.02, 0.03);
+                    vec3 ambientLight = vec3(0.01, 0.01, 0.015);
                     
-                    // Финальное смешивание
+                    // Финальное смешивание: день или ночь, без промежуточных состояний
                     vec4 finalColor = mix(darkSide + nightGlowColor, dayWithoutLights, transition);
                     finalColor.rgb += ambientLight * (1.0 - transition);
-                    
-                    // Лёгкое свечение на границе дня и ночи
-                    float edgeGlow = pow(1.0 - abs(cosAngle), 12.0) * 0.2;
-                    finalColor.rgb += vec3(0.6, 0.5, 0.4) * edgeGlow;
                     
                     gl_FragColor = finalColor;
                 }
