@@ -5,13 +5,18 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Обработка команды /start
 bot.command('start', (ctx) => {
-    ctx.reply('🌍 Добро пожаловать в Earth 3D!', {
+    ctx.reply('🌍 Добро пожаловать на Earth!', {
         reply_markup: {
             inline_keyboard: [
-                [{ text: '🌍 Play Earth 3D', url: process.env.GAME_URL }]
+                [{ text: '🌍 Play Earth', callback_game: 'earth3d' }]
             ]
         }
     });
+});
+
+// Обработка game callback
+bot.gameQuery((ctx) => {
+    ctx.answerGameQuery(process.env.GAME_URL);
 });
 
 // Обработка вебхуков

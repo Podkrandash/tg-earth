@@ -19,6 +19,19 @@ class Earth {
         } else {
             this.initGame();
         }
+
+        // Добавляем обработчик для Telegram Game
+        if (this.isTelegram) {
+            window.TelegramGameProxy = {
+                initParams: {},
+                receiveEvent: function(command, params) {
+                    console.log('Game received command:', command, params);
+                },
+                onEvent: function(event, data) {
+                    console.log('Game sent event:', event, data);
+                }
+            };
+        }
     }
 
     initGame() {
@@ -87,27 +100,43 @@ class Earth {
         
         // Базовые настройки
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.1; // Увеличиваем демпфирование
+        this.controls.dampingFactor = 0.05;
         
         // Настройки для мобильных устройств
         if (isMobile()) {
             this.controls.rotateSpeed = 0.3;
             this.controls.zoomSpeed = 0.5;
-            this.controls.touchAngularSpeed = 0.2;
-            this.controls.touchZoomSpeed = 1.0;
-            this.controls.screenSpacePanning = true;
             this.controls.enableZoom = true;
+            this.controls.enableRotate = true;
+            this.controls.enablePan = false;
+            this.controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_PAN
+            };
             
-            // Добавляем задержку после зума
+            // Добавляем обработчики для предотвращения зависания
+            let isZooming = false;
             let zoomTimeout;
-            this.controls.addEventListener('end', (event) => {
-                if (event.target.object.zoom !== this.lastZoom) {
+            
+            this.controls.addEventListener('start', () => {
+                if (this.controls.touches.TWO === THREE.TOUCH.DOLLY_PAN) {
+                    isZooming = true;
+                }
+            });
+            
+            this.controls.addEventListener('end', () => {
+                if (isZooming) {
+                    // Сбрасываем предыдущий таймаут если он есть
                     if (zoomTimeout) clearTimeout(zoomTimeout);
+                    
+                    // Временно отключаем управление
                     this.controls.enabled = false;
+                    
+                    // Включаем управление через небольшую задержку
                     zoomTimeout = setTimeout(() => {
                         this.controls.enabled = true;
-                    }, 300);
-                    this.lastZoom = event.target.object.zoom;
+                        isZooming = false;
+                    }, 100);
                 }
             });
         } else {
@@ -116,7 +145,6 @@ class Earth {
         }
         
         // Общие ограничения
-        this.controls.enablePan = false;
         this.controls.minDistance = 4;
         this.controls.maxDistance = 30;
         this.controls.minPolarAngle = Math.PI * 0.1;

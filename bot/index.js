@@ -8,7 +8,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Bot commands
 bot.command('start', (ctx) => {
-    ctx.reply('Welcome to Earth 3D! Click the button below to start:', {
+    ctx.reply('Welcome to Earth! Click the button below to start:', {
         reply_markup: {
             inline_keyboard: [[
                 { text: '🌍 Play Earth 3D', callback_data: 'play_game' }
