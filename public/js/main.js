@@ -203,13 +203,20 @@ class Earth {
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     vec4 clouds = texture2D(cloudsTexture, vUv);
                     
-                    dayColor.rgb *= 1.3;
-                    vec4 nightLights = nightColor * vec4(2.0, 1.8, 1.6, 1.0);
+                    // Увеличиваем яркость и насыщенность дневной стороны
+                    dayColor.rgb *= 1.8;
+                    dayColor.rgb = pow(dayColor.rgb, vec3(0.9)); // Увеличиваем контраст
+                    
+                    // Настраиваем ночные огни
+                    vec4 nightLights = nightColor * vec4(2.5, 2.2, 1.8, 1.0);
                     
                     vec4 groundColor = mix(nightLights, dayColor, transition);
+                    
+                    // Делаем облака ярче на дневной стороне
+                    clouds.rgb *= 1.5;
                     vec4 cloudColor = clouds * transition;
                     
-                    gl_FragColor = vec4(groundColor.rgb + cloudColor.rgb * 0.3, 1.0);
+                    gl_FragColor = vec4(groundColor.rgb + cloudColor.rgb * 0.4, 1.0);
                 }
             `,
             transparent: false,
@@ -327,9 +334,12 @@ class Earth {
                     
                     vec4 moonColor = texture2D(moonTexture, vUv);
                     
-                    // Делаем темную сторону серой вместо черной
+                    // Увеличиваем яркость освещенной стороны
+                    vec3 brightSideColor = moonColor.rgb * 1.5;
+                    brightSideColor = pow(brightSideColor, vec3(0.9)); // Увеличиваем контраст
+                    
+                    // Темная сторона остается серой
                     vec3 darkSideColor = moonColor.rgb * 0.15;
-                    vec3 brightSideColor = moonColor.rgb;
                     
                     vec3 finalColor = mix(darkSideColor, brightSideColor, transition);
                     gl_FragColor = vec4(finalColor, 1.0);
