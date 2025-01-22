@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "vercel-build": "echo 'Building...'",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "bot": "node server.js"
   },
   "dependencies": {
     "three": "^0.160.0",

@@ -43,5 +43,17 @@
       "src": "/(.*)",
       "dest": "/public/$1"
     }
+  ],
+  "functions": {
+    "server.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "crons": [
+    {
+      "path": "/bot/keepalive",
+      "schedule": "*/5 * * * *"
+    }
   ]
 } 
