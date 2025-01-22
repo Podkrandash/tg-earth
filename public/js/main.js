@@ -11,7 +11,7 @@ class Earth {
         // Инициализация сцены
         this.container = document.getElementById('scene-container');
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000); // Абсолютно черный космос
+        this.scene.background = new THREE.Color(0x000000);
         
         // Настройка камеры
         this.camera = new THREE.PerspectiveCamera(
@@ -24,19 +24,26 @@ class Earth {
 
         // Настройка рендерера
         this.renderer = new THREE.WebGLRenderer({ 
-            antialias: true,
-            alpha: true
+            antialias: true
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.container.appendChild(this.renderer.domElement);
 
-        // Создаем группу для Земли
+        // Добавляем направленный свет (Солнце)
+        this.sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        this.sunLight.position.set(50, 0, 0);
+        this.sunLight.castShadow = true;
+        this.scene.add(this.sunLight);
+
+        // Создаем группу для Земли с наклоном оси
         this.earthGroup = new THREE.Group();
-        this.earthGroup.rotation.z = EARTH_TILT;
+        this.earthGroup.rotation.z = 23.5 * Math.PI / 180;
         this.scene.add(this.earthGroup);
 
-        // Настройка контролей
+        // Настройка контролей для камеры
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
@@ -65,6 +72,7 @@ class Earth {
         }
 
         // Запускаем анимацию
+        this.startTime = Date.now();
         this.animate();
     }
 
@@ -80,7 +88,8 @@ class Earth {
         
         // Вращаем Землю вокруг своей оси
         if (this.earth) {
-            this.earth.rotation.y += 0.001;
+            const elapsed = (Date.now() - this.startTime) * 0.001;
+            this.earth.rotation.y = elapsed * 0.1; // Скорость вращения
         }
         
         // Обновляем контроли камеры
@@ -94,80 +103,33 @@ class Earth {
         // Загрузка текстур
         const textureLoader = new THREE.TextureLoader();
         const dayTexture = textureLoader.load('textures/earth_daymap.jpg');
+        const normalTexture = textureLoader.load('textures/earth_normal_map.jpg');
+        const specularTexture = textureLoader.load('textures/earth_specular_map.jpg');
 
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем шейдерный материал для Земли
-        const earthMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                dayTexture: { value: dayTexture }
-            },
-            vertexShader: `
-                varying vec2 vUv;
-                varying vec3 vNormal;
-                
-                void main() {
-                    vUv = uv;
-                    vNormal = normalize(normalMatrix * normal);
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D dayTexture;
-                varying vec2 vUv;
-                varying vec3 vNormal;
-                
-                void main() {
-                    // Направление "солнца" - фиксированное справа
-                    vec3 sunDirection = normalize(vec3(1.0, 0.0, 0.0));
-                    float cosAngle = dot(vNormal, sunDirection);
-                    
-                    // Делаем очень резкий переход между днем и ночью
-                    float dayStrength = step(0.0, cosAngle);
-                    
-                    // Получаем цвет из дневной текстуры
-                    vec4 dayColor = texture2D(dayTexture, vUv);
-                    
-                    // Смешиваем: день или полная темнота
-                    gl_FragColor = dayColor * dayStrength;
-                }
-            `
+        // Создаем материал земли
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: dayTexture,
+            normalMap: normalTexture,
+            specularMap: specularTexture,
+            shininess: 5
         });
 
         // Создаем меш земли
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
+        this.earth.castShadow = true;
+        this.earth.receiveShadow = true;
         this.earthGroup.add(this.earth);
 
         // Создаем атмосферу
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
-        const atmosphereMaterial = new THREE.ShaderMaterial({
-            vertexShader: `
-                varying vec3 vNormal;
-                
-                void main() {
-                    vNormal = normalize(normalMatrix * normal);
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                varying vec3 vNormal;
-                
-                void main() {
-                    // Направление "солнца" справа
-                    vec3 sunDirection = normalize(vec3(1.0, 0.0, 0.0));
-                    float cosAngle = dot(vNormal, sunDirection);
-                    
-                    // Атмосфера видна только на освещенной стороне
-                    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 2.0) * step(0.0, cosAngle);
-                    vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
-                    gl_FragColor = vec4(atmosphereColor, intensity * 0.2);
-                }
-            `,
+        const atmosphereMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4ca7ff,
             transparent: true,
-            side: THREE.BackSide,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+            opacity: 0.2,
+            side: THREE.BackSide
         });
 
         const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
