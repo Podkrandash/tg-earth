@@ -4,14 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "build": "npm install",
     "start": "node server.js",
-    "vercel-build": "echo 'Build completed'",
-    "bot": "node server.js"
+    "build": "echo 'No build step needed'",
+    "dev": "node server.js",
+    "vercel-build": "echo 'Building...'"
   },
   "engines": {
-    "node": "18.17.0"
+    "node": "18.x"
   },
   "dependencies": {
     "@babylonjs/core": "^6.37.1",

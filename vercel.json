@@ -1,49 +1,20 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/bot/(.*)",
-      "dest": "server.js"
-    },
-    {
-      "src": "/textures/(.*)",
-      "dest": "/public/textures/$1"
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "/public/js/$1"
-    },
-    {
-      "src": "/(.*\\.js)",
-      "dest": "/public/js/$1"
-    },
-    {
-      "src": "/(.*\\.css)",
-      "dest": "/public/css/$1"
-    },
-    {
-      "src": "/(.*\\.(jpg|png))",
-      "dest": "/public/textures/$1"
-    },
-    {
-      "src": "/",
-      "dest": "/public/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    }
-  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
   "functions": {
     "server.js": {
       "memory": 1024,
-      "maxDuration": 60
+      "maxDuration": 10
     }
   },
-  "crons": [
-    {
-      "path": "/bot/keepalive",
-      "schedule": "*/1 * * * *"
-    }
+  "routes": [
+    { "src": "/js/(.*)", "dest": "/js/$1" },
+    { "src": "/css/(.*)", "dest": "/css/$1" },
+    { "src": "/textures/(.*)", "dest": "/textures/$1" },
+    { "src": "/images/(.*)", "dest": "/images/$1" },
+    { "src": "/(.*\\.(jpg|png|gif))", "dest": "/$1" },
+    { "src": "/bot/(.*)", "dest": "/server.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 } 
