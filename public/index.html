@@ -276,7 +276,7 @@
         <div class="nav-button" data-section="profile">
             <i class="material-icons">person</i>
         </div>
-        <div class="nav-button active" data-section="planet">
+        <div class="nav-button" data-section="planet">
             <i class="material-icons">public</i>
         </div>
         <div class="nav-button" data-section="tasks">
@@ -288,7 +288,6 @@
     </div>
     <div class="tab-content">
         <div class="tab-content-inner">
-            <!-- Content of the tab -->
         </div>
     </div>
     <script type="module" src="/js/main.js"></script>
@@ -311,26 +310,28 @@
             });
             
             // Обработчики для кнопок навигации
-            document.querySelectorAll('.nav-button').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const section = button.getAttribute('data-section');
-                    handleNavClick(section, button);
+            const navButtons = document.querySelectorAll('.nav-button');
+            navButtons.forEach(button => {
+                ['click', 'touchend'].forEach(eventType => {
+                    button.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    });
                 });
             });
 
-            // Функция обработки клика по кнопке навигации
             function handleNavClick(section, clickedButton) {
+                console.log('Button clicked:', section); // Отладочный вывод
+                
                 const buttons = document.querySelectorAll('.nav-button');
                 
                 // Если кликнули по активной кнопке, закрываем вкладку
                 if (clickedButton.classList.contains('active')) {
                     clickedButton.classList.remove('active');
                     tabContent.classList.remove('active');
-                    setTimeout(() => {
-                        tabInner.style.opacity = '0';
-                    }, 100);
+                    tabInner.style.opacity = '0';
                     return;
                 }
                 
@@ -379,7 +380,6 @@
                 
                 // Обновляем содержимое
                 tabInner.innerHTML = content;
-                tabInner.style.opacity = '0';
                 
                 // Добавляем обработчик для кнопки закрытия
                 const closeButton = tabInner.querySelector('.close-button');
@@ -388,9 +388,7 @@
                     e.stopPropagation();
                     tabContent.classList.remove('active');
                     clickedButton.classList.remove('active');
-                    setTimeout(() => {
-                        tabInner.style.opacity = '0';
-                    }, 100);
+                    tabInner.style.opacity = '0';
                 });
                 
                 // Показываем вкладку с анимацией
