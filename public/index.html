@@ -19,6 +19,8 @@
             overscroll-behavior: none;
             position: fixed;
             background: #000000;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.01em;
         }
         body * {
             overscroll-behavior: none;
@@ -154,6 +156,8 @@
             opacity: 0;
             transition: opacity 0.3s ease;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            pointer-events: auto;
+            touch-action: auto;
         }
         .nav-panel.visible {
             opacity: 1;
@@ -174,6 +178,7 @@
             -webkit-user-select: none;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.05);
+            pointer-events: auto;
         }
         .nav-button i {
             font-size: 24px;
@@ -217,6 +222,7 @@
             pointer-events: none;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
+            touch-action: pan-x pan-y;
         }
         .tab-content.active {
             transform: translateY(0);
@@ -236,18 +242,19 @@
         }
         .tab-content h3 {
             margin: 0;
-            font-size: 20px;
-            font-weight: 500;
+            font-size: 22px;
+            font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
-            margin-bottom: 16px;
-            letter-spacing: 0.3px;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
         }
         .close-button {
             position: absolute;
-            top: -60px;
-            right: 20px;
-            width: 40px;
-            height: 40px;
+            top: -52px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
             border: none;
             border-radius: 50%;
             background: rgba(18, 18, 23, 0.85);
@@ -277,11 +284,12 @@
             transform: scale(1.05);
         }
         .close-button i {
-            font-size: 28px;
+            font-size: 24px;
             transition: transform 0.2s ease;
         }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>
     <script type="importmap">
     {
@@ -340,26 +348,35 @@
             // Обработчики для кнопок навигации
             const navButtons = document.querySelectorAll('.nav-button');
             navButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
+                ['touchstart', 'click'].forEach(eventType => {
+                    button.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Если это touch-событие, добавляем активное состояние
+                        if (eventType === 'touchstart') {
+                            button.classList.add('active');
+                        }
+                        
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    }, { passive: false });
+                });
+                
+                // Убираем активное состояние после touchend
+                button.addEventListener('touchend', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const section = button.getAttribute('data-section');
-                    handleNavClick(section, button);
-                });
+                }, { passive: false });
             });
 
             function handleNavClick(section, clickedButton) {
                 console.log('Button clicked:', section);
                 
                 const buttons = document.querySelectorAll('.nav-button');
-                
-                // Убираем активный класс со всех кнопок
                 buttons.forEach(btn => btn.classList.remove('active'));
-                
-                // Добавляем активный класс на кликнутую кнопку
                 clickedButton.classList.add('active');
                 
-                // Обновляем содержимое вкладки
                 let content = '';
                 switch(section) {
                     case 'profile':
@@ -367,7 +384,7 @@
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Профиль</h3>
+                            <h3>Profile</h3>
                         `;
                         break;
                     case 'planet':
@@ -375,7 +392,7 @@
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Информация о планете</h3>
+                            <h3>Planet Info</h3>
                         `;
                         break;
                     case 'tasks':
@@ -383,7 +400,7 @@
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Доступные задания</h3>
+                            <h3>Available Tasks</h3>
                         `;
                         break;
                     case 'wallet':
@@ -391,25 +408,24 @@
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Кошелёк</h3>
+                            <h3>Wallet</h3>
                         `;
                         break;
                 }
                 
-                // Обновляем содержимое
                 tabInner.innerHTML = content;
                 
-                // Добавляем обработчик для кнопки закрытия
                 const closeButton = tabInner.querySelector('.close-button');
-                closeButton.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    tabContent.classList.remove('active');
-                    clickedButton.classList.remove('active');
-                    tabInner.style.opacity = '0';
+                ['touchstart', 'click'].forEach(eventType => {
+                    closeButton.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        tabContent.classList.remove('active');
+                        clickedButton.classList.remove('active');
+                        tabInner.style.opacity = '0';
+                    }, { passive: false });
                 });
                 
-                // Показываем вкладку с анимацией
                 requestAnimationFrame(() => {
                     tabContent.classList.add('active');
                     requestAnimationFrame(() => {
