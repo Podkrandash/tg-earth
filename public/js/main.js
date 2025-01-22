@@ -709,7 +709,7 @@ class Earth {
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем материал земли с более светлой ночной стороной
+        // Создаем материал земли с более естественным освещением
         const earthMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 dayTexture: { value: dayTexture },
@@ -749,35 +749,35 @@ class Earth {
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Делаем ночные огни очень яркими
-                    vec4 brightNightColor = nightColor * vec4(60.0, 50.0, 35.0, 1.0);
+                    // Делаем ночные огни умеренно яркими
+                    vec4 brightNightColor = nightColor * vec4(35.0, 30.0, 20.0, 1.0);
                     
-                    // Базовое свечение городов (всегда видимое)
-                    vec4 baseCityLights = nightColor * vec4(15.0, 12.0, 8.0, 1.0);
+                    // Базовое свечение городов (слегка видимое)
+                    vec4 baseCityLights = nightColor * vec4(8.0, 6.0, 4.0, 1.0);
                     
                     // Плавный переход между днем и ночью
-                    float transition = smoothstep(-0.2, 0.2, cosAngle);
+                    float transition = smoothstep(-0.15, 0.15, cosAngle);
                     
-                    // Усиливаем свечение на ночной стороне
-                    float nightGlow = pow(1.0 - transition, 3.0);
+                    // Умеренное свечение на ночной стороне
+                    float nightGlow = pow(1.0 - transition, 2.0);
                     vec4 nightGlowColor = brightNightColor * nightGlow;
                     
-                    // Делаем ночную сторону более светлой
-                    vec4 brightNightSide = dayColor * 0.3 + baseCityLights;
+                    // Делаем ночную сторону более естественной
+                    vec4 darkNightSide = dayColor * 0.1 + baseCityLights;
                     
-                    // Смешиваем дневной цвет с базовым свечением городов
-                    vec4 dayWithLights = mix(dayColor, baseCityLights, 0.2);
+                    // Смешиваем дневной цвет с минимальным свечением городов
+                    vec4 dayWithLights = mix(dayColor, baseCityLights, 0.1);
                     
-                    // Добавляем амбиентное освещение для темной стороны
-                    vec3 ambientLight = vec3(0.15, 0.15, 0.2);
+                    // Добавляем минимальное амбиентное освещение для темной стороны
+                    vec3 ambientLight = vec3(0.05, 0.05, 0.08);
                     
                     // Финальное смешивание с учетом перехода
-                    vec4 finalColor = mix(brightNightSide + nightGlowColor, dayWithLights, transition);
+                    vec4 finalColor = mix(darkNightSide + nightGlowColor, dayWithLights, transition);
                     finalColor.rgb += ambientLight * (1.0 - transition);
                     
-                    // Добавляем свечение на границе дня и ночи
-                    float edgeGlow = pow(1.0 - abs(cosAngle), 8.0) * 0.4;
-                    finalColor.rgb += vec3(1.0, 0.9, 0.8) * edgeGlow;
+                    // Добавляем легкое свечение на границе дня и ночи
+                    float edgeGlow = pow(1.0 - abs(cosAngle), 8.0) * 0.3;
+                    finalColor.rgb += vec3(0.8, 0.7, 0.6) * edgeGlow;
                     
                     gl_FragColor = finalColor;
                 }
