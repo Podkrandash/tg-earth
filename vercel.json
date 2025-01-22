@@ -9,12 +9,12 @@
     }
   },
   "routes": [
+    { "src": "/api/webhook", "dest": "/api/server" },
     { "src": "/js/(.*)", "dest": "/js/$1" },
     { "src": "/css/(.*)", "dest": "/css/$1" },
     { "src": "/textures/(.*)", "dest": "/textures/$1" },
     { "src": "/images/(.*)", "dest": "/images/$1" },
     { "src": "/(.*\\.(jpg|png|gif))", "dest": "/$1" },
-    { "src": "/bot/(.*)", "dest": "/api/server" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 } 

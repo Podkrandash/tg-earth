@@ -11,15 +11,32 @@ const MOON_TILT = 5.14 * Math.PI / 180; // Наклон орбиты Луны к
 class Earth {
     constructor() {
         // Проверяем, запущено ли приложение в Telegram
-        this.isTelegram = window.TelegramGameProxy !== undefined;
+        this.isTelegram = window.Telegram !== undefined;
         
         // Инициализация только после загрузки всех ресурсов
-        window.addEventListener('load', () => {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initGame());
+        } else {
             this.initGame();
-        });
+        }
     }
 
     initGame() {
+        // Интеграция с Telegram перед созданием сцены
+        if (this.isTelegram) {
+            try {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+                
+                // Добавляем обработчик сообщений от Telegram
+                window.Telegram.WebApp.onEvent('viewportChanged', () => {
+                    this.onWindowResize();
+                });
+            } catch (error) {
+                console.error('Error initializing Telegram integration:', error);
+            }
+        }
+
         // Инициализация сцены
         this.container = document.getElementById('scene-container');
         this.scene = new THREE.Scene();
@@ -70,15 +87,29 @@ class Earth {
         
         // Базовые настройки
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
+        this.controls.dampingFactor = 0.1; // Увеличиваем демпфирование
         
         // Настройки для мобильных устройств
         if (isMobile()) {
-            this.controls.rotateSpeed = 0.5;
-            this.controls.zoomSpeed = 0.8;
-            this.controls.touchAngularSpeed = 0.4; // Скорость вращения при касании
-            this.controls.touchZoomSpeed = 2; // Скорость зума при касании
-            this.controls.screenSpacePanning = true; // Улучшенный панорамный режим для тачскрина
+            this.controls.rotateSpeed = 0.3;
+            this.controls.zoomSpeed = 0.5;
+            this.controls.touchAngularSpeed = 0.2;
+            this.controls.touchZoomSpeed = 1.0;
+            this.controls.screenSpacePanning = true;
+            this.controls.enableZoom = true;
+            
+            // Добавляем задержку после зума
+            let zoomTimeout;
+            this.controls.addEventListener('end', (event) => {
+                if (event.target.object.zoom !== this.lastZoom) {
+                    if (zoomTimeout) clearTimeout(zoomTimeout);
+                    this.controls.enabled = false;
+                    zoomTimeout = setTimeout(() => {
+                        this.controls.enabled = true;
+                    }, 300);
+                    this.lastZoom = event.target.object.zoom;
+                }
+            });
         } else {
             this.controls.rotateSpeed = 0.8;
             this.controls.zoomSpeed = 1.0;
@@ -87,15 +118,16 @@ class Earth {
         // Общие ограничения
         this.controls.enablePan = false;
         this.controls.minDistance = 4;
-        this.controls.maxDistance = 30; // Увеличиваем максимальное расстояние
+        this.controls.maxDistance = 30;
         this.controls.minPolarAngle = Math.PI * 0.1;
         this.controls.maxPolarAngle = Math.PI * 0.9;
-        this.controls.enableZoom = true;
-        this.controls.enabled = true;
         
         // Сброс позиции камеры
         this.controls.target.set(0, 0, 0);
         this.controls.update();
+        
+        // Сохраняем начальный зум
+        this.lastZoom = this.camera.zoom;
 
         // Создаем Землю и Луну
         this.createEarth();
@@ -106,36 +138,6 @@ class Earth {
 
         // Обработчики событий
         window.addEventListener('resize', () => this.onWindowResize());
-
-        // Интеграция с Telegram
-        if (this.isTelegram) {
-            try {
-                // Сообщаем Telegram, что игра загружена
-                window.TelegramGameProxy.postEvent('GAME_LOADED');
-                
-                // Запрашиваем полноэкранный режим
-                window.TelegramGameProxy.postEvent('REQUESTED_FULLSCREEN');
-
-                // Устанавливаем начальный счет
-                window.TelegramGameProxy.postEvent('SET_SCORE', 1);
-                
-                // Добавляем обработчик сообщений от Telegram
-                window.TelegramGameProxy.receiveEvent = (eventName, eventData) => {
-                    console.log('Received event from Telegram:', eventName, eventData);
-                    switch(eventName) {
-                        case 'GAME_LOADED':
-                            console.log('Game loaded in Telegram');
-                            break;
-                        case 'GAME_STARTED':
-                            console.log('Game started in Telegram');
-                            break;
-                        // Добавьте другие обработчики событий по необходимости
-                    }
-                };
-            } catch (error) {
-                console.error('Error initializing Telegram integration:', error);
-            }
-        }
 
         // Запускаем анимацию
         this.startTime = Date.now();
