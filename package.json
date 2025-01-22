@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "vercel-build": "echo 'Building bot...'"
   },
   "dependencies": {
     "three": "^0.160.0",
