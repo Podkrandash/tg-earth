@@ -1,37 +1,31 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": "build",
-  "cleanUrls": true,
-  "public": true,
   "builds": [
     {
-      "src": "package.json",
+      "src": "server/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/static/(.*)",
-      "dest": "/static/$1",
-      "headers": {
-        "cache-control": "public, max-age=0, must-revalidate"
-      }
+      "src": "/bot/(.*)",
+      "dest": "server/index.js"
     },
     {
-      "src": "/favicon.ico",
-      "dest": "/favicon.ico"
+      "src": "/textures/(.*)",
+      "dest": "/textures/$1"
     },
     {
-      "src": "/manifest.json",
-      "dest": "/manifest.json"
+      "src": "/js/(.*)",
+      "dest": "/js/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html",
-      "headers": {
-        "cache-control": "public, max-age=0, must-revalidate"
-      }
+      "dest": "/index.html"
     }
   ]
 } 

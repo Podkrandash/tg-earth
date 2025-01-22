@@ -1,15 +1,12 @@
-import express, { Request, Response } from 'express';
-import { Telegraf, Context } from 'telegraf';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import express from 'express';
+import { Telegraf } from 'telegraf';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config();
-
+// Инициализация бота и сервера
 const bot = new Telegraf(process.env.BOT_TOKEN || '');
 const app = express();
 const port = process.env.PORT || 3001;
@@ -18,50 +15,38 @@ const port = process.env.PORT || 3001;
 const GAME_SHORT_NAME = 'Earth';
 const GAME_URL = process.env.GAME_URL || 'https://your-domain.com';
 
-app.use(cors());
-app.use(express.json());
+// Настройка статических файлов
 app.use(express.static(join(__dirname, '../../build')));
 
 // Обработка команды старт
 bot.command('start', async (ctx) => {
-  try {
-    await ctx.replyWithGame(GAME_SHORT_NAME);
-  } catch (e) {
-    console.error('Error sending game:', e);
-    await ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
-  }
-});
-
-// Команда для запуска игры
-bot.command('play', async (ctx) => {
-  try {
-    await ctx.replyWithGame(GAME_SHORT_NAME);
-  } catch (e) {
-    console.error('Error sending game:', e);
-    await ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
-  }
+    try {
+        await ctx.replyWithGame(GAME_SHORT_NAME);
+    } catch (e) {
+        console.error('Error sending game:', e);
+        await ctx.reply('Произошла ошибка при запуске игры. Попробуйте позже.');
+    }
 });
 
 // Обработка callback query для игры
 bot.gameQuery(async (ctx) => {
-  try {
-    await ctx.answerGameQuery(GAME_URL);
-  } catch (e) {
-    console.error('Error answering game query:', e);
-  }
+    try {
+        await ctx.answerGameQuery(GAME_URL);
+    } catch (e) {
+        console.error('Error answering game query:', e);
+    }
 });
 
-// API эндпоинты
-app.get('/game', (req: Request, res: Response) => {
-  res.sendFile(join(__dirname, '../../build/index.html'));
-});
-
-// Запуск бота и сервера
-bot.launch();
+// Запуск сервера и бота
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+    console.log(`Server is running on port ${port}`);
+    bot.launch().then(() => {
+        console.log('Bot is running');
+    }).catch(error => {
+        console.error('Error starting bot:', error);
+    });
 });
 
-// Enable graceful stop
+// Graceful shutdown
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM')); 
