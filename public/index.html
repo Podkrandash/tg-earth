@@ -250,14 +250,14 @@
             line-height: 1.3;
         }
         .close-button {
-            position: absolute;
-            top: -52px;
-            right: 16px;
-            width: 36px;
-            height: 36px;
+            position: fixed;
+            top: 32px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
             border: none;
             border-radius: 50%;
-            background: rgba(18, 18, 23, 0.85);
+            background: rgba(18, 18, 23, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -381,34 +381,34 @@
                 switch(section) {
                     case 'profile':
                         content = `
+                            <h3>Profile</h3>
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Profile</h3>
                         `;
                         break;
                     case 'planet':
                         content = `
+                            <h3>Planet Info</h3>
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Planet Info</h3>
                         `;
                         break;
                     case 'tasks':
                         content = `
+                            <h3>Available Tasks</h3>
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Available Tasks</h3>
                         `;
                         break;
                     case 'wallet':
                         content = `
+                            <h3>Wallet</h3>
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                            <h3>Wallet</h3>
                         `;
                         break;
                 }
