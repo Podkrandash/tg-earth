@@ -11,7 +11,7 @@
     "bot": "node server.js"
   },
   "engines": {
-    "node": "18.x"
+    "node": "18.17.0"
   },
   "dependencies": {
     "@babylonjs/core": "^6.37.1",
