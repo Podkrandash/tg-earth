@@ -237,8 +237,8 @@
             opacity: 0;
             transition: opacity 0.3s ease;
             position: relative;
-            overflow: hidden;
-            pointer-events: auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .profile-header {
             position: sticky;
@@ -254,6 +254,7 @@
             border-radius: 20px;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
+            margin-top: 40px;
         }
         .profile-avatar {
             width: 80px;
@@ -291,6 +292,7 @@
             text-align: center;
             flex-shrink: 0;
             border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-left: auto;
         }
         .rating-number {
             font-size: 32px;
@@ -309,11 +311,9 @@
         }
         .rating-list {
             margin: 0;
-            padding: 0;
+            padding: 0 0 80px 0;
             list-style: none;
-            overflow-y: auto;
-            height: calc(100% - 220px);
-            -webkit-overflow-scrolling: touch;
+            overflow-y: visible;
         }
         .rating-item {
             display: flex;
@@ -376,9 +376,9 @@
             line-height: 1.3;
         }
         .close-button {
-            position: fixed;
-            top: 32px;
-            right: 20px;
+            position: absolute;
+            top: 16px;
+            right: 16px;
             width: 40px;
             height: 40px;
             border: none;
@@ -462,25 +462,37 @@
             const tabInner = document.querySelector('.tab-content-inner');
             
             // Функция для получения данных пользователя из Telegram
-            function updateUserProfile() {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    const user = window.Telegram.WebApp.initDataUnsafe.user;
-                    if (user) {
-                        const avatarImg = document.getElementById('profile-avatar-img');
-                        const nameEl = document.getElementById('profile-name');
-                        const bioEl = document.getElementById('profile-bio');
+            async function updateUserProfile() {
+                try {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        const user = window.Telegram.WebApp.initDataUnsafe.user;
+                        console.log('Telegram user data:', user); // Для отладки
                         
-                        // Обновляем аватар
-                        if (user.photo_url) {
-                            avatarImg.src = user.photo_url;
+                        if (user) {
+                            const avatarImg = document.getElementById('profile-avatar-img');
+                            const nameEl = document.getElementById('profile-name');
+                            const bioEl = document.getElementById('profile-bio');
+                            
+                            // Обновляем аватар
+                            if (user.photo_url) {
+                                avatarImg.src = user.photo_url;
+                            } else {
+                                avatarImg.src = 'https://via.placeholder.com/80/666666/FFFFFF?text=User';
+                            }
+                            
+                            // Обновляем имя
+                            nameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                            
+                            // Обновляем био
+                            bioEl.textContent = user.username ? '@' + user.username : 'No username';
+                        } else {
+                            console.log('No user data available'); // Для отладки
                         }
-                        
-                        // Обновляем имя
-                        nameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-                        
-                        // Обновляем био
-                        bioEl.textContent = user.username ? '@' + user.username : 'No username';
+                    } else {
+                        console.log('Telegram WebApp not available'); // Для отладки
                     }
+                } catch (error) {
+                    console.error('Error updating profile:', error); // Для отладки
                 }
             }
             
@@ -536,7 +548,7 @@
                             </button>
                             <div class="profile-header">
                                 <div class="profile-avatar">
-                                    <img src="https://via.placeholder.com/80" alt="Profile Avatar" id="profile-avatar-img">
+                                    <img src="https://via.placeholder.com/80/666666/FFFFFF?text=User" alt="Profile Avatar" id="profile-avatar-img">
                                 </div>
                                 <div class="profile-info">
                                     <h4 class="profile-name" id="profile-name">Loading...</h4>
@@ -552,7 +564,7 @@
                                     <li class="rating-item ${i === 6 ? 'current' : ''}">
                                         <span class="rating-position">#${i + 1}</span>
                                         <div class="rating-avatar">
-                                            <img src="https://via.placeholder.com/40" alt="User Avatar">
+                                            <img src="https://via.placeholder.com/40/666666/FFFFFF?text=${i + 1}" alt="User Avatar">
                                         </div>
                                         <div class="rating-user-info">
                                             <h4 class="rating-username">User ${i + 1}</h4>
