@@ -90,11 +90,14 @@ class Earth {
         const sceneContainer = document.getElementById('scene-container');
         const navPanel = document.querySelector('.nav-panel');
 
-        // Сначала скрываем основную сцену и панель навигации
-        sceneContainer.style.opacity = '0';
+        // Показываем загрузочный экран
+        loadingScreen.style.display = 'flex';
+        loadingScreen.style.opacity = '1';
+        
+        // Скрываем основную сцену и панель навигации
         sceneContainer.style.display = 'block';
+        sceneContainer.style.opacity = '0';
         navPanel.style.display = 'none';
-        navPanel.style.opacity = '0';
 
         // Запускаем пиксельную анимацию вращения
         loadingEarth.style.animation = 'rotate 2s steps(4) infinite';
@@ -120,7 +123,7 @@ class Earth {
                 loadingContainer.appendChild(particle);
                 
                 // Анимируем частицы
-                const animation = particle.animate([
+                particle.animate([
                     { 
                         transform: 'translate(-50%, -50%)',
                         opacity: 1
@@ -144,14 +147,13 @@ class Earth {
 
             // Плавно показываем основную сцену
                 setTimeout(() => {
-                // Сначала показываем сцену
+                // Показываем сцену
                 sceneContainer.style.opacity = '1';
                     
-                // Через небольшую задержку скрываем загрузочный экран
-                setTimeout(() => {
+                // Скрываем загрузочный экран
                     loadingScreen.style.opacity = '0';
                     
-                    // После исчезновения загрузочного экрана показываем панель навигации
+                // Показываем панель навигации
                     setTimeout(() => {
                         navPanel.style.display = 'flex';
                         requestAnimationFrame(() => {
@@ -161,10 +163,13 @@ class Earth {
                         // Полностью удаляем загрузочный экран
         setTimeout(() => {
                         loadingScreen.style.display = 'none';
+                        // Очищаем частицы
+                        while (loadingContainer.firstChild) {
+                            loadingContainer.removeChild(loadingContainer.firstChild);
+                        }
                     }, 500);
-                    }, 500);
-                }, 200);
-            }, 1000);
+                }, 300);
+            }, 800);
         }, 4000);
     }
 
@@ -223,7 +228,7 @@ class Earth {
         
         // Настройки для мобильных устройств
         if (isMobile()) {
-            this.controls.rotateSpeed = 0.3;
+            this.controls.rotateSpeed = 0.5;
             this.controls.zoomSpeed = 0.5;
             this.controls.enableZoom = true;
             this.controls.enableRotate = true;
@@ -233,28 +238,29 @@ class Earth {
                 TWO: THREE.TOUCH.DOLLY_PAN
             };
             
-            // Предотвращаем быстрые свайпы
-            let lastTouchY = 0;
-            let touchStartTime = 0;
-            
-            this.renderer.domElement.addEventListener('touchstart', (e) => {
-                lastTouchY = e.touches[0].clientY;
-                touchStartTime = Date.now();
+            // Предотвращаем свайпы
+            document.addEventListener('touchstart', (e) => {
+                e.preventDefault();
             }, { passive: false });
             
-            this.renderer.domElement.addEventListener('touchmove', (e) => {
-                const currentY = e.touches[0].clientY;
-                const deltaY = currentY - lastTouchY;
-                const deltaTime = Date.now() - touchStartTime;
-                
-                // Если свайп слишком быстрый - отменяем его
-                if (Math.abs(deltaY) > 50 && deltaTime < 200) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                lastTouchY = currentY;
+            document.addEventListener('touchmove', (e) => {
+                e.preventDefault();
             }, { passive: false });
+            
+            // Предотвращаем масштабирование страницы
+            document.addEventListener('gesturestart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+            
+            // Обработка потери контекста WebGL
+            this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
+                event.preventDefault();
+                this.renderer.setAnimationLoop(null);
+            }, false);
+            
+            this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+                this.renderer.setAnimationLoop(() => this.animate());
+            }, false);
         } else {
             this.controls.rotateSpeed = 0.8;
             this.controls.zoomSpeed = 1.0;
