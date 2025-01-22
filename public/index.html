@@ -240,6 +240,132 @@
             overflow: hidden;
             pointer-events: auto;
         }
+        .profile-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 16px;
+            padding: 24px;
+            background: rgba(18, 18, 23, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-info {
+            flex-grow: 1;
+        }
+        .profile-name {
+            font-size: 24px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0 0 4px 0;
+            letter-spacing: -0.02em;
+        }
+        .profile-bio {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+            line-height: 1.5;
+        }
+        .profile-rating {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            text-align: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .rating-number {
+            font-size: 32px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        .rating-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .rating-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            overflow-y: auto;
+            height: calc(100% - 220px);
+            -webkit-overflow-scrolling: touch;
+        }
+        .rating-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+        .rating-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .rating-item.current {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .rating-position {
+            font-size: 16px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            width: 30px;
+            text-align: center;
+        }
+        .rating-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .rating-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .rating-user-info {
+            flex-grow: 1;
+        }
+        .rating-username {
+            font-size: 15px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 2px 0;
+        }
+        .rating-score {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin: 0;
+        }
         .tab-content h3 {
             margin: 0;
             font-size: 22px;
@@ -335,6 +461,29 @@
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
             
+            // Функция для получения данных пользователя из Telegram
+            function updateUserProfile() {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const user = window.Telegram.WebApp.initDataUnsafe.user;
+                    if (user) {
+                        const avatarImg = document.getElementById('profile-avatar-img');
+                        const nameEl = document.getElementById('profile-name');
+                        const bioEl = document.getElementById('profile-bio');
+                        
+                        // Обновляем аватар
+                        if (user.photo_url) {
+                            avatarImg.src = user.photo_url;
+                        }
+                        
+                        // Обновляем имя
+                        nameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                        
+                        // Обновляем био
+                        bioEl.textContent = user.username ? '@' + user.username : 'No username';
+                    }
+                }
+            }
+            
             // Показываем панель навигации после загрузки сцены
             sceneContainer.addEventListener('transitionend', () => {
                 if (sceneContainer.style.opacity === '1') {
@@ -385,6 +534,33 @@
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
+                            <div class="profile-header">
+                                <div class="profile-avatar">
+                                    <img src="https://via.placeholder.com/80" alt="Profile Avatar" id="profile-avatar-img">
+                                </div>
+                                <div class="profile-info">
+                                    <h4 class="profile-name" id="profile-name">Loading...</h4>
+                                    <p class="profile-bio" id="profile-bio">Loading...</p>
+                                </div>
+                                <div class="profile-rating">
+                                    <p class="rating-number">#7</p>
+                                    <p class="rating-label">Rating</p>
+                                </div>
+                            </div>
+                            <ul class="rating-list">
+                                ${Array.from({length: 100}, (_, i) => `
+                                    <li class="rating-item ${i === 6 ? 'current' : ''}">
+                                        <span class="rating-position">#${i + 1}</span>
+                                        <div class="rating-avatar">
+                                            <img src="https://via.placeholder.com/40" alt="User Avatar">
+                                        </div>
+                                        <div class="rating-user-info">
+                                            <h4 class="rating-username">User ${i + 1}</h4>
+                                            <p class="rating-score">${1000 - i * 5} points</p>
+                                        </div>
+                                    </li>
+                                `).join('')}
+                            </ul>
                         `;
                         break;
                     case 'planet':
@@ -415,6 +591,11 @@
                 
                 tabInner.innerHTML = content;
                 
+                // Если открыт профиль, обновляем данные пользователя
+                if (section === 'profile') {
+                    setTimeout(updateUserProfile, 100);
+                }
+                
                 const closeButton = tabInner.querySelector('.close-button');
                 ['touchstart', 'click'].forEach(eventType => {
                     closeButton.addEventListener(eventType, (e) => {
@@ -436,4 +617,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
