@@ -569,21 +569,21 @@
                 }
             });
             
-            // Функция для подключения к Telegram
+            // Функция для подключения к Telegram через deep linking
             async function connectToTelegram() {
                 try {
                     if (window.Telegram && window.Telegram.WebApp) {
-                        console.log('Trying to connect to Telegram...');
                         const webApp = window.Telegram.WebApp;
                         webApp.ready();
                         const user = webApp.initDataUnsafe.user;
-                        console.log('User data:', user);
                         if (user) {
                             isProfileConnected = true;
                             return user;
                         }
                     }
-                    throw new Error('Telegram WebApp not available');
+                    // Если мы не в Telegram WebApp, перенаправляем на бота
+                    window.location.href = `https://t.me/notEarthBot`;
+                    return null;
                 } catch (error) {
                     console.error('Error connecting to Telegram:', error);
                     return null;
@@ -603,37 +603,23 @@
                     content += `
                         <div class="profile-connecting">
                             <i class="material-icons">telegram</i>
-                            <h4>Connect to Telegram</h4>
-                            <p>Click the button below to connect your Telegram account</p>
-                            <button class="connect-button">
-                                <i class="material-icons">link</i>
-                                Connect Telegram
+                            <h4>Connect with Telegram</h4>
+                            <p>Click the button below to open the game in Telegram</p>
+                            <button class="connect-button" id="telegram-connect">
+                                <i class="material-icons">telegram</i>
+                                Open in Telegram
                             </button>
                         </div>
                     `;
                     tabInner.innerHTML = content;
                     
                     // Добавляем обработчик для кнопки подключения
-                    const connectButton = document.querySelector('.connect-button');
+                    const connectButton = document.querySelector('#telegram-connect');
+                    if (connectButton) {
                     connectButton.addEventListener('click', async () => {
-                        connectButton.disabled = true;
-                    const user = await connectToTelegram();
-                        if (user) {
-                            isProfileConnected = true;
-                            showProfile(); // Перезагружаем профиль с данными
-                        } else {
-                            connectButton.disabled = false;
-                        document.querySelector('.profile-connecting').innerHTML = `
-                            <i class="material-icons">error_outline</i>
-                            <h4>Connection Failed</h4>
-                                <p>Unable to connect to Telegram. Please try again.</p>
-                                <button class="connect-button">
-                                    <i class="material-icons">refresh</i>
-                                    Try Again
-                                </button>
-                            `;
-                        }
-                    });
+                            await connectToTelegram();
+                        });
+                    }
                         return;
                 }
 
@@ -675,6 +661,16 @@
                 `;
                 tabInner.innerHTML = content;
             }
+            
+            // Функция обработки авторизации через Telegram
+            window.onTelegramAuth = function(user) {
+                console.log('Telegram auth successful:', user);
+                isProfileConnected = true;
+                // Сохраняем данные пользователя
+                localStorage.setItem('telegramUser', JSON.stringify(user));
+                // Обновляем профиль
+                showProfile();
+            };
             
             // Обработчики для кнопок навигации
             const navButtons = document.querySelectorAll('.nav-button');
