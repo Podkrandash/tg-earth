@@ -41,7 +41,6 @@ class Earth {
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
                 
-                // Добавляем обработчик сообщений от Telegram
                 window.Telegram.WebApp.onEvent('viewportChanged', () => {
                     this.onWindowResize();
                 });
@@ -50,12 +49,15 @@ class Earth {
             }
         }
 
-        // Загружаем все текстуры
-        this.loadTextures().then(() => {
-            // Создаем сцену после загрузки текстур
-            this.createScene();
-            // Запускаем анимацию загрузочного экрана
-            this.playLoadingAnimation();
+        // Создаем сцену
+        this.createScene();
+        
+        // Запускаем анимацию загрузки
+        this.playLoadingAnimation();
+        
+        // Загружаем текстуры
+        this.loadTextures().catch(error => {
+            console.error('Error loading textures:', error);
         });
     }
 
@@ -82,65 +84,51 @@ class Earth {
 
     playLoadingAnimation() {
         const loadingScreen = document.getElementById('loading-screen');
-        const sceneContainer = document.getElementById('scene-container');
         const loadingMoon = document.getElementById('loading-moon');
         const loadingEarth = document.getElementById('loading-earth');
-        const navPanel = document.querySelector('.nav-panel');
 
-        // Бесконечная анимация загрузки
-        let loadingTime = 0;
-        const loadingInterval = setInterval(() => {
-            loadingTime += 100;
-            // Каждые 5 секунд запускаем анимацию столкновения
-            if (loadingTime % 5000 === 0) {
-                // Останавливаем орбитальное движение
-                loadingMoon.style.animation = 'none';
-                loadingMoon.style.transition = 'all 0.5s steps(6)';
-                loadingMoon.style.transform = 'translate(-50%, 50%) scale(3)';
-                
-                setTimeout(() => {
-                    // Эффект пиксельного взрыва
-                    loadingEarth.style.animation = 'explosion 0.5s steps(6)';
-                    loadingMoon.style.animation = 'explosion 0.5s steps(6)';
-                    
+        // Делаем анимацию более пиксельной
+        loadingEarth.style.imageRendering = 'pixelated';
+        loadingMoon.style.imageRendering = 'pixelated';
+        
+        // Уменьшаем размер для более пиксельного эффекта
+        loadingEarth.style.width = '32px';
+        loadingEarth.style.height = '32px';
+        loadingMoon.style.width = '8px';
+        loadingMoon.style.height = '8px';
+        
+        // Приближаем Луну к Земле
+        loadingMoon.style.transform = 'translate(-50%, -50%) scale(1)';
+        loadingMoon.style.animation = 'orbit 2s steps(8) infinite';
+        loadingEarth.style.animation = 'rotate 4s steps(8) infinite';
+
+        // Запускаем анимацию загрузки на 4 секунды
         setTimeout(() => {
-                        // Сбрасываем анимацию
-                        loadingEarth.style.animation = 'rotate 4s steps(12) infinite';
-                        loadingMoon.style.animation = 'orbit 3s steps(12) infinite';
-                        loadingEarth.style.transform = 'translate(-50%, -50%) scale(3)';
-                        loadingMoon.style.transform = '';
-                    }, 500);
-                }, 500);
-            }
-        }, 100);
-
-        // Когда все ресурсы загружены
-        window.addEventListener('load', () => {
-            // Очищаем интервал
-            clearInterval(loadingInterval);
-            
-            // Финальная анимация столкновения
-            loadingMoon.style.animation = 'none';
-            loadingMoon.style.transition = 'all 0.5s steps(6)';
-            loadingMoon.style.transform = 'translate(-50%, 50%) scale(3)';
+            // Анимация столкновения
+                loadingMoon.style.animation = 'none';
+            loadingMoon.style.transition = 'all 0.3s steps(4)';
+            loadingMoon.style.transform = 'translate(-50%, -50%) scale(2)';
             
             setTimeout(() => {
-                // Эффект пиксельного взрыва
-                loadingEarth.style.animation = 'explosion 1s steps(8)';
-                loadingMoon.style.animation = 'explosion 1s steps(8)';
+                // Эффект взрыва
+                loadingEarth.style.animation = 'explosion 0.5s steps(4)';
+                loadingMoon.style.animation = 'explosion 0.5s steps(4)';
                 
                 setTimeout(() => {
-                    // Скрываем загрузочный экран и показываем сцену
+                    // Скрываем загрузочный экран и показываем основную сцену
+                    const sceneContainer = document.getElementById('scene-container');
+                    const navPanel = document.querySelector('.nav-panel');
+                    
                     loadingScreen.style.opacity = '0';
                     sceneContainer.style.opacity = '1';
-                    setTimeout(() => {
+                    navPanel.classList.add('visible');
+                    
+        setTimeout(() => {
                         loadingScreen.style.display = 'none';
-                        // Показываем панель навигации
-                        navPanel.classList.add('visible');
                     }, 500);
-                }, 1000);
                 }, 500);
-        });
+            }, 300);
+        }, 4000);
     }
 
     createScene() {
