@@ -148,13 +148,17 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
             padding: 8px;
-            display: flex;
+            display: none;
             gap: 16px;
             z-index: 1000;
-            opacity: 1;
+            opacity: 0;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
+        }
+        .nav-panel.visible {
+            display: flex;
+            opacity: 1;
         }
         .nav-button {
             display: flex;
@@ -189,25 +193,22 @@
         }
         .tab-content {
             position: fixed;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%) translateY(120%);
-            width: 90%;
-            max-width: 400px;
-            height: 60vh;
-            background: rgba(20, 20, 20, 0.8);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 90px);
+            background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px 24px 0 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             opacity: 0;
+            transform: translateY(100%);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 999;
             pointer-events: none;
-            overflow: hidden;
         }
         .tab-content.active {
-            transform: translateX(-50%) translateY(0);
+            transform: translateY(0);
             opacity: 1;
             pointer-events: auto;
         }
@@ -262,8 +263,22 @@
     <script type="module" src="/js/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Show nav panel
-            document.querySelector('.nav-panel').style.display = 'flex';
+            const loadingScreen = document.getElementById('loading-screen');
+            const navPanel = document.querySelector('.nav-panel');
+            const sceneContainer = document.getElementById('scene-container');
+            
+            // Скрываем панель навигации во время загрузки
+            navPanel.style.display = 'none';
+            
+            // Показываем панель навигации только после загрузки сцены
+            sceneContainer.addEventListener('transitionend', () => {
+                if (sceneContainer.style.opacity === '1') {
+                    navPanel.style.display = 'flex';
+                    setTimeout(() => {
+                        navPanel.classList.add('visible');
+                    }, 100);
+                }
+            });
             
             // Remove active state from planet button
             document.querySelector('.nav-button.active')?.classList.remove('active');
