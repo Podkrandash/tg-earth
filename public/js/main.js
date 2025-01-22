@@ -28,14 +28,10 @@ class Earth {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
-        // Добавляем искусственное освещение
-        const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        mainLight.position.set(5, 3, 5);
-        this.scene.add(mainLight);
-
-        const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        backLight.position.set(-5, -3, -5);
-        this.scene.add(backLight);
+        // Добавляем точечный свет (имитация солнца)
+        this.sunLight = new THREE.PointLight(0xffffff, 2.0, 100);
+        this.sunLight.position.set(50, 0, 0);
+        this.scene.add(this.sunLight);
 
         // Создаем группу для Земли
         this.earthGroup = new THREE.Group();
@@ -85,6 +81,20 @@ class Earth {
         // Медленное вращение Земли
         if (this.earth) {
             this.earth.rotation.y += ROTATION_SPEED;
+            
+            // Обновляем позицию солнца относительно вращения Земли
+            const time = Date.now() * 0.001;
+            const radius = 50;
+            this.sunLight.position.x = Math.cos(time * 0.05) * radius;
+            this.sunLight.position.z = Math.sin(time * 0.05) * radius;
+            
+            // Обновляем uniform для шейдера
+            if (this.earth.material.uniforms) {
+                this.earth.material.uniforms.sunPosition.value.copy(this.sunLight.position);
+            }
+            if (this.atmosphere && this.atmosphere.material.uniforms) {
+                this.atmosphere.material.uniforms.sunPosition.value.copy(this.sunLight.position);
+            }
         }
 
         // Обновляем контроли камеры
@@ -112,7 +122,7 @@ class Earth {
                 nightTexture: { value: nightTexture },
                 normalMap: { value: normalTexture },
                 roughnessMap: { value: roughnessTexture },
-                sunPosition: { value: new THREE.Vector3(5, 3, 5) }
+                sunPosition: { value: this.sunLight.position.clone() }
             },
             vertexShader: `
                 varying vec2 vUv;
@@ -139,23 +149,21 @@ class Earth {
                 varying vec3 vPosition;
 
                 void main() {
-                    vec3 sunDirection = normalize(sunPosition);
+                    vec3 sunDirection = normalize(sunPosition - vPosition);
                     float cosAngle = dot(vNormal, sunDirection);
                     
                     // Получаем цвета из текстур
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Плавный переход между днем и ночью
-                    float transition = smoothstep(-0.2, 0.3, cosAngle);
+                    // Более резкий переход между днем и ночью
+                    float transition = smoothstep(-0.1, 0.1, cosAngle);
                     
-                    // На темной стороне усиливаем ночные огни
-                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(2.0, 1.8, 1.5, 1.0);
+                    // Делаем ночную сторону темнее и усиливаем огни
+                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(3.0, 2.5, 2.0, 1.0);
+                    vec4 baseColor = mix(vec4(0.0, 0.0, 0.0, 1.0), dayColor, transition);
                     
-                    // Смешиваем дневную и ночную текстуры
-                    vec4 baseColor = mix(nightColor * 0.3, dayColor, transition);
-                    
-                    // Добавляем ночные огни
+                    // Финальный цвет
                     gl_FragColor = baseColor + nightLights;
                 }
             `
@@ -169,7 +177,7 @@ class Earth {
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
             uniforms: {
-                sunPosition: { value: new THREE.Vector3(5, 3, 5) }
+                sunPosition: { value: this.sunLight.position.clone() }
             },
             vertexShader: `
                 varying vec3 vNormal;
@@ -188,17 +196,15 @@ class Earth {
                 varying vec3 vPosition;
                 
                 void main() {
-                    vec3 sunDirection = normalize(sunPosition);
+                    vec3 sunDirection = normalize(sunPosition - vPosition);
                     float intensity = pow(0.75 - dot(vNormal, normalize(cameraPosition - vPosition)), 3.0);
-                    float sunEffect = max(0.0, dot(vNormal, sunDirection)) * 0.3;
+                    float sunEffect = max(0.0, dot(vNormal, sunDirection));
                     
-                    // Базовый цвет атмосферы
+                    // Делаем атмосферу более заметной на освещенной стороне
                     vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
+                    vec3 glowColor = mix(vec3(0.0), atmosphereColor, sunEffect);
                     
-                    // Добавляем свечение на освещенной стороне
-                    vec3 glowColor = mix(atmosphereColor, vec3(0.4, 0.7, 1.0), sunEffect);
-                    
-                    gl_FragColor = vec4(glowColor, intensity * 0.5);
+                    gl_FragColor = vec4(glowColor, intensity * 0.3 * sunEffect);
                 }
             `,
             transparent: true,
@@ -207,8 +213,8 @@ class Earth {
             depthWrite: false
         });
 
-        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-        this.earthGroup.add(atmosphere);
+        this.atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        this.earthGroup.add(this.atmosphere);
     }
 }
 
