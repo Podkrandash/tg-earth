@@ -7,21 +7,17 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 bot.command('start', async (ctx) => {
     try {
         console.log('Received /start command');
-        const botInfo = await bot.telegram.getMe();
-        const gameUrl = `https://t.me/notEarthBot?game=Earth`;
-        
-        await ctx.reply('🌍 Добро пожаловать в Earth 3D!\nНажмите на кнопку ниже, чтобы начать игру:', {
+        await ctx.reply('🌍 Добро пожаловать в Earth!\nНажмите на кнопку ниже, чтобы начать игру:', {
             reply_markup: {
                 inline_keyboard: [
                     [{ 
-                        text: '🌍 Играть в Earth 3D',
-                        url: gameUrl
+                        text: '🌍 Earth',
+                        callback_game: 'Earth'  // Используем callback_game вместо url
                     }]
                 ]
-            },
-            disable_web_page_preview: true
+            }
         });
-        console.log('Start message sent with game URL:', gameUrl);
+        console.log('Start message sent');
     } catch (error) {
         console.error('Error in start command:', error);
     }
@@ -31,7 +27,7 @@ bot.command('start', async (ctx) => {
 bot.on('callback_query', async (ctx) => {
     try {
         console.log('Received callback query:', ctx.callbackQuery);
-        if (ctx.callbackQuery.game_short_name === 'earth3d') {
+        if (ctx.callbackQuery.game_short_name === 'Earth') {
             console.log('Answering game query with URL:', process.env.GAME_URL);
             await ctx.answerGameQuery(process.env.GAME_URL);
         }

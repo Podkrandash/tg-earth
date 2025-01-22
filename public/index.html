@@ -17,11 +17,50 @@
             user-select: none;
         }
         #scene-container {
+            position: absolute;
             width: 100%;
             height: 100%;
-            touch-action: none;
+            background-color: #000000;
+        }
+        .nav-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 10px 20px;
+            display: flex;
+            gap: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        .nav-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .nav-button:hover {
+            opacity: 1;
+        }
+        .nav-button i {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        .nav-button.active {
+            opacity: 1;
         }
     </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>
     <script type="importmap">
     {
@@ -34,6 +73,36 @@
 </head>
 <body>
     <div id="scene-container"></div>
+    <div class="nav-panel">
+        <div class="nav-button" onclick="handleNavClick('profile')">
+            <i class="material-icons">person</i>
+            <span>Профиль</span>
+        </div>
+        <div class="nav-button active" onclick="handleNavClick('planet')">
+            <i class="material-icons">public</i>
+            <span>Планета</span>
+        </div>
+        <div class="nav-button" onclick="handleNavClick('tasks')">
+            <i class="material-icons">assignment</i>
+            <span>Задания</span>
+        </div>
+        <div class="nav-button" onclick="handleNavClick('wallet')">
+            <i class="material-icons">account_balance_wallet</i>
+            <span>Кошелёк</span>
+        </div>
+    </div>
     <script type="module" src="/js/main.js"></script>
+    <script>
+        function handleNavClick(section) {
+            // Убираем активный класс со всех кнопок
+            document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+            
+            // Добавляем активный класс нажатой кнопке
+            event.currentTarget.classList.add('active');
+            
+            // Здесь будет логика переключения разделов
+            console.log('Переход в раздел:', section);
+        }
+    </script>
 </body>
 </html> 
