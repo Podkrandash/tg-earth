@@ -26,7 +26,8 @@ class Earth {
 
         // Настройка рендерера
         this.renderer = new THREE.WebGLRenderer({ 
-            antialias: true
+            antialias: true,
+            logarithmicDepthBuffer: true // Включаем логарифмический буфер глубины
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -219,6 +220,7 @@ class Earth {
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.earth.castShadow = true;
         this.earth.receiveShadow = true;
+        this.earth.renderOrder = 0; // Рендерим Землю после звезд
         this.earthGroup.add(this.earth);
 
         // Создаем реалистичную атмосферу
@@ -278,6 +280,7 @@ class Earth {
         });
 
         const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        atmosphere.renderOrder = 1; // Рендерим атмосферу после Земли
         this.earthGroup.add(atmosphere);
     }
 
@@ -340,6 +343,9 @@ class Earth {
         this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
         this.moon.castShadow = true;
         this.moon.receiveShadow = true;
+        this.moon.renderOrder = 0; // Рендерим Луну после звезд
+        this.moon.material.depthTest = true;
+        this.moon.material.depthWrite = true;
 
         // Помещаем луну на орбиту
         this.moon.position.x = MOON_DISTANCE;
@@ -402,11 +408,13 @@ class Earth {
                 }
             `,
             blending: THREE.AdditiveBlending,
-            depthTest: false,
+            depthTest: true,
+            depthWrite: false,
             transparent: true
         });
         
         this.stars = new THREE.Points(starsGeometry, starsMaterial);
+        this.stars.renderOrder = -1; // Рендерим звезды первыми
         this.scene.add(this.stars);
     }
 }
