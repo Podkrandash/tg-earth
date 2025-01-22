@@ -142,43 +142,50 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 8px;
-            display: none;
+            display: flex;
             gap: 16px;
             z-index: 1000;
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .nav-panel.visible {
-            display: flex;
             opacity: 1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .nav-button {
             display: flex;
             align-items: center;
             justify-content: center;
             color: rgba(255, 255, 255, 0.5);
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             border-radius: 12px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .nav-button i {
-            font-size: 20px;
+            font-size: 24px;
+            pointer-events: none;
+        }
+        .nav-button:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.2);
         }
         .nav-button:hover {
             color: rgba(255, 255, 255, 0.8);
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.15);
         }
         .nav-button.active {
             color: #fff;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.2);
         }
         .tab-content {
             position: fixed;
@@ -234,16 +241,16 @@
     </div>
     <div id="scene-container"></div>
     <div class="nav-panel">
-        <div class="nav-button" onclick="handleNavClick('profile')">
+        <div class="nav-button" data-section="profile">
             <i class="material-icons">person</i>
         </div>
-        <div class="nav-button active" onclick="handleNavClick('planet')">
+        <div class="nav-button active" data-section="planet">
             <i class="material-icons">public</i>
         </div>
-        <div class="nav-button" onclick="handleNavClick('tasks')">
+        <div class="nav-button" data-section="tasks">
             <i class="material-icons">assignment</i>
         </div>
-        <div class="nav-button" onclick="handleNavClick('wallet')">
+        <div class="nav-button" data-section="wallet">
             <i class="material-icons">account_balance_wallet</i>
         </div>
     </div>
@@ -254,27 +261,51 @@
     </div>
     <script type="module" src="/js/main.js"></script>
     <script>
-        function handleNavClick(section) {
+        document.addEventListener('DOMContentLoaded', () => {
+            // Show nav panel
+            document.querySelector('.nav-panel').style.display = 'flex';
+            
+            // Remove active state from planet button
+            document.querySelector('.nav-button.active')?.classList.remove('active');
+            
+            // Add touch/click handlers
+            document.querySelectorAll('.nav-button').forEach(button => {
+                const section = button.getAttribute('data-section');
+                
+                // Remove onclick attribute
+                button.removeAttribute('onclick');
+                
+                // Add both click and touch events
+                ['click', 'touchend'].forEach(eventType => {
+                    button.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        handleNavClick(section, e);
+                    }, { passive: false });
+                });
+            });
+        });
+
+        function handleNavClick(section, event) {
             const buttons = document.querySelectorAll('.nav-button');
             const clickedButton = event.currentTarget;
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
             
-            // Если кликнули на уже активную кнопку
+            // If clicking active button
             if (clickedButton.classList.contains('active')) {
-                // Закрываем вкладку
                 clickedButton.classList.remove('active');
                 tabContent.classList.remove('active');
+                tabInner.style.opacity = '0';
                 return;
             }
             
-            // Убираем активный класс со всех кнопок
+            // Remove active class from all buttons
             buttons.forEach(btn => btn.classList.remove('active'));
             
-            // Добавляем активный класс на кликнутую кнопку
+            // Add active class to clicked button
             clickedButton.classList.add('active');
             
-            // Обновляем содержимое вкладки
+            // Update tab content
             let content = '';
             switch(section) {
                 case 'profile':
@@ -327,10 +358,10 @@
                     break;
             }
             
-            // Анимируем появление вкладки
+            // Animate tab appearance
             tabContent.classList.add('active');
             
-            // Обновляем содержимое с анимацией
+            // Update content with animation
             setTimeout(() => {
                 tabInner.innerHTML = content;
                 requestAnimationFrame(() => {
@@ -338,11 +369,6 @@
                 });
             }, 300);
         }
-
-        // При загрузке страницы убираем активный класс с кнопки планеты
-        window.addEventListener('DOMContentLoaded', () => {
-            document.querySelector('.nav-button.active').classList.remove('active');
-        });
     </script>
 </body>
 </html> 

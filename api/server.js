@@ -5,41 +5,31 @@ import path from 'path';
 
 const app = express();
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const gameShortName = 'earth3d';
 
 // Настраиваем Express для раздачи статических файлов
 app.use(express.static('public'));
 
 // Обработчик для /start команды
 bot.command('start', async (ctx) => {
-    try {
-        console.log('Received /start command');
-        await ctx.reply('Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: '🌍 Играть',
-                        callback_game: 'earth3d'
-                    }
-                ]]
-            }
-        });
-    } catch (error) {
-        console.error('Error in start command:', error);
-    }
+    console.log('Received /start command');
+    await ctx.reply('Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
+        reply_markup: {
+            inline_keyboard: [[
+                { text: '🌍 Играть', callback_game: {} }
+            ]]
+        }
+    });
 });
 
-// Обработчик для game callback
+// Обработчик для callback query
 bot.on('callback_query', async (ctx) => {
-    try {
-        console.log('Received callback query:', ctx.callbackQuery);
-        if (ctx.callbackQuery.game_short_name === 'earth3d') {
-            const gameUrl = process.env.GAME_URL || 'https://tg-earth.vercel.app/app';
-            console.log('Answering game query with URL:', gameUrl);
-            await ctx.answerGameQuery(gameUrl);
-        }
-    } catch (error) {
-        console.error('Error in game callback:', error);
+    console.log('Received callback query:', ctx.callbackQuery);
+    
+    if (!ctx.callbackQuery.game_short_name) {
+        console.log('Game callback received');
+        const gameUrl = process.env.GAME_URL || 'https://tg-earth.vercel.app';
+        console.log('Answering game query with URL:', gameUrl);
+        await ctx.answerGameQuery(gameUrl);
     }
 });
 
@@ -58,12 +48,11 @@ app.listen(PORT, () => {
 // Обработка вебхуков
 export default async function handler(req, res) {
     try {
+        console.log('Received webhook request:', req.method);
         if (req.method === 'POST') {
             await bot.handleUpdate(req.body);
-            res.status(200).json({ ok: true });
-        } else {
-            res.status(200).json({ status: 'ok' });
         }
+        res.status(200).json({ ok: true });
     } catch (error) {
         console.error('Error in webhook handler:', error);
         res.status(500).json({ error: error.message });
