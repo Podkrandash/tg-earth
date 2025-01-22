@@ -1,42 +1,63 @@
 import { Telegraf } from 'telegraf';
 import 'dotenv/config';
+import express from 'express';
+import path from 'path';
+import TelegramBot from 'node-telegram-bot-api';
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const app = express();
+const token = process.env.BOT_TOKEN;
+const bot = new TelegramBot(token, { polling: true });
+const gameShortName = 'earth3d';
 
-// Обработка команды /start
-bot.command('start', async (ctx) => {
-    try {
-        console.log('Received /start command');
-        const botUsername = (await bot.telegram.getMe()).username;
-        const gameLink = `https://t.me/${botUsername}?game=Earth`;
-        
-        await ctx.reply('🌍 Добро пожаловать в Earth!', {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ 
-                        text: '🌍 Earth',
-                        url: gameLink
-                    }]
-                ]
-            }
-        });
-        console.log('Start message sent with game link:', gameLink);
-    } catch (error) {
-        console.error('Error in start command:', error);
-    }
+// Настраиваем Express для раздачи статических файлов
+app.use(express.static('public'));
+
+// Обработчик для /start команды
+bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    console.log('Received /start command from chat:', chatId);
+
+    bot.sendMessage(chatId, 'Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
+        reply_markup: {
+            inline_keyboard: [[
+                {
+                    text: '🌍 Играть',
+                    callback_game: gameShortName
+                }
+            ]]
+        }
+    });
 });
 
-// Обработка game callback
-bot.on('callback_query', async (ctx) => {
-    try {
-        console.log('Received callback query:', ctx.callbackQuery);
-        if (ctx.callbackQuery.game_short_name === 'Earth') {
-            console.log('Answering game query with URL:', process.env.GAME_URL);
-            await ctx.answerGameQuery(process.env.GAME_URL);
-        }
-    } catch (error) {
-        console.error('Error in game callback:', error);
+// Обработчик для callback_query
+bot.on('callback_query', function onCallbackQuery(callbackQuery) {
+    const chatId = callbackQuery.message.chat.id;
+    console.log('Received callback query from chat:', chatId);
+
+    if (callbackQuery.game_short_name !== gameShortName) {
+        console.log('Unexpected game short name:', callbackQuery.game_short_name);
+        return;
     }
+
+    const gameUrl = process.env.GAME_URL || 'https://tg-earth.vercel.app/';
+    console.log('Sending game URL:', gameUrl);
+    
+    bot.answerCallbackQuery({
+        callback_query_id: callbackQuery.id,
+        url: gameUrl
+    });
+});
+
+// Маршрут для игры
+app.get('/app/:game/:chatId', (req, res) => {
+    console.log('Game request received:', req.params);
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Запускаем сервер
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
 
 // Обработка вебхуков
