@@ -105,26 +105,106 @@ class Earth {
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем материал земли
-        const earthMaterial = new THREE.MeshStandardMaterial({
-            map: dayTexture,
-            normalMap: normalTexture,
-            roughnessMap: roughnessTexture,
-            metalness: 0.1,
-            roughness: 0.7
+        // Создаем материал земли с шейдером для дневной и ночной стороны
+        const earthMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                dayTexture: { value: dayTexture },
+                nightTexture: { value: nightTexture },
+                normalMap: { value: normalTexture },
+                roughnessMap: { value: roughnessTexture },
+                sunPosition: { value: new THREE.Vector3(5, 3, 5) }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+
+                void main() {
+                    vUv = uv;
+                    vNormal = normalize(normalMatrix * normal);
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D dayTexture;
+                uniform sampler2D nightTexture;
+                uniform sampler2D normalMap;
+                uniform sampler2D roughnessMap;
+                uniform vec3 sunPosition;
+
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+
+                void main() {
+                    vec3 sunDirection = normalize(sunPosition);
+                    float cosAngle = dot(vNormal, sunDirection);
+                    
+                    // Получаем цвета из текстур
+                    vec4 dayColor = texture2D(dayTexture, vUv);
+                    vec4 nightColor = texture2D(nightTexture, vUv);
+                    
+                    // Плавный переход между днем и ночью
+                    float transition = smoothstep(-0.2, 0.3, cosAngle);
+                    
+                    // На темной стороне усиливаем ночные огни
+                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(2.0, 1.8, 1.5, 1.0);
+                    
+                    // Смешиваем дневную и ночную текстуры
+                    vec4 baseColor = mix(nightColor * 0.3, dayColor, transition);
+                    
+                    // Добавляем ночные огни
+                    gl_FragColor = baseColor + nightLights;
+                }
+            `
         });
 
         // Создаем меш земли
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.earthGroup.add(this.earth);
 
-        // Добавляем простую атмосферу
+        // Улучшенная атмосфера с градиентом и свечением
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
-        const atmosphereMaterial = new THREE.MeshPhongMaterial({
-            color: 0x4ca7ff,
+        const atmosphereMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                sunPosition: { value: new THREE.Vector3(5, 3, 5) }
+            },
+            vertexShader: `
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 sunPosition;
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                
+                void main() {
+                    vec3 sunDirection = normalize(sunPosition);
+                    float intensity = pow(0.75 - dot(vNormal, normalize(cameraPosition - vPosition)), 3.0);
+                    float sunEffect = max(0.0, dot(vNormal, sunDirection)) * 0.3;
+                    
+                    // Базовый цвет атмосферы
+                    vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
+                    
+                    // Добавляем свечение на освещенной стороне
+                    vec3 glowColor = mix(atmosphereColor, vec3(0.4, 0.7, 1.0), sunEffect);
+                    
+                    gl_FragColor = vec4(glowColor, intensity * 0.5);
+                }
+            `,
             transparent: true,
-            opacity: 0.2,
-            side: THREE.BackSide
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
 
         const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
