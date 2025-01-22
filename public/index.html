@@ -16,6 +16,8 @@
             -webkit-user-select: none;
             user-select: none;
             image-rendering: pixelated;
+            overscroll-behavior: contain;
+            position: fixed;
         }
         #scene-container {
             position: fixed;
@@ -49,10 +51,16 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 32px;
-            height: 32px;
-            transform: translate(-50%, -50%) scale(3);
-            background: url('textures/earth_daymap.jpg') no-repeat center/cover;
+            width: 40px;
+            height: 40px;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, 
+                #2233aa 0%, #2233aa 20%, 
+                #3344cc 20%, #3344cc 40%,
+                #4455ee 40%, #4455ee 60%,
+                #3344cc 60%, #3344cc 80%,
+                #2233aa 80%, #2233aa 100%
+            );
             border-radius: 50%;
             image-rendering: pixelated;
         }
@@ -60,25 +68,47 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 8px;
-            height: 8px;
-            background: #ccc;
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(45deg, 
+                #999999 0%, #999999 50%, 
+                #777777 50%, #777777 100%
+            );
             border-radius: 50%;
-            transform-origin: 20px center;
+            transform-origin: 25px center;
             image-rendering: pixelated;
         }
         @keyframes rotate {
-            from { transform: translate(-50%, -50%) scale(3) rotate(0deg); }
-            to { transform: translate(-50%, -50%) scale(3) rotate(360deg); }
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
         @keyframes orbit {
-            from { transform: translate(-50%, -50%) rotate(0deg) translateX(20px); }
-            to { transform: translate(-50%, -50%) rotate(360deg) translateX(20px); }
+            0% { transform: translate(-50%, -50%) rotate(0deg) translateX(25px); }
+            100% { transform: translate(-50%, -50%) rotate(360deg) translateX(25px); }
         }
         @keyframes explosion {
-            0% { transform: translate(-50%, -50%) scale(3); opacity: 1; }
-            50% { transform: translate(-50%, -50%) scale(4); opacity: 0.5; }
-            100% { transform: translate(-50%, -50%) scale(5); opacity: 0; }
+            0% { 
+                transform: translate(-50%, -50%);
+                clip-path: circle(50%);
+            }
+            50% { 
+                transform: translate(-50%, -50%) rotate(45deg);
+                clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+                opacity: 1;
+            }
+            100% { 
+                transform: translate(-50%, -50%) rotate(90deg) scale(3);
+                clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+                opacity: 0;
+            }
+        }
+        .explosion-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            pointer-events: none;
         }
         .nav-panel {
             position: fixed;

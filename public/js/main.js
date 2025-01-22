@@ -84,38 +84,58 @@ class Earth {
 
     playLoadingAnimation() {
         const loadingScreen = document.getElementById('loading-screen');
+        const loadingContainer = document.getElementById('loading-container');
         const loadingMoon = document.getElementById('loading-moon');
         const loadingEarth = document.getElementById('loading-earth');
 
-        // Делаем анимацию более пиксельной
-        loadingEarth.style.imageRendering = 'pixelated';
-        loadingMoon.style.imageRendering = 'pixelated';
-        
-        // Уменьшаем размер для более пиксельного эффекта
-        loadingEarth.style.width = '32px';
-        loadingEarth.style.height = '32px';
-        loadingMoon.style.width = '8px';
-        loadingMoon.style.height = '8px';
-        
-        // Приближаем Луну к Земле
-        loadingMoon.style.transform = 'translate(-50%, -50%) scale(1)';
-        loadingMoon.style.animation = 'orbit 2s steps(8) infinite';
-        loadingEarth.style.animation = 'rotate 4s steps(8) infinite';
+        // Запускаем пиксельную анимацию вращения
+        loadingEarth.style.animation = 'rotate 2s steps(4) infinite';
+        loadingMoon.style.animation = 'orbit 2s steps(4) infinite';
 
-        // Запускаем анимацию загрузки на 4 секунды
+        // Через 4 секунды запускаем анимацию взрыва
         setTimeout(() => {
-            // Анимация столкновения
-                loadingMoon.style.animation = 'none';
-            loadingMoon.style.transition = 'all 0.3s steps(4)';
-            loadingMoon.style.transform = 'translate(-50%, -50%) scale(2)';
-            
-            setTimeout(() => {
-                // Эффект взрыва
-                loadingEarth.style.animation = 'explosion 0.5s steps(4)';
-                loadingMoon.style.animation = 'explosion 0.5s steps(4)';
+            // Останавливаем вращение
+            loadingEarth.style.animation = 'none';
+            loadingMoon.style.animation = 'none';
+
+            // Создаем частицы для взрыва
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'explosion-particle';
+                const angle = (i / 20) * Math.PI * 2;
+                const speed = 2 + Math.random() * 2;
+                const size = 4 + Math.random() * 4;
                 
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                loadingContainer.appendChild(particle);
+                
+                // Анимируем частицы
+                const animation = particle.animate([
+                    { 
+                        transform: 'translate(-50%, -50%)',
+                        opacity: 1
+                    },
+                    { 
+                        transform: `translate(
+                            calc(-50% + ${Math.cos(angle) * 100 * speed}px), 
+                            calc(-50% + ${Math.sin(angle) * 100 * speed}px)
+                        )`,
+                        opacity: 0
+                    }
+                ], {
+                    duration: 1000,
+                    easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+                });
+            }
+
+            // Запускаем анимацию взрыва для Земли и Луны
+            loadingEarth.style.animation = 'explosion 0.5s forwards';
+            loadingMoon.style.animation = 'explosion 0.5s forwards';
+
+            // Переходим к основной сцене
                 setTimeout(() => {
-                    // Скрываем загрузочный экран и показываем основную сцену
                     const sceneContainer = document.getElementById('scene-container');
                     const navPanel = document.querySelector('.nav-panel');
                     
@@ -126,8 +146,7 @@ class Earth {
         setTimeout(() => {
                         loadingScreen.style.display = 'none';
                     }, 500);
-                }, 500);
-            }, 300);
+            }, 1000);
         }, 4000);
     }
 
