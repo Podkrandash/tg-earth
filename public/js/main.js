@@ -11,7 +11,7 @@ class Earth {
         // Инициализация сцены
         this.container = document.getElementById('scene-container');
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
+        this.scene.background = new THREE.Color(0x000000); // Абсолютно черный космос
         
         // Настройка камеры
         this.camera = new THREE.PerspectiveCamera(
@@ -31,17 +31,12 @@ class Earth {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
-        // Добавляем точечный свет (имитация солнца)
-        this.sunLight = new THREE.PointLight(0xffffff, 2.0, 100);
-        this.sunLight.position.set(50, 0, 0); // Солнце статично справа
-        this.scene.add(this.sunLight);
-
-        // Создаем группу для Земли с наклоном оси
+        // Создаем группу для Земли
         this.earthGroup = new THREE.Group();
-        this.earthGroup.rotation.z = EARTH_TILT;
+        this.earthGroup.rotation.z = EARTH_TILT; // Добавляем наклон оси Земли
         this.scene.add(this.earthGroup);
 
-        // Настройка камеры и контролей
+        // Настройка контролей для движения камеры вокруг Земли
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
@@ -62,32 +57,14 @@ class Earth {
         // Обработчики событий
         window.addEventListener('resize', () => this.onWindowResize());
 
-        // Расширенная интеграция с Telegram
+        // Интеграция с Telegram
         if (window.TelegramGameProxy) {
-            // Сообщаем о загрузке игры
             window.TelegramGameProxy.onEvent('game_loaded');
-            
-            // Запрашиваем полноэкранный режим
             window.TelegramGameProxy.requestFullscreen();
-
-            // Отправляем счет (в данном случае просто 1, так как это не игра на очки)
             window.TelegramGameProxy.setScore(1);
-
-            // Добавляем обработчики событий Telegram
-            window.TelegramGameProxy.onEvent('game_over', () => {
-                console.log('Game over event');
-            });
-
-            window.TelegramGameProxy.onEvent('game_quit', () => {
-                console.log('Game quit event');
-            });
-
-            // Сообщаем о готовности игры
-            window.TelegramGameProxy.onEvent('game_ready');
         }
 
         // Запускаем анимацию
-        this.startTime = Date.now();
         this.animate();
     }
 
@@ -101,14 +78,11 @@ class Earth {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        const currentTime = Date.now();
-        const elapsed = currentTime - this.startTime;
-        
         // Вращаем Землю вокруг своей оси
         if (this.earth) {
-            this.earth.rotation.y = (elapsed * ROTATION_SPEED) % (2 * Math.PI);
+            this.earth.rotation.y += 0.001; // Медленное вращение
         }
-
+        
         // Обновляем контроли камеры
         this.controls.update();
         
@@ -120,104 +94,39 @@ class Earth {
         // Загрузка текстур
         const textureLoader = new THREE.TextureLoader();
         const dayTexture = textureLoader.load('textures/earth_daymap.jpg');
-        const nightTexture = textureLoader.load('textures/earth_nightmap.jpg');
         const normalTexture = textureLoader.load('textures/earth_normal_map.jpg');
         const roughnessTexture = textureLoader.load('textures/earth_roughness_map.jpg');
 
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем материал земли с шейдером для дневной и ночной стороны
-        const earthMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                dayTexture: { value: dayTexture },
-                nightTexture: { value: nightTexture },
-                normalMap: { value: normalTexture },
-                roughnessMap: { value: roughnessTexture },
-                sunPosition: { value: new THREE.Vector3(50, 0, 0) } // Статичная позиция солнца
-            },
-            vertexShader: `
-                varying vec2 vUv;
-                varying vec3 vNormal;
-                varying vec3 vPosition;
-
-                void main() {
-                    vUv = uv;
-                    vNormal = normalize(normalMatrix * normal);
-                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                    vPosition = worldPosition.xyz;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D dayTexture;
-                uniform sampler2D nightTexture;
-                uniform sampler2D normalMap;
-                uniform sampler2D roughnessMap;
-                uniform vec3 sunPosition;
-
-                varying vec2 vUv;
-                varying vec3 vNormal;
-                varying vec3 vPosition;
-
-                void main() {
-                    vec3 sunDirection = normalize(sunPosition);
-                    float cosAngle = dot(vNormal, sunDirection);
-                    
-                    // Получаем цвета из текстур
-                    vec4 dayColor = texture2D(dayTexture, vUv);
-                    vec4 nightColor = texture2D(nightTexture, vUv);
-                    
-                    // Более резкий переход между днем и ночью
-                    float transition = smoothstep(-0.1, 0.1, cosAngle);
-                    
-                    // Ночная сторона абсолютно черная
-                    vec4 baseColor = mix(vec4(0.0, 0.0, 0.0, 1.0), dayColor, transition);
-                    
-                    // Добавляем яркие огни городов только на ночной стороне
-                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(8.0, 7.0, 6.0, 1.0);
-                    
-                    gl_FragColor = baseColor + (nightLights * pow(1.0 - transition, 3.0));
-                }
-            `
+        // Создаем простой материал земли только с дневной текстурой
+        const earthMaterial = new THREE.MeshBasicMaterial({
+            map: dayTexture
         });
 
         // Создаем меш земли
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.earthGroup.add(this.earth);
 
-        // Улучшенная атмосфера с градиентом и свечением
+        // Создаем атмосферу
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                sunPosition: { value: this.sunLight.position.clone() }
-            },
             vertexShader: `
                 varying vec3 vNormal;
-                varying vec3 vPosition;
                 
                 void main() {
                     vNormal = normalize(normalMatrix * normal);
-                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                    vPosition = worldPosition.xyz;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
             fragmentShader: `
-                uniform vec3 sunPosition;
                 varying vec3 vNormal;
-                varying vec3 vPosition;
                 
                 void main() {
-                    vec3 sunDirection = normalize(sunPosition - vPosition);
-                    float intensity = pow(0.75 - dot(vNormal, normalize(cameraPosition - vPosition)), 3.0);
-                    float sunEffect = max(0.0, dot(vNormal, sunDirection));
-                    
-                    // Делаем атмосферу более заметной на освещенной стороне
+                    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
                     vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
-                    vec3 glowColor = mix(vec3(0.0), atmosphereColor, sunEffect);
-                    
-                    gl_FragColor = vec4(glowColor, intensity * 0.3 * sunEffect);
+                    gl_FragColor = vec4(atmosphereColor, intensity * 0.3);
                 }
             `,
             transparent: true,
@@ -226,8 +135,8 @@ class Earth {
             depthWrite: false
         });
 
-        this.atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-        this.earthGroup.add(this.atmosphere);
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        this.earthGroup.add(atmosphere);
     }
 }
 
