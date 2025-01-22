@@ -18,7 +18,7 @@ bot.onText(/\/start/, async (msg) => {
     console.log('Received /start command from chat:', chatId);
 
     const botInfo = await bot.getMe();
-    const appUrl = `https://t.me/${botInfo.username}/app`;
+    const appUrl = `https://tg-earth.vercel.app/app`;
     
     bot.sendMessage(chatId, 'Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
         reply_markup: {
