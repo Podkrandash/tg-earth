@@ -104,15 +104,22 @@ class Earth {
         const currentTime = Date.now();
         const elapsed = currentTime - this.startTime;
         
-        // Вращение Земли (один оборот за 24 часа)
-        if (this.earth) {
-            this.earth.rotation.y = (elapsed * ROTATION_SPEED) % (2 * Math.PI);
+        // Вращаем камеру вокруг Земли
+        if (this.camera) {
+            const angle = (elapsed * ROTATION_SPEED) % (2 * Math.PI);
+            const radius = 15; // Радиус орбиты камеры
             
-            // Обновляем позицию солнца (противоположно вращению Земли)
-            const radius = 50;
-            const sunAngle = -this.earth.rotation.y;
-            this.sunLight.position.x = Math.cos(sunAngle) * radius;
-            this.sunLight.position.z = Math.sin(sunAngle) * radius;
+            this.camera.position.x = Math.cos(angle) * radius;
+            this.camera.position.z = Math.sin(angle) * radius;
+            this.camera.position.y = 5; // Поддерживаем небольшую высоту
+            
+            // Камера всегда смотрит на Землю
+            this.camera.lookAt(0, 0, 0);
+            
+            // Обновляем позицию солнца относительно камеры
+            const sunRadius = 50;
+            this.sunLight.position.x = -Math.cos(angle) * sunRadius;
+            this.sunLight.position.z = -Math.sin(angle) * sunRadius;
             
             // Обновляем uniform для шейдера
             if (this.earth.material.uniforms) {
