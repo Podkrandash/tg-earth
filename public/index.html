@@ -141,7 +141,7 @@
         }
         .nav-panel {
             position: fixed;
-            bottom: 20px;
+            bottom: -100px; /* Начальная позиция за пределами экрана */
             left: 50%;
             transform: translateX(-50%);
             background: rgba(18, 18, 23, 0.85);
@@ -150,16 +150,18 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 16px;
             padding: 8px;
-            display: none;
+            display: flex; /* Всегда flex, но скрыт за пределами экрана */
             gap: 16px;
             z-index: 998;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             pointer-events: auto;
-            touch-action: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .nav-panel.visible {
+            bottom: 20px;
             opacity: 1;
         }
         .nav-button {
@@ -532,6 +534,30 @@
             const tabInner = document.querySelector('.tab-content-inner');
             
             let isProfileConnected = false;
+            let isFirstTouch = true;
+            
+            // Показываем панель навигации по первому нажатию на сцену
+            sceneContainer.addEventListener('click', () => {
+                if (isFirstTouch && sceneContainer.style.opacity === '1') {
+                    isFirstTouch = false;
+                    navPanel.classList.add('visible');
+                }
+            });
+
+            // Также обрабатываем touch события для мобильных устройств
+            sceneContainer.addEventListener('touchstart', (e) => {
+                if (isFirstTouch && sceneContainer.style.opacity === '1') {
+                    isFirstTouch = false;
+                    navPanel.classList.add('visible');
+                }
+            }, { passive: true });
+
+            // Убираем обработчик transitionend, так как он больше не нужен
+            sceneContainer.addEventListener('transitionend', () => {
+                if (sceneContainer.style.opacity === '1') {
+                    // Теперь просто ждем нажатия пользователя
+                }
+            });
             
             // Функция для подключения к Telegram
             async function connectToTelegram() {
@@ -623,25 +649,32 @@
                 tabInner.innerHTML = content;
             }
             
-            // Показываем панель навигации после загрузки сцены
-            sceneContainer.addEventListener('transitionend', () => {
-                if (sceneContainer.style.opacity === '1') {
-                    navPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        navPanel.classList.add('visible');
-                    }, 100);
-                }
-            });
-            
             // Обработчики для кнопок навигации
             const navButtons = document.querySelectorAll('.nav-button');
             navButtons.forEach(button => {
-                button.addEventListener('click', (e) => {
+                ['touchstart', 'click'].forEach(eventType => {
+                    button.addEventListener(eventType, (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                        
                     const section = button.getAttribute('data-section');
                     handleNavClick(section, button);
+                    }, { passive: false });
                 });
+            });
+
+            // Предотвращаем скролл на навигационной панели
+            navPanel.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+
+            // Предотвращаем скролл на кнопках
+            navButtons.forEach(button => {
+                button.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, { passive: false });
             });
 
             function handleNavClick(section, clickedButton) {
