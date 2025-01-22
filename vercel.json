@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/index.js",
+      "src": "server.js",
       "use": "@vercel/node"
     },
     {
@@ -13,19 +13,35 @@
   "routes": [
     {
       "src": "/bot/(.*)",
-      "dest": "server/index.js"
+      "dest": "server.js"
     },
     {
       "src": "/textures/(.*)",
-      "dest": "/textures/$1"
+      "dest": "/public/textures/$1"
     },
     {
       "src": "/js/(.*)",
-      "dest": "/js/$1"
+      "dest": "/public/js/$1"
+    },
+    {
+      "src": "/(.*\\.js)",
+      "dest": "/public/js/$1"
+    },
+    {
+      "src": "/(.*\\.css)",
+      "dest": "/public/css/$1"
+    },
+    {
+      "src": "/(.*\\.(jpg|png))",
+      "dest": "/public/textures/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/public/index.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/public/$1"
     }
   ]
 } 

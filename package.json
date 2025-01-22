@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "bot": "node bot/index.js",
-    "vercel-build": "echo 'Building bot...'"
+    "start": "node server.js",
+    "vercel-build": "echo 'Building...'",
+    "dev": "node server.js"
   },
   "dependencies": {
     "three": "^0.160.0",
@@ -17,5 +18,8 @@
     "@types/three": "^0.160.0",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 } 
