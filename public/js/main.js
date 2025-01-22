@@ -2,11 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Константы для вращения
-const DAY_MS = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
-const ROTATION_SPEED = (2 * Math.PI) / DAY_MS; // Полный оборот за 24 часа
+const EARTH_ROTATION_SPEED = 0.001; // Скорость вращения Земли
+const MOON_ROTATION_SPEED = 0.00037; // Скорость вращения Луны (27.3 раза медленнее Земли)
 const EARTH_TILT = 23.5 * Math.PI / 180; // Наклон оси Земли
-const MOON_ORBITAL_PERIOD = 27.3; // Сидерический период обращения Луны (дни)
-const MOON_DISTANCE = 10; // Расстояние от Земли до Луны (в условных единицах)
+const MOON_DISTANCE = 10; // Расстояние от Земли до Луны
 const MOON_TILT = 5.14 * Math.PI / 180; // Наклон орбиты Луны к эклиптике
 
 class Earth {
@@ -74,6 +73,9 @@ class Earth {
         this.createEarth();
         this.createMoon();
 
+        // Создаем звездное небо
+        this.createStars();
+
         // Обработчики событий
         window.addEventListener('resize', () => this.onWindowResize());
 
@@ -99,26 +101,43 @@ class Earth {
     animate() {
         requestAnimationFrame(() => this.animate());
         
-        const elapsed = (Date.now() - this.startTime) * 0.001;
-        
         // Вращаем Землю вокруг своей оси
         if (this.earth) {
-            this.earth.rotation.y = elapsed * 0.1; // Скорость вращения Земли
+            this.earth.rotation.y += EARTH_ROTATION_SPEED;
+            
+            // Обновляем направление солнца в шейдере Земли
+            const worldSunDirection = new THREE.Vector3(1, 0, 0);
+            const earthWorldMatrix = this.earth.matrixWorld;
+            const inverseMatrix = new THREE.Matrix4().copy(earthWorldMatrix).invert();
+            const localSunDirection = worldSunDirection.clone().transformDirection(inverseMatrix);
+            
+            this.earth.material.uniforms.sunDirection.value.copy(localSunDirection);
         }
         
         // Вращаем Луну вокруг Земли
         if (this.moonOrbit) {
-            // Один оборот за MOON_ORBITAL_PERIOD дней
-            const moonAngle = (elapsed * 0.1) / MOON_ORBITAL_PERIOD;
-            this.moonOrbit.rotation.y = moonAngle;
+            this.moonOrbit.rotation.y += MOON_ROTATION_SPEED;
             
-            // Синхронное вращение Луны (всегда повернута одной стороной к Земле)
+            // Синхронное вращение Луны
             if (this.moon) {
-                this.moon.rotation.y = -moonAngle;
+                this.moon.rotation.y = -this.moonOrbit.rotation.y;
+                
+                // Обновляем направление солнца в шейдере Луны
+                const worldSunDirection = new THREE.Vector3(1, 0, 0);
+                const moonWorldMatrix = this.moon.matrixWorld;
+                const inverseMatrix = new THREE.Matrix4().copy(moonWorldMatrix).invert();
+                const localSunDirection = worldSunDirection.clone().transformDirection(inverseMatrix);
+                
+                this.moon.material.uniforms.sunDirection.value.copy(localSunDirection);
             }
         }
         
-        // Обновляем контроли камеры (для управления пользователем)
+        // Обновляем время для мерцания звезд
+        if (this.stars && this.stars.material.uniforms) {
+            this.stars.material.uniforms.time.value = performance.now() * 0.001;
+        }
+        
+        // Обновляем контроли камеры
         this.controls.update();
         
         // Рендерим сцену
@@ -179,7 +198,7 @@ class Earth {
                     vec3 normal = normalize(vNormal);
                     float cosAngle = dot(normal, normalize(sunDirection));
                     
-                    // Плавный переход между днем и ночью
+                    // Более резкий переход между днем и ночью
                     float transition = smoothstep(-0.1, 0.1, cosAngle);
                     
                     // Получаем цвета из текстур
@@ -187,17 +206,18 @@ class Earth {
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     vec4 clouds = texture2D(cloudsTexture, vUv);
                     
-                    // Усиливаем яркость ночных огней
-                    vec4 nightLights = nightColor * vec4(2.0, 1.8, 1.5, 1.0);
+                    // Усиливаем яркость дневной стороны и ночных огней
+                    dayColor *= 1.5; // Увеличиваем яркость дня
+                    vec4 nightLights = nightColor * vec4(3.0, 2.5, 2.0, 1.0);
                     
                     // Смешиваем день и ночь
                     vec4 groundColor = mix(nightLights, dayColor, transition);
                     
-                    // Добавляем облака только на дневной стороне
-                    vec4 cloudColor = clouds * transition;
+                    // Добавляем более яркие облака на дневной стороне
+                    vec4 cloudColor = clouds * transition * 1.3;
                     
                     // Финальный цвет с облаками
-                    gl_FragColor = groundColor + cloudColor * 0.3;
+                    gl_FragColor = groundColor + cloudColor * 0.4;
                 }
             `
         });
@@ -336,6 +356,70 @@ class Earth {
         // Помещаем луну на орбиту
         this.moon.position.x = MOON_DISTANCE;
         this.moonOrbit.add(this.moon);
+    }
+
+    createStars() {
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsCount = 5000;
+        
+        const positions = new Float32Array(starsCount * 3);
+        const opacities = new Float32Array(starsCount);
+        const blinkSpeeds = new Float32Array(starsCount);
+        const blinkOffsets = new Float32Array(starsCount);
+        
+        for (let i = 0; i < starsCount; i++) {
+            // Распределяем звезды равномерно в пространстве
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(Math.random() * 2 - 1);
+            const radius = 50 + Math.random() * 150;
+            
+            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            positions[i * 3 + 2] = radius * Math.cos(phi);
+            
+            // Задаем случайные параметры мерцания
+            opacities[i] = Math.random();
+            blinkSpeeds[i] = 0.1 + Math.random() * 2.0; // Разная скорость мерцания
+            blinkOffsets[i] = Math.random() * Math.PI * 2; // Разный фазовый сдвиг
+        }
+        
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        starsGeometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
+        starsGeometry.setAttribute('blinkSpeed', new THREE.BufferAttribute(blinkSpeeds, 1));
+        starsGeometry.setAttribute('blinkOffset', new THREE.BufferAttribute(blinkOffsets, 1));
+        
+        const starsMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 }
+            },
+            vertexShader: `
+                attribute float opacity;
+                attribute float blinkSpeed;
+                attribute float blinkOffset;
+                uniform float time;
+                varying float vOpacity;
+                
+                void main() {
+                    vOpacity = opacity * (0.7 + 0.3 * sin(time * blinkSpeed + blinkOffset));
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = 1.5;
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                varying float vOpacity;
+                
+                void main() {
+                    gl_FragColor = vec4(1.0, 1.0, 1.0, vOpacity);
+                }
+            `,
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+            transparent: true
+        });
+        
+        this.stars = new THREE.Points(starsGeometry, starsMaterial);
+        this.scene.add(this.stars);
     }
 }
 
