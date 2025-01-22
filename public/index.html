@@ -294,6 +294,8 @@
             const loadingScreen = document.getElementById('loading-screen');
             const navPanel = document.querySelector('.nav-panel');
             const sceneContainer = document.getElementById('scene-container');
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
             
             // Показываем панель навигации сразу после загрузки сцены
             sceneContainer.addEventListener('transitionend', () => {
@@ -302,92 +304,90 @@
                 }
             });
             
-            // Add touch/click handlers
+            // Обработчики для кнопок навигации
             document.querySelectorAll('.nav-button').forEach(button => {
-                const section = button.getAttribute('data-section');
-                
-                ['click', 'touchend'].forEach(eventType => {
-                    button.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleNavClick(section, e);
-                    }, { passive: false });
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const section = button.getAttribute('data-section');
+                    handleNavClick(section, button);
                 });
             });
-        });
 
-        function handleNavClick(section, event) {
-            const buttons = document.querySelectorAll('.nav-button');
-            const clickedButton = event.currentTarget;
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            
-            // Remove active class from all buttons
-            buttons.forEach(btn => btn.classList.remove('active'));
-            
-            // Add active class to clicked button
-            clickedButton.classList.add('active');
-            
-            // Update tab content
-            let content = '';
-            switch(section) {
-                case 'profile':
-                    content = `
-                        <button class="close-button" type="button">
-                            <i class="material-icons">close</i>
-                        </button>
-                        <h3>Профиль</h3>
-                    `;
-                    break;
-                case 'planet':
-                    content = `
-                        <button class="close-button" type="button">
-                            <i class="material-icons">close</i>
-                        </button>
-                        <h3>Информация о планете</h3>
-                    `;
-                    break;
-                case 'tasks':
-                    content = `
-                        <button class="close-button" type="button">
-                            <i class="material-icons">close</i>
-                        </button>
-                        <h3>Доступные задания</h3>
-                    `;
-                    break;
-                case 'wallet':
-                    content = `
-                        <button class="close-button" type="button">
-                            <i class="material-icons">close</i>
-                        </button>
-                        <h3>Кошелёк</h3>
-                    `;
-                    break;
-            }
-            
-            // Update content
-            tabInner.innerHTML = content;
-            
-            // Add click handler for close button
-            const closeButton = tabInner.querySelector('.close-button');
-            ['click', 'touchend'].forEach(eventType => {
-                closeButton.addEventListener(eventType, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+            // Функция обработки клика по кнопке навигации
+            function handleNavClick(section, clickedButton) {
+                const buttons = document.querySelectorAll('.nav-button');
+                
+                // Если кликнули по активной кнопке, закрываем вкладку
+                if (clickedButton.classList.contains('active')) {
+                    clickedButton.classList.remove('active');
+                    tabContent.classList.remove('active');
+                    tabInner.style.opacity = '0';
+                    return;
+                }
+                
+                // Убираем активный класс со всех кнопок
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                // Добавляем активный класс на кликнутую кнопку
+                clickedButton.classList.add('active');
+                
+                // Обновляем содержимое вкладки
+                let content = '';
+                switch(section) {
+                    case 'profile':
+                        content = `
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <h3>Профиль</h3>
+                        `;
+                        break;
+                    case 'planet':
+                        content = `
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <h3>Информация о планете</h3>
+                        `;
+                        break;
+                    case 'tasks':
+                        content = `
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <h3>Доступные задания</h3>
+                        `;
+                        break;
+                    case 'wallet':
+                        content = `
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <h3>Кошелёк</h3>
+                        `;
+                        break;
+                }
+                
+                // Обновляем содержимое
+                tabInner.innerHTML = content;
+                
+                // Добавляем обработчик для кнопки закрытия
+                const closeButton = tabInner.querySelector('.close-button');
+                closeButton.addEventListener('click', () => {
                     tabContent.classList.remove('active');
                     clickedButton.classList.remove('active');
                     tabInner.style.opacity = '0';
-                }, { passive: false });
-            });
-            
-            // Show tab with animation
-            requestAnimationFrame(() => {
-                tabContent.classList.add('active');
-                requestAnimationFrame(() => {
-                    tabInner.style.opacity = '1';
                 });
-            });
-        }
+                
+                // Показываем вкладку с анимацией
+                requestAnimationFrame(() => {
+                    tabContent.classList.add('active');
+                    requestAnimationFrame(() => {
+                        tabInner.style.opacity = '1';
+                    });
+                });
+            }
+        });
     </script>
 </body>
 </html> 
