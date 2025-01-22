@@ -1,15 +1,14 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "outputDirectory": "public",
+  "functions": {
+    "server.js": {
+      "memory": 1024,
+      "maxDuration": 60
     }
-  ],
+  },
   "routes": [
     {
       "src": "/bot/(.*)",
@@ -17,39 +16,33 @@
     },
     {
       "src": "/textures/(.*)",
-      "dest": "/public/textures/$1"
+      "dest": "/textures/$1"
     },
     {
       "src": "/js/(.*)",
-      "dest": "/public/js/$1"
+      "dest": "/js/$1"
     },
     {
       "src": "/(.*\\.js)",
-      "dest": "/public/js/$1"
+      "dest": "/js/$1"
     },
     {
       "src": "/(.*\\.css)",
-      "dest": "/public/css/$1"
+      "dest": "/css/$1"
     },
     {
       "src": "/(.*\\.(jpg|png))",
-      "dest": "/public/textures/$1"
+      "dest": "/textures/$1"
     },
     {
       "src": "/",
-      "dest": "/public/index.html"
+      "dest": "/index.html"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "/$1"
     }
   ],
-  "functions": {
-    "server.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
       "path": "/bot/keepalive",
