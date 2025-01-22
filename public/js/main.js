@@ -173,12 +173,12 @@ class Earth {
             vertexShader: `
                 varying vec2 vUv;
                 varying vec3 vNormal;
-                varying vec3 vPosition;
+                varying vec3 vWorldNormal;
 
                 void main() {
                     vUv = uv;
                     vNormal = normalize(normalMatrix * normal);
-                    vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    vWorldNormal = normalize(modelMatrix * vec4(normal, 0.0)).xyz;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
@@ -192,11 +192,11 @@ class Earth {
 
                 varying vec2 vUv;
                 varying vec3 vNormal;
-                varying vec3 vPosition;
+                varying vec3 vWorldNormal;
 
                 void main() {
-                    vec3 normal = normalize(vNormal);
-                    float cosAngle = dot(normal, normalize(sunDirection));
+                    // Используем мировые координаты для расчета освещения
+                    float cosAngle = dot(vWorldNormal, sunDirection);
                     
                     // Более резкий переход между днем и ночью
                     float transition = smoothstep(-0.1, 0.1, cosAngle);
@@ -207,19 +207,19 @@ class Earth {
                     vec4 clouds = texture2D(cloudsTexture, vUv);
                     
                     // Усиливаем яркость дневной стороны и ночных огней
-                    dayColor *= 1.5; // Увеличиваем яркость дня
+                    dayColor *= 1.5;
                     vec4 nightLights = nightColor * vec4(3.0, 2.5, 2.0, 1.0);
                     
                     // Смешиваем день и ночь
-                    vec4 groundColor = mix(nightLights, dayColor, transition);
+                    vec4 groundColor = mix(vec4(0.0, 0.0, 0.0, 1.0) + nightLights, dayColor, transition);
                     
-                    // Добавляем более яркие облака на дневной стороне
+                    // Добавляем облака только на дневной стороне
                     vec4 cloudColor = clouds * transition * 1.3;
                     
-                    // Финальный цвет с облаками
-                    gl_FragColor = groundColor + cloudColor * 0.4;
+                    gl_FragColor = vec4(groundColor.rgb + cloudColor.rgb * 0.4, 1.0);
                 }
-            `
+            `,
+            transparent: false
         });
 
         // Создаем меш земли
@@ -300,7 +300,7 @@ class Earth {
         // Создаем геометрию луны (примерно 27% от размера Земли)
         const moonGeometry = new THREE.SphereGeometry(0.54, 64, 64);
 
-        // Создаем шейдерный материал для Луны
+        // Создаем материал для Луны
         const moonMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 moonTexture: { value: moonTexture },
@@ -309,13 +309,11 @@ class Earth {
             },
             vertexShader: `
                 varying vec2 vUv;
-                varying vec3 vNormal;
-                varying vec3 vPosition;
+                varying vec3 vWorldNormal;
 
                 void main() {
                     vUv = uv;
-                    vNormal = normalize(normalMatrix * normal);
-                    vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+                    vWorldNormal = normalize(modelMatrix * vec4(normal, 0.0)).xyz;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
@@ -325,27 +323,17 @@ class Earth {
                 uniform vec3 sunDirection;
 
                 varying vec2 vUv;
-                varying vec3 vNormal;
-                varying vec3 vPosition;
+                varying vec3 vWorldNormal;
 
                 void main() {
-                    vec3 normal = normalize(vNormal);
-                    float cosAngle = dot(normal, normalize(sunDirection));
-                    
-                    // Получаем цвет из текстуры
-                    vec4 moonColor = texture2D(moonTexture, vUv);
-                    
-                    // Делаем темную сторону полностью черной
+                    float cosAngle = dot(vWorldNormal, sunDirection);
                     float dayStrength = smoothstep(-0.1, 0.1, cosAngle);
                     
-                    // Добавляем легкое свечение на краях кратеров
-                    float rimLight = pow(1.0 - abs(dot(normal, normalize(cameraPosition - vPosition))), 4.0);
-                    rimLight *= max(0.0, cosAngle) * 0.2;
-                    
-                    // Финальный цвет
-                    gl_FragColor = moonColor * (dayStrength + rimLight);
+                    vec4 moonColor = texture2D(moonTexture, vUv);
+                    gl_FragColor = vec4(moonColor.rgb * dayStrength, 1.0);
                 }
-            `
+            `,
+            transparent: false
         });
 
         // Создаем меш луны
