@@ -31,16 +31,12 @@ class Earth {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
-        // Добавляем слабый рассеянный свет
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-        this.scene.add(ambientLight);
-
         // Создаем группу для Земли
         this.earthGroup = new THREE.Group();
-        this.earthGroup.rotation.z = EARTH_TILT; // Добавляем наклон оси Земли
+        this.earthGroup.rotation.z = EARTH_TILT;
         this.scene.add(this.earthGroup);
 
-        // Настройка контролей для движения камеры вокруг Земли
+        // Настройка контролей
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
@@ -84,7 +80,7 @@ class Earth {
         
         // Вращаем Землю вокруг своей оси
         if (this.earth) {
-            this.earth.rotation.y += 0.001; // Медленное вращение
+            this.earth.rotation.y += 0.001;
         }
         
         // Обновляем контроли камеры
@@ -98,26 +94,52 @@ class Earth {
         // Загрузка текстур
         const textureLoader = new THREE.TextureLoader();
         const dayTexture = textureLoader.load('textures/earth_daymap.jpg');
-        const normalTexture = textureLoader.load('textures/earth_normal_map.jpg');
-        const roughnessTexture = textureLoader.load('textures/earth_roughness_map.jpg');
 
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем материал земли с правильным затенением
-        const earthMaterial = new THREE.MeshStandardMaterial({
-            map: dayTexture,
-            normalMap: normalTexture,
-            roughnessMap: roughnessTexture,
-            roughness: 1.0,
-            metalness: 0.0
+        // Создаем шейдерный материал для Земли
+        const earthMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                dayTexture: { value: dayTexture }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                
+                void main() {
+                    vUv = uv;
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D dayTexture;
+                varying vec2 vUv;
+                varying vec3 vNormal;
+                
+                void main() {
+                    // Направление "солнца" - фиксированное справа
+                    vec3 sunDirection = normalize(vec3(1.0, 0.0, 0.0));
+                    float cosAngle = dot(vNormal, sunDirection);
+                    
+                    // Делаем очень резкий переход между днем и ночью
+                    float dayStrength = step(0.0, cosAngle);
+                    
+                    // Получаем цвет из дневной текстуры
+                    vec4 dayColor = texture2D(dayTexture, vUv);
+                    
+                    // Смешиваем: день или полная темнота
+                    gl_FragColor = dayColor * dayStrength;
+                }
+            `
         });
 
         // Создаем меш земли
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.earthGroup.add(this.earth);
 
-        // Создаем атмосферу с меньшей прозрачностью
+        // Создаем атмосферу
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
             vertexShader: `
@@ -132,7 +154,12 @@ class Earth {
                 varying vec3 vNormal;
                 
                 void main() {
-                    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
+                    // Направление "солнца" справа
+                    vec3 sunDirection = normalize(vec3(1.0, 0.0, 0.0));
+                    float cosAngle = dot(vNormal, sunDirection);
+                    
+                    // Атмосфера видна только на освещенной стороне
+                    float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 2.0) * step(0.0, cosAngle);
                     vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
                     gl_FragColor = vec4(atmosphereColor, intensity * 0.2);
                 }
