@@ -142,40 +142,39 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 8px;
             display: none;
-            gap: 24px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+            gap: 16px;
             z-index: 1000;
             opacity: 0;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .nav-panel.visible {
+            display: flex;
+            opacity: 1;
         }
         .nav-button {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.6);
-            width: 40px;
-            height: 40px;
+            color: rgba(255, 255, 255, 0.5);
+            width: 36px;
+            height: 36px;
             border-radius: 12px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            position: relative;
         }
         .nav-button i {
             font-size: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .nav-button span {
-            display: none;
         }
         .nav-button:hover {
+            color: rgba(255, 255, 255, 0.8);
             background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-2px);
         }
         .nav-button.active {
             color: #fff;
@@ -185,19 +184,20 @@
             position: fixed;
             bottom: 90px;
             left: 50%;
-            transform: translateX(-50%) translateY(100%);
+            transform: translateX(-50%) translateY(120%);
             width: 90%;
             max-width: 400px;
-            height: 70vh;
-            background: rgba(255, 255, 255, 0.1);
+            height: 60vh;
+            background: rgba(20, 20, 20, 0.8);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px 24px 0 0;
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 999;
             pointer-events: none;
+            overflow: hidden;
         }
         .tab-content.active {
             transform: translateX(-50%) translateY(0);
@@ -207,10 +207,11 @@
         .tab-content-inner {
             width: 100%;
             height: 100%;
-            overflow-y: auto;
-            color: white;
             padding: 20px;
             box-sizing: border-box;
+            color: rgba(255, 255, 255, 0.9);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -235,19 +236,15 @@
     <div class="nav-panel">
         <div class="nav-button" onclick="handleNavClick('profile')">
             <i class="material-icons">person</i>
-            <span>Профиль</span>
         </div>
         <div class="nav-button active" onclick="handleNavClick('planet')">
             <i class="material-icons">public</i>
-            <span>Планета</span>
         </div>
         <div class="nav-button" onclick="handleNavClick('tasks')">
             <i class="material-icons">assignment</i>
-            <span>Задания</span>
         </div>
         <div class="nav-button" onclick="handleNavClick('wallet')">
             <i class="material-icons">account_balance_wallet</i>
-            <span>Кошелёк</span>
         </div>
     </div>
     <div class="tab-content">
@@ -281,31 +278,71 @@
             let content = '';
             switch(section) {
                 case 'profile':
-                    content = '<h2>Профиль</h2>';
+                    content = `
+                        <div style="padding: 20px;">
+                            <h3 style="margin: 0 0 20px 0; font-size: 18px;">Профиль</h3>
+                            <div style="opacity: 0.8;">
+                                <p>Уровень: 1</p>
+                                <p>Опыт: 0/100</p>
+                                <p>Достижения: 0</p>
+                            </div>
+                        </div>
+                    `;
                     break;
                 case 'planet':
-                    content = '<h2>Планета</h2>';
+                    content = `
+                        <div style="padding: 20px;">
+                            <h3 style="margin: 0 0 20px 0; font-size: 18px;">Информация о планете</h3>
+                            <div style="opacity: 0.8;">
+                                <p>Население: 0</p>
+                                <p>Ресурсы: 100%</p>
+                                <p>Состояние: Отличное</p>
+                            </div>
+                        </div>
+                    `;
                     break;
                 case 'tasks':
-                    content = '<h2>Задания</h2>';
+                    content = `
+                        <div style="padding: 20px;">
+                            <h3 style="margin: 0 0 20px 0; font-size: 18px;">Доступные задания</h3>
+                            <div style="opacity: 0.8;">
+                                <p>• Исследовать планету</p>
+                                <p>• Собрать ресурсы</p>
+                                <p>• Построить базу</p>
+                            </div>
+                        </div>
+                    `;
                     break;
                 case 'wallet':
-                    content = '<h2>Кошелёк</h2>';
+                    content = `
+                        <div style="padding: 20px;">
+                            <h3 style="margin: 0 0 20px 0; font-size: 18px;">Кошелёк</h3>
+                            <div style="opacity: 0.8;">
+                                <p>Баланс: 0 монет</p>
+                                <p>Кристаллы: 0</p>
+                                <p>Ресурсы: 0</p>
+                            </div>
+                        </div>
+                    `;
                     break;
             }
             
             // Анимируем появление вкладки
-            if (!tabContent.classList.contains('active')) {
-                tabContent.classList.add('active');
-            }
+            tabContent.classList.add('active');
             
             // Обновляем содержимое с анимацией
-            tabInner.style.opacity = '0';
             setTimeout(() => {
                 tabInner.innerHTML = content;
-                tabInner.style.opacity = '1';
+                requestAnimationFrame(() => {
+                    tabInner.style.opacity = '1';
+                });
             }, 300);
         }
+
+        // При загрузке страницы убираем активный класс с кнопки планеты
+        window.addEventListener('DOMContentLoaded', () => {
+            document.querySelector('.nav-button.active').classList.remove('active');
+        });
     </script>
 </body>
 </html> 
