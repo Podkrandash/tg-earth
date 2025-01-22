@@ -9,7 +9,7 @@ import {
 import Earth from './components/Earth';
 import Atmosphere from './components/Atmosphere';
 import SpaceBackground from './components/SpaceBackground';
-import NavigationPanel from './components/NavigationPanel';
+import NavigationPanel, { CameraControls } from './components/NavigationPanel';
 import './styles/App.css';
 
 // Компонент загрузки
@@ -97,6 +97,7 @@ function App() {
 
             <Earth />
             <Atmosphere />
+            <CameraControls />
 
             <OrbitControls 
               enableZoom={true} 

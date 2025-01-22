@@ -1,37 +1,80 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, createContext, useContext } from 'react';
 import { useThree } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 
-const NavigationPanel = () => {
+// Создаем контекст для управления камерой
+const CameraControlsContext = createContext<{
+  handleView: () => void;
+  handleCenter: () => void;
+  handleReset: () => void;
+}>({
+  handleView: () => {},
+  handleCenter: () => {},
+  handleReset: () => {},
+});
+
+// Компонент для Three.js сцены
+export const CameraControls = () => {
   const { camera, controls } = useThree();
+  const orbitControls = controls as OrbitControlsImpl;
 
   const handleView = useCallback(() => {
-    if (controls) {
-      controls.reset();
+    if (orbitControls) {
+      orbitControls.reset();
     }
-  }, [controls]);
+  }, [orbitControls]);
 
   const handleCenter = useCallback(() => {
-    if (camera && controls) {
+    if (camera && orbitControls) {
       camera.position.set(0, 2, 5);
-      controls.target.set(0, 0, 0);
-      controls.update();
+      orbitControls.target.set(0, 0, 0);
+      orbitControls.update();
     }
-  }, [camera, controls]);
+  }, [camera, orbitControls]);
 
   const handleReset = useCallback(() => {
-    if (camera && controls) {
+    if (camera && orbitControls) {
       camera.position.set(0, 2, 5);
       camera.rotation.set(0, 0, 0);
-      controls.target.set(0, 0, 0);
-      controls.update();
+      orbitControls.target.set(0, 0, 0);
+      orbitControls.update();
     }
-  }, [camera, controls]);
+  }, [camera, orbitControls]);
+
+  React.useEffect(() => {
+    // @ts-ignore
+    window.cameraControls = { handleView, handleCenter, handleReset };
+  }, [handleView, handleCenter, handleReset]);
+
+  return null;
+};
+
+// UI компонент
+const NavigationPanel = () => {
+  const handleClick = (action: string) => {
+    // @ts-ignore
+    const controls = window.cameraControls;
+    if (controls) {
+      switch (action) {
+        case 'view':
+          controls.handleView();
+          break;
+        case 'center':
+          controls.handleCenter();
+          break;
+        case 'reset':
+          controls.handleReset();
+          break;
+      }
+    }
+  };
 
   return (
     <div className="navigation-panel">
-      <button className="nav-button" onClick={handleView}>🌍 View</button>
-      <button className="nav-button" onClick={handleCenter}>🎯 Center</button>
-      <button className="nav-button" onClick={handleReset}>🔄 Reset</button>
+      <button className="nav-button" onClick={() => handleClick('view')}>🌍 View</button>
+      <button className="nav-button" onClick={() => handleClick('center')}>🎯 Center</button>
+      <button className="nav-button" onClick={() => handleClick('reset')}>🔄 Reset</button>
     </div>
   );
 };
