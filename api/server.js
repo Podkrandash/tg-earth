@@ -7,17 +7,20 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 bot.command('start', async (ctx) => {
     try {
         console.log('Received /start command');
-        await ctx.reply('🌍 Добро пожаловать в Earth!\nНажмите на кнопку ниже, чтобы начать игру:', {
+        const botUsername = (await bot.telegram.getMe()).username;
+        const gameLink = `https://t.me/${botUsername}?game=Earth`;
+        
+        await ctx.reply('🌍 Добро пожаловать в Earth!', {
             reply_markup: {
                 inline_keyboard: [
                     [{ 
                         text: '🌍 Earth',
-                        callback_game: 'Earth'  // Используем callback_game вместо url
+                        url: gameLink
                     }]
                 ]
             }
         });
-        console.log('Start message sent');
+        console.log('Start message sent with game link:', gameLink);
     } catch (error) {
         console.error('Error in start command:', error);
     }

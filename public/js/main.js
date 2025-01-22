@@ -50,6 +50,68 @@ class Earth {
             }
         }
 
+        // Загружаем все текстуры
+        this.loadTextures().then(() => {
+            // Создаем сцену после загрузки текстур
+            this.createScene();
+            // Запускаем анимацию загрузочного экрана
+            this.playLoadingAnimation();
+        });
+    }
+
+    loadTextures() {
+        const textureLoader = new THREE.TextureLoader();
+        const texturesToLoad = [
+            'textures/earth_daymap.jpg',
+            'textures/earth_nightmap.jpg',
+            'textures/earth_normal_map.jpg',
+            'textures/earth_specular_map.jpg',
+            'textures/earth_clouds.jpg',
+            'textures/moon_map.jpg',
+            'textures/moon_normal.jpg'
+        ];
+
+        const loadPromises = texturesToLoad.map(url => 
+            new Promise((resolve, reject) => {
+                textureLoader.load(url, resolve, undefined, reject);
+            })
+        );
+
+        return Promise.all(loadPromises);
+    }
+
+    playLoadingAnimation() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const sceneContainer = document.getElementById('scene-container');
+        const loadingMoon = document.getElementById('loading-moon');
+        const loadingEarth = document.getElementById('loading-earth');
+
+        // Анимация столкновения
+        setTimeout(() => {
+            loadingMoon.style.animation = 'none';
+            loadingMoon.style.transition = 'all 0.5s ease-in';
+            loadingMoon.style.transform = 'translate(-50%, 50%)';
+            
+            setTimeout(() => {
+                // Эффект взрыва
+                loadingEarth.style.transform = 'translate(-50%, -50%) scale(2)';
+                loadingEarth.style.opacity = '0';
+                loadingMoon.style.transform = 'translate(-50%, 50%) scale(2)';
+                loadingMoon.style.opacity = '0';
+                
+                // Показываем основную сцену
+                setTimeout(() => {
+                    loadingScreen.style.opacity = '0';
+                    sceneContainer.style.opacity = '1';
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 500);
+                }, 500);
+            }, 500);
+        }, 2000);
+    }
+
+    createScene() {
         // Инициализация сцены
         this.container = document.getElementById('scene-container');
         this.scene = new THREE.Scene();
@@ -195,13 +257,13 @@ class Earth {
             this.earth.material.uniforms.sunDirection.value.copy(localSunDirection);
         }
         
-        // Вращаем Луну вокруг Земли
+        // Вращаем Луну вокруг Земли и вокруг своей оси
         if (this.moonOrbit) {
             this.moonOrbit.rotation.y += MOON_ROTATION_SPEED;
             
-            // Синхронное вращение Луны
             if (this.moon) {
-                this.moon.rotation.y = -this.moonOrbit.rotation.y;
+                // Вращаем Луну вокруг своей оси с той же скоростью
+                this.moon.rotation.y += MOON_ROTATION_SPEED;
                 
                 // Обновляем направление солнца в шейдере Луны
                 const worldSunDirection = new THREE.Vector3(1, 0, 0);
@@ -392,10 +454,12 @@ class Earth {
             },
             vertexShader: `
                 varying vec2 vUv;
+                varying vec3 vNormal;
                 varying vec3 vWorldNormal;
 
                 void main() {
                     vUv = uv;
+                    vNormal = normalize(normalMatrix * normal);
                     vWorldNormal = normalize(modelMatrix * vec4(normal, 0.0)).xyz;
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
@@ -406,6 +470,7 @@ class Earth {
                 uniform vec3 sunDirection;
 
                 varying vec2 vUv;
+                varying vec3 vNormal;
                 varying vec3 vWorldNormal;
 
                 void main() {
@@ -415,11 +480,11 @@ class Earth {
                     vec4 moonColor = texture2D(moonTexture, vUv);
                     
                     // Увеличиваем яркость освещенной стороны
-                    vec3 brightSideColor = moonColor.rgb * 1.5;
-                    brightSideColor = pow(brightSideColor, vec3(0.9)); // Увеличиваем контраст
+                    vec3 brightSideColor = moonColor.rgb * 1.8;
+                    brightSideColor = pow(brightSideColor, vec3(0.9));
                     
-                    // Темная сторона остается серой
-                    vec3 darkSideColor = moonColor.rgb * 0.15;
+                    // Делаем темную сторону более реалистичной
+                    vec3 darkSideColor = moonColor.rgb * 0.1;
                     
                     vec3 finalColor = mix(darkSideColor, brightSideColor, transition);
                     gl_FragColor = vec4(finalColor, 1.0);

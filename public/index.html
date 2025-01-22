@@ -21,6 +21,54 @@
             width: 100%;
             height: 100%;
             background-color: #000000;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        #loading-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease-out;
+        }
+        #loading-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+        #loading-earth {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: url('textures/earth_daymap.jpg') center/cover;
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            animation: rotate 4s linear infinite;
+        }
+        #loading-moon {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: url('textures/moon_map.jpg') center/cover;
+            border-radius: 50%;
+            left: 50%;
+            top: 0;
+            transform-origin: 50% 100px;
+            animation: orbit 3s linear infinite;
+        }
+        @keyframes rotate {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes orbit {
+            from { transform: rotate(0deg) translateX(80px); }
+            to { transform: rotate(360deg) translateX(80px); }
         }
         .nav-panel {
             position: fixed;
@@ -72,6 +120,12 @@
     </script>
 </head>
 <body>
+    <div id="loading-screen">
+        <div id="loading-container">
+            <div id="loading-earth"></div>
+            <div id="loading-moon"></div>
+        </div>
+    </div>
     <div id="scene-container"></div>
     <div class="nav-panel">
         <div class="nav-button" onclick="handleNavClick('profile')">
@@ -94,13 +148,8 @@
     <script type="module" src="/js/main.js"></script>
     <script>
         function handleNavClick(section) {
-            // Убираем активный класс со всех кнопок
             document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
-            
-            // Добавляем активный класс нажатой кнопке
             event.currentTarget.classList.add('active');
-            
-            // Здесь будет логика переключения разделов
             console.log('Переход в раздел:', section);
         }
     </script>
