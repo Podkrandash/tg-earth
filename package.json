@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node api/server.js",
     "build": "echo 'No build step needed'",
-    "dev": "node server.js",
+    "dev": "node api/server.js",
     "vercel-build": "echo 'Building...'"
   },
   "engines": {

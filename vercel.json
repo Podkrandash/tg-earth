@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "functions": {
-    "server.js": {
+    "api/server.js": {
       "memory": 1024,
       "maxDuration": 10
     }
@@ -14,7 +14,7 @@
     { "src": "/textures/(.*)", "dest": "/textures/$1" },
     { "src": "/images/(.*)", "dest": "/images/$1" },
     { "src": "/(.*\\.(jpg|png|gif))", "dest": "/$1" },
-    { "src": "/bot/(.*)", "dest": "/server.js" },
+    { "src": "/bot/(.*)", "dest": "/api/server" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 } 
