@@ -222,7 +222,8 @@
             pointer-events: none;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
-            touch-action: pan-x pan-y;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
         }
         .tab-content.active {
             transform: translateY(0);
@@ -239,26 +240,56 @@
             position: relative;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+        .profile-connecting {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            margin-top: 40px;
+        }
+        .profile-connecting i {
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 16px;
+        }
+        .profile-connecting h4 {
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 8px 0;
+        }
+        .profile-connecting p {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+            line-height: 1.5;
         }
         .profile-header {
             position: sticky;
-            top: 0;
+            top: 24px;
             z-index: 2;
             display: flex;
             align-items: center;
-            gap: 24px;
-            margin-bottom: 16px;
-            padding: 24px;
+            gap: 16px;
+            margin: 40px 0 24px 0;
+            padding: 20px;
             background: rgba(18, 18, 23, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 20px;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            margin-top: 40px;
+            flex-wrap: wrap;
         }
         .profile-avatar {
-            width: 80px;
-            height: 80px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             overflow: hidden;
             border: 2px solid rgba(255, 255, 255, 0.1);
@@ -270,32 +301,39 @@
             object-fit: cover;
         }
         .profile-info {
-            flex-grow: 1;
+            flex: 1;
+            min-width: 0;
         }
         .profile-name {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
             margin: 0 0 4px 0;
             letter-spacing: -0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .profile-bio {
-            font-size: 15px;
+            font-size: 14px;
             color: rgba(255, 255, 255, 0.7);
             margin: 0;
-            line-height: 1.5;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .profile-rating {
-            padding: 12px 24px;
+            padding: 8px 16px;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
+            border-radius: 12px;
             text-align: center;
             flex-shrink: 0;
             border: 1px solid rgba(255, 255, 255, 0.08);
             margin-left: auto;
         }
         .rating-number {
-            font-size: 32px;
+            font-size: 24px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
             margin: 0;
@@ -303,17 +341,23 @@
             letter-spacing: -0.02em;
         }
         .rating-label {
-            font-size: 13px;
+            font-size: 11px;
             color: rgba(255, 255, 255, 0.5);
             margin-top: 4px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+        .rating-list-container {
+            padding-bottom: 100px;
+            margin-top: 24px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
         .rating-list {
             margin: 0;
-            padding: 0 0 80px 0;
+            padding: 0;
             list-style: none;
-            overflow-y: visible;
         }
         .rating-item {
             display: flex;
@@ -413,6 +457,32 @@
             font-size: 24px;
             transition: transform 0.2s ease;
         }
+        @media (max-width: 480px) {
+            .profile-header {
+                padding: 16px;
+                gap: 12px;
+            }
+            .profile-avatar {
+                width: 48px;
+                height: 48px;
+            }
+            .profile-name {
+                font-size: 18px;
+            }
+            .profile-bio {
+                font-size: 13px;
+            }
+            .profile-rating {
+                padding: 6px 12px;
+            }
+            .rating-number {
+                font-size: 20px;
+            }
+            .rating-label {
+                font-size: 10px;
+                margin-top: 2px;
+            }
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -461,39 +531,96 @@
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
             
-            // Функция для получения данных пользователя из Telegram
-            async function updateUserProfile() {
+            let isProfileConnected = false;
+            
+            // Функция для подключения к Telegram
+            async function connectToTelegram() {
                 try {
                     if (window.Telegram && window.Telegram.WebApp) {
-                        const user = window.Telegram.WebApp.initDataUnsafe.user;
-                        console.log('Telegram user data:', user); // Для отладки
-                        
+                        console.log('Trying to connect to Telegram...');
+                        const webApp = window.Telegram.WebApp;
+                        webApp.ready();
+                        const user = webApp.initDataUnsafe.user;
+                        console.log('User data:', user);
                         if (user) {
-                            const avatarImg = document.getElementById('profile-avatar-img');
-                            const nameEl = document.getElementById('profile-name');
-                            const bioEl = document.getElementById('profile-bio');
-                            
-                            // Обновляем аватар
-                            if (user.photo_url) {
-                                avatarImg.src = user.photo_url;
-                            } else {
-                                avatarImg.src = 'https://via.placeholder.com/80/666666/FFFFFF?text=User';
-                            }
-                            
-                            // Обновляем имя
-                            nameEl.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-                            
-                            // Обновляем био
-                            bioEl.textContent = user.username ? '@' + user.username : 'No username';
-                        } else {
-                            console.log('No user data available'); // Для отладки
+                            isProfileConnected = true;
+                            return user;
                         }
-                    } else {
-                        console.log('Telegram WebApp not available'); // Для отладки
                     }
+                    throw new Error('Telegram WebApp not available');
                 } catch (error) {
-                    console.error('Error updating profile:', error); // Для отладки
+                    console.error('Error connecting to Telegram:', error);
+                    return null;
                 }
+            }
+
+            // Функция для отображения профиля
+            async function showProfile() {
+                let content = `
+                    <h3>Profile</h3>
+                    <button class="close-button" type="button">
+                        <i class="material-icons">close</i>
+                    </button>
+                `;
+
+                if (!isProfileConnected) {
+                    content += `
+                        <div class="profile-connecting">
+                            <i class="material-icons">telegram</i>
+                            <h4>Connecting to Telegram...</h4>
+                            <p>Please wait while we connect to your Telegram account</p>
+                        </div>
+                    `;
+                    tabInner.innerHTML = content;
+                    
+                    const user = await connectToTelegram();
+                    if (!user) {
+                        document.querySelector('.profile-connecting').innerHTML = `
+                            <i class="material-icons">error_outline</i>
+                            <h4>Connection Failed</h4>
+                            <p>Unable to connect to Telegram. Please try again later.</p>
+                        `;
+                        return;
+                    }
+                }
+
+                // Показываем профиль с данными
+                content = `
+                    <h3>Profile</h3>
+                    <button class="close-button" type="button">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <img src="${window.Telegram.WebApp.initDataUnsafe.user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=User'}" alt="Profile Avatar" id="profile-avatar-img">
+                        </div>
+                        <div class="profile-info">
+                            <h4 class="profile-name" id="profile-name">${window.Telegram.WebApp.initDataUnsafe.user.first_name} ${window.Telegram.WebApp.initDataUnsafe.user.last_name || ''}</h4>
+                            <p class="profile-bio" id="profile-bio">@${window.Telegram.WebApp.initDataUnsafe.user.username || 'no_username'}</p>
+                        </div>
+                        <div class="profile-rating">
+                            <p class="rating-number">#7</p>
+                            <p class="rating-label">Rating</p>
+                        </div>
+                    </div>
+                    <div class="rating-list-container">
+                        <ul class="rating-list">
+                            ${Array.from({length: 100}, (_, i) => `
+                                <li class="rating-item ${i === 6 ? 'current' : ''}">
+                                    <span class="rating-position">#${i + 1}</span>
+                                    <div class="rating-avatar">
+                                        <img src="https://via.placeholder.com/40/666666/FFFFFF?text=${i + 1}" alt="User Avatar">
+                                    </div>
+                                    <div class="rating-user-info">
+                                        <h4 class="rating-username">User ${i + 1}</h4>
+                                        <p class="rating-score">${1000 - i * 5} points</p>
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+                tabInner.innerHTML = content;
             }
             
             // Показываем панель навигации после загрузки сцены
@@ -509,26 +636,12 @@
             // Обработчики для кнопок навигации
             const navButtons = document.querySelectorAll('.nav-button');
             navButtons.forEach(button => {
-                ['touchstart', 'click'].forEach(eventType => {
-                    button.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        // Если это touch-событие, добавляем активное состояние
-                        if (eventType === 'touchstart') {
-                            button.classList.add('active');
-                        }
-                        
-                        const section = button.getAttribute('data-section');
-                        handleNavClick(section, button);
-                    }, { passive: false });
-                });
-                
-                // Убираем активное состояние после touchend
-                button.addEventListener('touchend', (e) => {
+                button.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                }, { passive: false });
+                    const section = button.getAttribute('data-section');
+                    handleNavClick(section, button);
+                });
             });
 
             function handleNavClick(section, clickedButton) {
@@ -538,85 +651,46 @@
                 buttons.forEach(btn => btn.classList.remove('active'));
                 clickedButton.classList.add('active');
                 
-                let content = '';
-                switch(section) {
-                    case 'profile':
-                        content = `
-                            <h3>Profile</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="profile-header">
-                                <div class="profile-avatar">
-                                    <img src="https://via.placeholder.com/80/666666/FFFFFF?text=User" alt="Profile Avatar" id="profile-avatar-img">
-                                </div>
-                                <div class="profile-info">
-                                    <h4 class="profile-name" id="profile-name">Loading...</h4>
-                                    <p class="profile-bio" id="profile-bio">Loading...</p>
-                                </div>
-                                <div class="profile-rating">
-                                    <p class="rating-number">#7</p>
-                                    <p class="rating-label">Rating</p>
-                                </div>
-                            </div>
-                            <ul class="rating-list">
-                                ${Array.from({length: 100}, (_, i) => `
-                                    <li class="rating-item ${i === 6 ? 'current' : ''}">
-                                        <span class="rating-position">#${i + 1}</span>
-                                        <div class="rating-avatar">
-                                            <img src="https://via.placeholder.com/40/666666/FFFFFF?text=${i + 1}" alt="User Avatar">
-                                        </div>
-                                        <div class="rating-user-info">
-                                            <h4 class="rating-username">User ${i + 1}</h4>
-                                            <p class="rating-score">${1000 - i * 5} points</p>
-                                        </div>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                        `;
-                        break;
-                    case 'planet':
-                        content = `
-                            <h3>Planet Info</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                        `;
-                        break;
-                    case 'tasks':
-                        content = `
-                            <h3>Available Tasks</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                        `;
-                        break;
-                    case 'wallet':
-                        content = `
-                            <h3>Wallet</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                        `;
-                        break;
-                }
-                
-                tabInner.innerHTML = content;
-                
-                // Если открыт профиль, обновляем данные пользователя
                 if (section === 'profile') {
-                    setTimeout(updateUserProfile, 100);
+                    showProfile();
+                } else {
+                    let content = '';
+                    switch(section) {
+                        case 'planet':
+                            content = `
+                                <h3>Planet Info</h3>
+                                <button class="close-button" type="button">
+                                    <i class="material-icons">close</i>
+                                </button>
+                            `;
+                            break;
+                        case 'tasks':
+                            content = `
+                                <h3>Available Tasks</h3>
+                                <button class="close-button" type="button">
+                                    <i class="material-icons">close</i>
+                                </button>
+                            `;
+                            break;
+                        case 'wallet':
+                            content = `
+                                <h3>Wallet</h3>
+                                <button class="close-button" type="button">
+                                    <i class="material-icons">close</i>
+                                </button>
+                            `;
+                            break;
+                    }
+                    tabInner.innerHTML = content;
                 }
                 
                 const closeButton = tabInner.querySelector('.close-button');
-                ['touchstart', 'click'].forEach(eventType => {
-                    closeButton.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        tabContent.classList.remove('active');
-                        clickedButton.classList.remove('active');
-                        tabInner.style.opacity = '0';
-                    }, { passive: false });
+                closeButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    tabContent.classList.remove('active');
+                    clickedButton.classList.remove('active');
+                    tabInner.style.opacity = '0';
                 });
                 
                 requestAnimationFrame(() => {
