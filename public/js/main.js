@@ -436,18 +436,21 @@ class Earth {
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
             uniforms: {
-                sunDirection: { value: new THREE.Vector3(1, 0, 0) }
+                sunDirection: { value: new THREE.Vector3(1, 0, 0) },
+                cameraPosition: { value: this.camera.position }
             },
             vertexShader: `
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying float vAtmosphereHeight;
+                varying vec3 vViewDirection;
 
                 void main() {
                     vNormal = normalize(normalMatrix * normal);
                     vec4 worldPosition = modelMatrix * vec4(position, 1.0);
                     vPosition = worldPosition.xyz;
                     vAtmosphereHeight = position.y;
+                    vViewDirection = normalize(cameraPosition - worldPosition.xyz);
                     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                 }
             `,
@@ -456,30 +459,43 @@ class Earth {
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying float vAtmosphereHeight;
+                varying vec3 vViewDirection;
 
                 void main() {
-                    vec3 viewDirection = normalize(cameraPosition - vPosition);
                     float cosAngle = dot(vNormal, normalize(sunDirection));
                     
                     // Рассеивание Рэлея
-                    float rayleigh = 1.0 - pow(abs(dot(viewDirection, vNormal)), 2.0);
+                    float rayleigh = 1.0 - pow(abs(dot(vViewDirection, vNormal)), 2.0);
                     
                     // Свечение на краях
-                    float rimLight = 1.0 - abs(dot(viewDirection, vNormal));
-                    rimLight = pow(rimLight, 3.0);
+                    float rimLight = 1.0 - abs(dot(vViewDirection, vNormal));
+                    rimLight = pow(rimLight, 4.0);
                     
                     // Цвет атмосферы зависит от высоты и освещения
-                    vec3 atmosphereColor = mix(
-                        vec3(0.3, 0.6, 1.0),  // Голубой у поверхности
+                    vec3 dayColor = mix(
+                        vec3(0.4, 0.7, 1.0),  // Голубой у поверхности
                         vec3(0.2, 0.4, 0.8),  // Темно-синий вверху
-                        vAtmosphereHeight
+                        vAtmosphereHeight * 0.5 + 0.5
+                    );
+                    
+                    vec3 nightColor = mix(
+                        vec3(0.1, 0.1, 0.2),  // Темно-синий у поверхности
+                        vec3(0.05, 0.05, 0.1), // Почти черный вверху
+                        vAtmosphereHeight * 0.5 + 0.5
                     );
                     
                     // Интенсивность зависит от освещения
-                    float sunEffect = max(0.0, cosAngle);
-                    float intensity = (rayleigh + rimLight) * sunEffect;
+                    float sunEffect = smoothstep(-0.2, 0.3, cosAngle);
+                    vec3 atmosphereColor = mix(nightColor, dayColor, sunEffect);
                     
-                    gl_FragColor = vec4(atmosphereColor, intensity * 0.3);
+                    // Добавляем свечение на краях
+                    float intensity = mix(0.3, 1.0, rimLight) * mix(0.2, 1.0, rayleigh);
+                    
+                    // Добавляем рассеивание света в атмосфере
+                    vec3 finalColor = atmosphereColor * intensity;
+                    finalColor += vec3(1.0, 1.0, 1.0) * pow(rimLight, 8.0) * 0.3;
+                    
+                    gl_FragColor = vec4(finalColor, intensity * 0.3);
                 }
             `,
             transparent: true,

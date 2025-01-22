@@ -13,16 +13,19 @@ const gameShortName = 'earth3d';
 app.use(express.static('public'));
 
 // Обработчик для /start команды
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     console.log('Received /start command from chat:', chatId);
 
+    const botInfo = await bot.getMe();
+    const appUrl = `https://t.me/${botInfo.username}/app`;
+    
     bot.sendMessage(chatId, 'Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
         reply_markup: {
             inline_keyboard: [[
                 {
                     text: '🌍 Играть',
-                    callback_game: gameShortName
+                    url: appUrl
                 }
             ]]
         }
