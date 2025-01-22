@@ -31,6 +31,10 @@ class Earth {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
+        // Добавляем слабый рассеянный свет
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        this.scene.add(ambientLight);
+
         // Создаем группу для Земли
         this.earthGroup = new THREE.Group();
         this.earthGroup.rotation.z = EARTH_TILT; // Добавляем наклон оси Земли
@@ -100,16 +104,20 @@ class Earth {
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем простой материал земли только с дневной текстурой
-        const earthMaterial = new THREE.MeshBasicMaterial({
-            map: dayTexture
+        // Создаем материал земли с правильным затенением
+        const earthMaterial = new THREE.MeshStandardMaterial({
+            map: dayTexture,
+            normalMap: normalTexture,
+            roughnessMap: roughnessTexture,
+            roughness: 1.0,
+            metalness: 0.0
         });
 
         // Создаем меш земли
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.earthGroup.add(this.earth);
 
-        // Создаем атмосферу
+        // Создаем атмосферу с меньшей прозрачностью
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
             vertexShader: `
@@ -126,7 +134,7 @@ class Earth {
                 void main() {
                     float intensity = pow(0.7 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
                     vec3 atmosphereColor = vec3(0.3, 0.6, 1.0);
-                    gl_FragColor = vec4(atmosphereColor, intensity * 0.3);
+                    gl_FragColor = vec4(atmosphereColor, intensity * 0.2);
                 }
             `,
             transparent: true,
