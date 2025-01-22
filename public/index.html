@@ -146,9 +146,14 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
             padding: 8px;
-            display: flex;
+            display: none;
             gap: 16px;
             z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .nav-panel.visible {
+            opacity: 1;
         }
         .nav-button {
             display: flex;
@@ -183,23 +188,21 @@
         }
         .tab-content {
             position: fixed;
-            top: 0;
+            top: 80px;
             left: 0;
             right: 0;
+            bottom: 0;
             width: 100%;
-            height: calc(100% - 80px);
             background: rgb(22, 22, 22);
-            border-top-left-radius: 32px;
-            border-top-right-radius: 32px;
-            opacity: 0;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
             transform: translateY(100%);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 1001;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 999;
             pointer-events: none;
         }
         .tab-content.active {
-            transform: translateY(80px);
-            opacity: 1;
+            transform: translateY(0);
             pointer-events: auto;
         }
         .tab-content-inner {
@@ -223,19 +226,19 @@
         }
         .close-button {
             position: absolute;
-            top: 20px;
+            top: -60px;
             right: 20px;
             width: 40px;
             height: 40px;
             border: none;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            color: rgba(255, 255, 255, 0.9);
             z-index: 1002;
             pointer-events: auto;
             -webkit-tap-highlight-color: transparent;
@@ -297,10 +300,13 @@
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
             
-            // Показываем панель навигации сразу после загрузки сцены
+            // Показываем панель навигации после загрузки сцены
             sceneContainer.addEventListener('transitionend', () => {
                 if (sceneContainer.style.opacity === '1') {
                     navPanel.style.display = 'flex';
+                    setTimeout(() => {
+                        navPanel.classList.add('visible');
+                    }, 100);
                 }
             });
             
@@ -308,6 +314,7 @@
             document.querySelectorAll('.nav-button').forEach(button => {
                 button.addEventListener('click', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     const section = button.getAttribute('data-section');
                     handleNavClick(section, button);
                 });
@@ -321,7 +328,9 @@
                 if (clickedButton.classList.contains('active')) {
                     clickedButton.classList.remove('active');
                     tabContent.classList.remove('active');
-                    tabInner.style.opacity = '0';
+                    setTimeout(() => {
+                        tabInner.style.opacity = '0';
+                    }, 100);
                     return;
                 }
                 
@@ -370,13 +379,18 @@
                 
                 // Обновляем содержимое
                 tabInner.innerHTML = content;
+                tabInner.style.opacity = '0';
                 
                 // Добавляем обработчик для кнопки закрытия
                 const closeButton = tabInner.querySelector('.close-button');
-                closeButton.addEventListener('click', () => {
+                closeButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     tabContent.classList.remove('active');
                     clickedButton.classList.remove('active');
-                    tabInner.style.opacity = '0';
+                    setTimeout(() => {
+                        tabInner.style.opacity = '0';
+                    }, 100);
                 });
                 
                 // Показываем вкладку с анимацией
