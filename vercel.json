@@ -47,13 +47,13 @@
   "functions": {
     "server.js": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/bot/keepalive",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/1 * * * *"
     }
   ]
 } 
