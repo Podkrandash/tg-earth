@@ -731,7 +731,7 @@ class Earth {
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем материал земли с поддержкой ночных огней
+        // Создаем материал земли с улучшенными ночными огнями
         const earthMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 dayTexture: { value: dayTexture },
@@ -771,11 +771,22 @@ class Earth {
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Плавный переход между днем и ночью
-                    float transition = smoothstep(-0.2, 0.2, cosAngle);
+                    // Усиливаем яркость ночных огней
+                    vec4 brightNightColor = nightColor * vec4(5.0, 5.0, 3.0, 1.0);
                     
-                    // Смешиваем дневной и ночной цвета
-                    vec4 finalColor = mix(nightColor * vec4(2.0, 2.0, 2.0, 1.0), dayColor, transition);
+                    // Делаем более резкий переход между днем и ночью
+                    float transition = smoothstep(-0.1, 0.1, cosAngle);
+                    
+                    // Добавляем свечение для ночных огней
+                    float nightGlow = (1.0 - transition) * 0.5;
+                    brightNightColor += vec4(nightGlow * vec3(1.0, 0.8, 0.4), 0.0);
+                    
+                    // Смешиваем дневной и ночной цвета с улучшенным переходом
+                    vec4 finalColor = mix(brightNightColor, dayColor, transition);
+                    
+                    // Добавляем легкое свечение на границе дня и ночи
+                    float terminatorGlow = smoothstep(0.0, 0.2, abs(cosAngle));
+                    finalColor.rgb += vec3(0.1, 0.1, 0.2) * (1.0 - terminatorGlow);
                     
                     gl_FragColor = finalColor;
                 }
@@ -786,7 +797,7 @@ class Earth {
         this.earth = new THREE.Mesh(earthGeometry, earthMaterial);
         this.scene.add(this.earth);
 
-        // Добавляем атмосферу
+        // Добавляем атмосферу с улучшенным свечением
         const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
         const atmosphereMaterial = new THREE.ShaderMaterial({
             uniforms: {
@@ -804,11 +815,12 @@ class Earth {
                 varying vec3 vNormal;
                 void main() {
                     float intensity = pow(0.7 - dot(vNormal, normalize(sunDirection)), 2.0);
-                    gl_FragColor = vec4(0.3, 0.6, 1.0, intensity * 0.3);
+                    gl_FragColor = vec4(0.3, 0.6, 1.0, intensity * 0.4);
                 }
             `,
             transparent: true,
-            side: THREE.BackSide
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending
         });
 
         this.atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
