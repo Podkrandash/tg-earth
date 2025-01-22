@@ -709,7 +709,7 @@ class Earth {
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
 
-        // Создаем материал земли с постоянным свечением городов
+        // Создаем материал земли с более светлой ночной стороной
         const earthMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 dayTexture: { value: dayTexture },
@@ -762,11 +762,18 @@ class Earth {
                     float nightGlow = pow(1.0 - transition, 3.0);
                     vec4 nightGlowColor = brightNightColor * nightGlow;
                     
+                    // Делаем ночную сторону более светлой
+                    vec4 brightNightSide = dayColor * 0.3 + baseCityLights;
+                    
                     // Смешиваем дневной цвет с базовым свечением городов
-                    vec4 dayWithLights = mix(dayColor, baseCityLights, 0.3);
+                    vec4 dayWithLights = mix(dayColor, baseCityLights, 0.2);
+                    
+                    // Добавляем амбиентное освещение для темной стороны
+                    vec3 ambientLight = vec3(0.15, 0.15, 0.2);
                     
                     // Финальное смешивание с учетом перехода
-                    vec4 finalColor = mix(nightGlowColor + baseCityLights, dayWithLights, transition);
+                    vec4 finalColor = mix(brightNightSide + nightGlowColor, dayWithLights, transition);
+                    finalColor.rgb += ambientLight * (1.0 - transition);
                     
                     // Добавляем свечение на границе дня и ночи
                     float edgeGlow = pow(1.0 - abs(cosAngle), 8.0) * 0.4;
