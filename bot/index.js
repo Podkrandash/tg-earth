@@ -11,10 +11,15 @@ bot.command('start', (ctx) => {
     ctx.reply('Welcome to Earth 3D! Click the button below to start:', {
         reply_markup: {
             inline_keyboard: [[
-                { text: '🌍 Launch Earth 3D', url: process.env.GAME_URL }
+                { text: '🌍 Play Earth 3D', callback_data: 'play_game' }
             ]]
         }
     });
+});
+
+// Handle play button click
+bot.action('play_game', (ctx) => {
+    ctx.answerGameQuery(process.env.GAME_URL);
 });
 
 // Launch bot

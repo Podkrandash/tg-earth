@@ -56,20 +56,16 @@ class Earth {
     }
 
     createEarth() {
-        const geometry = new THREE.SphereGeometry(2, 64, 64);
+        const geometry = new THREE.SphereGeometry(2, 32, 32);
         const material = new THREE.MeshPhongMaterial({
-            map: new THREE.TextureLoader().load('/textures/earth_daymap.jpg'),
-            bumpMap: new THREE.TextureLoader().load('/textures/earth_normal_map.jpg'),
-            bumpScale: 0.05,
-            specularMap: new THREE.TextureLoader().load('/textures/earth_roughness_map.jpg'),
-            specular: new THREE.Color('grey'),
-            shininess: 5
+            color: 0xffffff,
+            shininess: 30
         });
         return new THREE.Mesh(geometry, material);
     }
 
     createAtmosphere() {
-        const geometry = new THREE.SphereGeometry(2.1, 64, 64);
+        const geometry = new THREE.SphereGeometry(2.1, 32, 32);
         const material = new THREE.MeshPhongMaterial({
             color: 0x0077ff,
             transparent: true,
