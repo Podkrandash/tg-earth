@@ -293,17 +293,21 @@ class Earth {
         // Настройка контролей орбиты
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.1;
-        this.controls.rotateSpeed = 0.5;
+        this.controls.dampingFactor = 0.05;
+        this.controls.rotateSpeed = isMobile() ? 0.3 : 0.5;
         this.controls.enableZoom = true;
-        this.controls.zoomSpeed = 0.8;
+        this.controls.zoomSpeed = isMobile() ? 0.5 : 0.8;
         this.controls.enablePan = false;
-        this.controls.minDistance = 5;
-        this.controls.maxDistance = 50;
+        this.controls.minDistance = 4;
+        this.controls.maxDistance = 20;
         this.controls.minPolarAngle = Math.PI * 0.1;
         this.controls.maxPolarAngle = Math.PI * 0.9;
         this.controls.target.set(0, 0, 0);
         this.controls.enabled = true;
+        this.controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
         this.controls.update();
 
         // Создаем сферу Земли
@@ -336,11 +340,12 @@ class Earth {
         }
 
         // Настройка освещения
-        this.ambientLight = new THREE.AmbientLight(0x404040, 0.3); // Увеличиваем интенсивность фонового света
+        this.ambientLight = new THREE.AmbientLight(0x404040, 0.2);
         this.scene.add(this.ambientLight);
 
         // Направленный свет от Солнца
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, 2.0); // Увеличиваем интенсивность
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        this.directionalLight.position.set(100, 10, 100);
         this.directionalLight.castShadow = true;
         this.directionalLight.shadow.mapSize.width = 2048;
         this.directionalLight.shadow.mapSize.height = 2048;
@@ -469,7 +474,6 @@ class Earth {
         sunTexture.wrapS = THREE.RepeatWrapping;
         sunTexture.wrapT = THREE.RepeatWrapping;
         
-        // Улучшенный материал солнца с фиксированным вращением текстуры
         const sunMaterial = new THREE.MeshBasicMaterial({
             map: sunTexture,
             color: 0xffdd00,
@@ -479,13 +483,18 @@ class Earth {
         
         this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
         
-        // Добавляем улучшенную корону
+        // Добавляем точечный свет от солнца с меньшей интенсивностью
+        const sunLight = new THREE.PointLight(0xffffff, 0.8, 2000);
+        sunLight.position.set(0, 0, 0);
+        this.sun.add(sunLight);
+        
+        // Добавляем корону с меньшей яркостью
         const coronaGeometry = new THREE.SphereGeometry(5.2, 64, 64);
         const coronaMaterial = new THREE.ShaderMaterial({
             vertexShader: enhancedCoronaVertexShader,
             fragmentShader: enhancedCoronaFragmentShader,
             uniforms: {
-                glowColor: { value: new THREE.Color(0xffdd00) },
+                glowColor: { value: new THREE.Color(0xffaa00) },
                 time: { value: 0 }
             },
             side: THREE.BackSide,
@@ -496,13 +505,13 @@ class Earth {
         const corona = new THREE.Mesh(coronaGeometry, coronaMaterial);
         this.sun.add(corona);
         
-        // Добавляем внешнее свечение
+        // Добавляем внешнее свечение с меньшей яркостью
         const outerCoronaGeometry = new THREE.SphereGeometry(5.4, 64, 64);
         const outerCoronaMaterial = new THREE.ShaderMaterial({
             vertexShader: enhancedCoronaVertexShader,
             fragmentShader: enhancedCoronaFragmentShader,
             uniforms: {
-                glowColor: { value: new THREE.Color(0xff8800) },
+                glowColor: { value: new THREE.Color(0xff6600) },
                 time: { value: 0 }
             },
             side: THREE.BackSide,
@@ -513,46 +522,15 @@ class Earth {
         const outerCorona = new THREE.Mesh(outerCoronaGeometry, outerCoronaMaterial);
         this.sun.add(outerCorona);
         
-        // Точечный свет от солнца
-        const sunLight = new THREE.PointLight(0xffffff, 2.0, 2000);
-        sunLight.position.set(0, 0, 0);
-        this.sun.add(sunLight);
-        
-        // Улучшенные линзовые блики
+        // Уменьшаем интенсивность линзовых бликов
         const textureFlare = textureLoader.load('/textures/lensflare.png');
-        this.lensflare = new Lensflare(); // Сохраняем как свойство класса
+        this.lensflare = new Lensflare();
         
-        // Основной блик
-        this.lensflare.addElement(new LensflareElement(textureFlare, 300, 0, new THREE.Color(0xffffff)));
-        // Вторичные блики
-        this.lensflare.addElement(new LensflareElement(textureFlare, 100, 0.4, new THREE.Color(0xff8800)));
-        this.lensflare.addElement(new LensflareElement(textureFlare, 70, 0.7, new THREE.Color(0xff4400)));
-        this.lensflare.addElement(new LensflareElement(textureFlare, 50, 0.9, new THREE.Color(0xff0000)));
-        this.lensflare.addElement(new LensflareElement(textureFlare, 30, 1.0, new THREE.Color(0xff8800)));
-        
-        // Добавляем обработчик для динамического изменения яркости бликов
-        this.updateLensflareIntensity = () => {
-            if (!this.lensflare || !this.lensflare.elements) return; // Проверяем наличие объекта и его свойств
-            
-            const sunScreenPosition = new THREE.Vector3();
-            this.sun.getWorldPosition(sunScreenPosition);
-            sunScreenPosition.project(this.camera);
-            
-            // Вычисляем угол между камерой и солнцем
-            const cameraDirection = new THREE.Vector3();
-            this.camera.getWorldDirection(cameraDirection);
-            const sunDirection = new THREE.Vector3();
-            this.sun.getWorldPosition(sunDirection).sub(this.camera.position).normalize();
-            const angle = cameraDirection.angleTo(sunDirection);
-            
-            // Регулируем интенсивность бликов в зависимости от угла
-            const intensity = Math.pow(1.0 - Math.abs(angle) / Math.PI, 2.0);
-            this.lensflare.elements.forEach((element, i) => {
-                if (element) { // Дополнительная проверка на существование элемента
-                    element.opacity = Math.max(0, Math.min(1, intensity * (1.0 - i * 0.2)));
-                }
-            });
-        };
+        this.lensflare.addElement(new LensflareElement(textureFlare, 200, 0, new THREE.Color(0xffffff)));
+        this.lensflare.addElement(new LensflareElement(textureFlare, 60, 0.4, new THREE.Color(0xff8800)));
+        this.lensflare.addElement(new LensflareElement(textureFlare, 40, 0.7, new THREE.Color(0xff4400)));
+        this.lensflare.addElement(new LensflareElement(textureFlare, 30, 0.9, new THREE.Color(0xff0000)));
+        this.lensflare.addElement(new LensflareElement(textureFlare, 20, 1.0, new THREE.Color(0xff8800)));
         
         this.sun.add(this.lensflare);
         this.sun.rotation.y = 0;
@@ -771,22 +749,26 @@ class Earth {
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Значительно усиливаем яркость ночных огней
-                    vec4 brightNightColor = nightColor * vec4(8.0, 7.0, 4.0, 1.0);
+                    // Делаем ночные огни очень яркими и более желтыми
+                    vec4 brightNightColor = nightColor * vec4(15.0, 12.0, 8.0, 1.0);
                     
-                    // Делаем более плавный переход между днем и ночью
-                    float transition = smoothstep(-0.2, 0.2, cosAngle);
+                    // Более резкий переход между днем и ночью
+                    float transition = smoothstep(-0.15, 0.0, cosAngle);
                     
-                    // Усиливаем свечение для ночных огней
-                    float nightGlow = (1.0 - transition) * 0.8;
-                    brightNightColor += vec4(nightGlow * vec3(1.0, 0.9, 0.5), 0.0);
+                    // Усиливаем свечение ночных огней
+                    float nightGlow = pow(1.0 - transition, 2.0);
+                    brightNightColor += vec4(nightGlow * vec3(1.0, 0.8, 0.5), 0.0);
                     
-                    // Смешиваем дневной и ночной цвета
+                    // Добавляем легкое свечение на темной стороне
+                    vec3 nightAmbient = vec3(0.1, 0.1, 0.2) * (1.0 - transition);
+                    
+                    // Смешиваем цвета с учетом перехода
                     vec4 finalColor = mix(brightNightColor, dayColor, transition);
+                    finalColor.rgb += nightAmbient;
                     
-                    // Усиливаем свечение на границе дня и ночи
-                    float terminatorGlow = smoothstep(0.0, 0.3, abs(cosAngle));
-                    finalColor.rgb += vec3(0.2, 0.2, 0.3) * (1.0 - terminatorGlow);
+                    // Добавляем свечение на границе
+                    float edgeGlow = pow(abs(cosAngle), 4.0) * 0.3;
+                    finalColor.rgb += vec3(1.0, 0.9, 0.8) * edgeGlow;
                     
                     gl_FragColor = finalColor;
                 }
