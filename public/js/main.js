@@ -33,7 +33,7 @@ class Earth {
 
         // Добавляем точечный свет (имитация солнца)
         this.sunLight = new THREE.PointLight(0xffffff, 2.0, 100);
-        this.sunLight.position.set(50, 0, 0);
+        this.sunLight.position.set(50, 0, 0); // Солнце статично справа
         this.scene.add(this.sunLight);
 
         // Создаем группу для Земли с наклоном оси
@@ -41,7 +41,7 @@ class Earth {
         this.earthGroup.rotation.z = EARTH_TILT;
         this.scene.add(this.earthGroup);
 
-        // Настройка контролей орбиты
+        // Настройка камеры и контролей
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
@@ -104,30 +104,9 @@ class Earth {
         const currentTime = Date.now();
         const elapsed = currentTime - this.startTime;
         
-        // Вращаем камеру вокруг Земли
-        if (this.camera) {
-            const angle = (elapsed * ROTATION_SPEED) % (2 * Math.PI);
-            const radius = 15; // Радиус орбиты камеры
-            
-            this.camera.position.x = Math.cos(angle) * radius;
-            this.camera.position.z = Math.sin(angle) * radius;
-            this.camera.position.y = 5; // Поддерживаем небольшую высоту
-            
-            // Камера всегда смотрит на Землю
-            this.camera.lookAt(0, 0, 0);
-            
-            // Обновляем позицию солнца относительно камеры
-            const sunRadius = 50;
-            this.sunLight.position.x = -Math.cos(angle) * sunRadius;
-            this.sunLight.position.z = -Math.sin(angle) * sunRadius;
-            
-            // Обновляем uniform для шейдера
-            if (this.earth.material.uniforms) {
-                this.earth.material.uniforms.sunPosition.value.copy(this.sunLight.position);
-            }
-            if (this.atmosphere && this.atmosphere.material.uniforms) {
-                this.atmosphere.material.uniforms.sunPosition.value.copy(this.sunLight.position);
-            }
+        // Вращаем Землю вокруг своей оси
+        if (this.earth) {
+            this.earth.rotation.y = (elapsed * ROTATION_SPEED) % (2 * Math.PI);
         }
 
         // Обновляем контроли камеры
@@ -155,7 +134,7 @@ class Earth {
                 nightTexture: { value: nightTexture },
                 normalMap: { value: normalTexture },
                 roughnessMap: { value: roughnessTexture },
-                sunPosition: { value: this.sunLight.position.clone() }
+                sunPosition: { value: new THREE.Vector3(50, 0, 0) } // Статичная позиция солнца
             },
             vertexShader: `
                 varying vec2 vUv;
@@ -182,22 +161,23 @@ class Earth {
                 varying vec3 vPosition;
 
                 void main() {
-                    vec3 sunDirection = normalize(sunPosition - vPosition);
+                    vec3 sunDirection = normalize(sunPosition);
                     float cosAngle = dot(vNormal, sunDirection);
                     
                     // Получаем цвета из текстур
                     vec4 dayColor = texture2D(dayTexture, vUv);
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     
-                    // Делаем более жесткий переход между днем и ночью
-                    float transition = smoothstep(-0.05, 0.05, cosAngle);
+                    // Более резкий переход между днем и ночью
+                    float transition = smoothstep(-0.1, 0.1, cosAngle);
                     
-                    // Ночная сторона полностью черная, только огни городов
-                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(5.0, 4.0, 3.0, 1.0);
-                    vec4 baseColor = mix(vec4(0.0, 0.0, 0.0, 1.0), dayColor, pow(transition, 1.5));
+                    // Ночная сторона абсолютно черная
+                    vec4 baseColor = mix(vec4(0.0, 0.0, 0.0, 1.0), dayColor, transition);
                     
-                    // Финальный цвет: черная ночь + яркие огни
-                    gl_FragColor = baseColor + (nightLights * pow(1.0 - transition, 2.0));
+                    // Добавляем яркие огни городов только на ночной стороне
+                    vec4 nightLights = nightColor * (1.0 - transition) * vec4(8.0, 7.0, 6.0, 1.0);
+                    
+                    gl_FragColor = baseColor + (nightLights * pow(1.0 - transition, 3.0));
                 }
             `
         });
