@@ -214,7 +214,7 @@
             bottom: 0;
             width: 100%;
             height: 100%;
-            background: rgba(18, 18, 23, 0.95);
+            background: rgb(22, 22, 27);
             transform: translateY(100%);
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 999;
@@ -223,6 +223,8 @@
         .tab-content.active {
             transform: translateY(80px);
             pointer-events: auto;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
         }
         .tab-content-inner {
             width: 100%;
@@ -557,21 +559,22 @@
             tg.setHeaderColor('secondary_bg_color');
             tg.setBackgroundColor('#000000');
             
+            // Disable swipe to close
+            tg.disableClosingConfirmation();
+            tg.onEvent('viewportChanged', () => {
+                tg.expand();
+            });
+            
             // Initialize on ready
             tg.ready(() => {
                 tg.expand();
                 updateUserProfile();
             });
-            
-            // Handle viewport changes
-            tg.onEvent('viewportChanged', () => {
-                tg.expand();
-            });
         }
         
         // Prevent default touch behaviors
         document.addEventListener('touchmove', (e) => {
-            if (e.touches.length > 1) {
+            if (e.touches.length > 1 || e.target.closest('.tab-content')) {
                 e.preventDefault();
             }
         }, { passive: false });
