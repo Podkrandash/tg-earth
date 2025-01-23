@@ -3,11 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "git": {
-    "deploymentEnabled": true,
-    "main": {
-      "enabled": true
-    }
+    "deploymentEnabled": true
   },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
   "functions": {
     "api/server.js": {
       "memory": 1024,
