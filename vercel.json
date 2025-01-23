@@ -3,9 +3,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "git": {
-    "deploymentEnabled": true
+    "deploymentEnabled": {
+      "main": true
+    }
   },
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
   "functions": {
     "api/server.js": {
       "memory": 1024,

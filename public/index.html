@@ -539,8 +539,14 @@
         // Initialize Telegram WebApp
         const tg = window.Telegram.WebApp;
         
-        // Expand to full height
+        // Expand to full height immediately
         tg.expand();
+        tg.enableClosingConfirmation();
+        
+        // Make sure we're expanded even after ready
+        tg.ready(() => {
+        tg.expand();
+        });
         
         // Update user profile when available
         function updateUserProfile() {
@@ -558,6 +564,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             tg.ready();
             updateUserProfile();
+            // Ensure we're expanded
+            tg.expand();
         });
     </script>
     <script type="module" src="/js/main.js"></script>
