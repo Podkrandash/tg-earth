@@ -1055,30 +1055,52 @@
                 const newBtn = connectBtn.cloneNode(true);
                 connectBtn.parentNode.replaceChild(newBtn, connectBtn);
                 
-                // Добавляем обработчик для подключения
-                newBtn.addEventListener('click', async () => {
-                    try {
-                        // Получаем список доступных кошельков
-                        const wallets = await connector.getWallets();
-                        const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
+                // Добавляем обработчики для тач и клик событий
+                ['touchstart', 'click'].forEach(eventType => {
+                    newBtn.addEventListener(eventType, async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         
-                        if (tonkeeper) {
-                            // Создаем ссылку для подключения
-                            const universalLink = connector.connect({
-                                universalLink: tonkeeper.universalUrl,
-                                bridgeUrl: tonkeeper.bridgeUrl
-                            });
+                        try {
+                            // Получаем список доступных кошельков
+                            const wallets = await connector.getWallets();
+                            const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
                             
-                            // Открываем ссылку в Telegram
-                            if (window.Telegram?.WebApp) {
-                                window.Telegram.WebApp.openLink(universalLink, { 
-                                    try_instant_view: false 
+                            if (tonkeeper) {
+                                // Создаем ссылку для подключения
+                                const universalLink = connector.connect({
+                                    universalLink: tonkeeper.universalUrl,
+                                    bridgeUrl: tonkeeper.bridgeUrl
                                 });
+                                
+                                // Добавляем анимацию нажатия
+                                newBtn.classList.add('button-pressed');
+                                setTimeout(() => {
+                                    newBtn.classList.remove('button-pressed');
+                                    
+                                    // Открываем ссылку в Telegram
+                                    if (window.Telegram?.WebApp) {
+                                        window.Telegram.WebApp.openLink(universalLink, { 
+                                            try_instant_view: false 
+                                        });
+                                    } else {
+                                        window.location.href = universalLink;
+                                    }
+                                }, 150);
                             } else {
-                                window.location.href = universalLink;
+                                // Если TonKeeper не найден, открываем страницу загрузки
+                                const downloadUrl = 'https://tonkeeper.com/download';
+                                if (window.Telegram?.WebApp) {
+                                    window.Telegram.WebApp.openLink(downloadUrl, { 
+                                        try_instant_view: false 
+                                    });
+                                } else {
+                                    window.location.href = downloadUrl;
+                                }
                             }
-                        } else {
-                            // Если TonKeeper не найден, открываем страницу загрузки
+                        } catch (error) {
+                            console.error('Wallet connection error:', error);
+                            // В случае ошибки открываем страницу загрузки TonKeeper
                             const downloadUrl = 'https://tonkeeper.com/download';
                             if (window.Telegram?.WebApp) {
                                 window.Telegram.WebApp.openLink(downloadUrl, { 
@@ -1088,18 +1110,7 @@
                                 window.location.href = downloadUrl;
                             }
                         }
-                    } catch (error) {
-                        console.error('Wallet connection error:', error);
-                        // В случае ошибки открываем страницу загрузки TonKeeper
-                        const downloadUrl = 'https://tonkeeper.com/download';
-                        if (window.Telegram?.WebApp) {
-                            window.Telegram.WebApp.openLink(downloadUrl, { 
-                                try_instant_view: false 
-                            });
-                        } else {
-                            window.location.href = downloadUrl;
-                        }
-                    }
+                    }, { passive: false });
                 });
             }
 
