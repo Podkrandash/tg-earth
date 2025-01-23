@@ -1051,60 +1051,13 @@
 
             const connectBtn = document.querySelector('#connect-wallet-btn');
             if (connectBtn) {
-                // Remove old listeners and create new button
+                // Remove old listeners
                 const newBtn = connectBtn.cloneNode(true);
                 connectBtn.parentNode.replaceChild(newBtn, connectBtn);
                 
-                // Add universal event handler for both mobile and desktop
-                newBtn.addEventListener('pointerdown', async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    
-                    // Add pressed state
-                    newBtn.classList.add('button-pressed');
-                        
-                        try {
-                        const wallets = await connector.getWallets();
-                        // Try to find TonKeeper first
-                        const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
-                        const wallet = tonkeeper || wallets[0];
-                        
-                        if (wallet) {
-                            const universalLink = connector.connect({
-                                universalLink: wallet.universalLink,
-                                bridgeUrl: wallet.bridgeUrl
-                            });
-                            
-                            // Small delay for button animation
-                            setTimeout(() => {
-                                if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                                window.location.href = universalLink;
-                                } else {
-                                    window.open(universalLink, '_blank');
-                                }
-                            }, 150);
-                        } else {
-                            window.open('https://tonkeeper.com/download', '_blank');
-                        }
-                        } catch (error) {
-                        console.error('Wallet connection error:', error);
-                        window.open('https://tonkeeper.com/download', '_blank');
-                    }
-                    
-                    // Remove pressed state after animation
-                    setTimeout(() => {
-                        newBtn.classList.remove('button-pressed');
-                    }, 300);
-                });
-                
-                // Handle animation cancel
-                newBtn.addEventListener('pointerup', () => {
-                    newBtn.classList.remove('button-pressed');
-                });
-                
-                newBtn.addEventListener('pointercancel', () => {
-                    newBtn.classList.remove('button-pressed');
-                });
+                // Single touch handler for better mobile response
+                newBtn.addEventListener('touchstart', handleWalletConnect, { passive: false });
+                newBtn.addEventListener('click', handleWalletConnect, { passive: false });
             }
 
             // Check if wallet is already connected
@@ -1125,6 +1078,79 @@
             console.error('TON Connect initialization error:', error);
         }
     }
+
+    // Separate handler function for wallet connection
+    async function handleWalletConnect(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+        const btn = e.currentTarget;
+        
+        // Visual feedback
+        btn.style.transform = 'scale(0.96)';
+                        
+                        try {
+                            const wallets = await connector.getWallets();
+                            const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
+                            
+                            if (tonkeeper) {
+                                const universalLink = connector.connect({
+                                    universalLink: tonkeeper.universalLink,
+                                    bridgeUrl: tonkeeper.bridgeUrl
+                                });
+                                
+                // Use Telegram's WebApp browser for better mobile compatibility
+                if (window.Telegram?.WebApp) {
+                                    window.Telegram.WebApp.openTelegramLink(universalLink);
+                                } else {
+                    window.location.href = universalLink;
+                                }
+                            } else {
+                const downloadUrl = 'https://tonkeeper.com/download';
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.openTelegramLink(downloadUrl);
+                                } else {
+                    window.location.href = downloadUrl;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Wallet connection error:', error);
+            if (window.Telegram?.WebApp) {
+                                window.Telegram.WebApp.openTelegramLink('https://tonkeeper.com/download');
+                            } else {
+                window.location.href = 'https://tonkeeper.com/download';
+                            }
+                        }
+                        
+        // Reset button state
+                        setTimeout(() => {
+            btn.style.transform = '';
+        }, 200);
+    }
+
+    // Update CSS for better mobile touch response
+    const style = document.createElement('style');
+    style.textContent = `
+        .connect-wallet-btn {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: transform 0.2s ease;
+            will-change: transform;
+        }
+        
+        .connect-wallet-btn:active {
+            transform: scale(0.96) !important;
+        }
+        
+        @media (hover: none) {
+            .connect-wallet-btn {
+                transition: transform 0.2s ease;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 
     async function updateWalletInfo(wallet) {
         const balanceDisplay = document.querySelector('.wallet-balance');
