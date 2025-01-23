@@ -208,24 +208,18 @@
         }
         .tab-content {
             position: fixed;
-            top: 80px;
+            top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             width: 100%;
+            height: 100%;
             background: rgba(18, 18, 23, 0.95);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
             transform: translateY(100%);
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 999;
             pointer-events: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
-            touch-action: pan-y;
-            -webkit-overflow-scrolling: touch;
+            touch-action: none;
         }
         .tab-content.active {
             transform: translateY(0);
@@ -352,14 +346,18 @@
         .rating-list-container {
             padding-bottom: 100px;
             margin-top: 24px;
+            height: calc(100vh - 300px);
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
+            position: relative;
+            z-index: 1;
         }
         .rating-list {
             margin: 0;
             padding: 0;
             list-style: none;
+            touch-action: pan-y;
         }
         .rating-item {
             display: flex;
@@ -371,13 +369,25 @@
             border-radius: 12px;
             margin-bottom: 8px;
             transition: all 0.2s ease;
+            touch-action: pan-y;
         }
         .rating-item:hover {
             background: rgba(255, 255, 255, 0.05);
         }
         .rating-item.current {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+        .rating-item.current::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #fff;
+            border-radius: 0 2px 2px 0;
         }
         .rating-position {
             font-size: 16px;
@@ -539,33 +549,112 @@
         // Initialize Telegram WebApp
         const tg = window.Telegram.WebApp;
         
-        // Expand to full height immediately
-        tg.expand();
-        tg.enableClosingConfirmation();
+        // Force fullscreen mode immediately
+        if (tg) {
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            // Set viewport settings
+            tg.setHeaderColor('#000000');
+            tg.setBackgroundColor('#000000');
+            
+            // Request platform to show fullscreen
+            tg.MainButton.hide();
+            tg.BackButton.hide();
+            
+            // Set viewport settings for iOS
+            const viewport = document.querySelector('meta[name=viewport]');
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+            
+            // Additional fullscreen request on ready
+            tg.ready(() => {
+                tg.expand();
+                
+                // Force fullscreen mode
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
+                
+                // Update user profile if available
+                updateUserProfile();
+            });
+            
+            // Handle viewport changes
+            tg.onEvent('viewportChanged', () => {
+                tg.expand();
+            });
+        }
         
-        // Make sure we're expanded even after ready
-        tg.ready(() => {
-        tg.expand();
+        // Prevent default touch behaviors
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        document.addEventListener('gesturestart', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        // Update rating list scroll behavior
+        function fixRatingScroll() {
+            const ratingContainer = document.querySelector('.rating-list-container');
+            if (ratingContainer) {
+                // Set initial height
+                const windowHeight = window.innerHeight;
+                const headerHeight = document.querySelector('.profile-header').offsetHeight;
+                const topPadding = 24; // Padding from top
+                const bottomPadding = 100; // Padding for bottom navigation
+                
+                // Calculate available height
+                const availableHeight = windowHeight - headerHeight - topPadding - bottomPadding;
+                ratingContainer.style.height = `${availableHeight}px`;
+                
+                // Enable smooth scrolling
+                ratingContainer.style.overflowY = 'auto';
+                ratingContainer.style.webkitOverflowScrolling = 'touch';
+                
+                // Add touch event handlers
+                ratingContainer.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+                
+                ratingContainer.addEventListener('touchmove', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+            }
+        }
+        
+        // Update scroll fix on window resize
+        window.addEventListener('resize', () => {
+            fixRatingScroll();
         });
-        
+
         // Update user profile when available
         function updateUserProfile() {
             const user = tg.initDataUnsafe.user;
             if (user) {
+                // Update profile info
                 document.getElementById('profile-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
                 document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '';
                 if (user.photo_url) {
-                    document.getElementById('profile-avatar').src = user.photo_url;
+                    // Update all instances of user's avatar
+                    document.querySelectorAll('.current .rating-avatar img, .profile-avatar img').forEach(img => {
+                        img.src = user.photo_url;
+                    });
                 }
+                
+                // Fix rating scroll after profile is loaded
+                fixRatingScroll();
             }
         }
         
-        // Call when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             tg.ready();
             updateUserProfile();
-            // Ensure we're expanded
-            tg.expand();
+            fixRatingScroll();
         });
     </script>
     <script type="module" src="/js/main.js"></script>
@@ -705,6 +794,8 @@
                 
                 if (section === 'profile') {
                     showProfile();
+                    // Fix scroll after content is loaded
+                    setTimeout(fixRatingScroll, 100);
                 } else {
                     let content = '';
                     switch(section) {

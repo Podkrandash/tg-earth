@@ -10,7 +10,7 @@ bot.onText(/\/start/, async (msg) => {
       reply_markup: {
         inline_keyboard: [[
           {
-            text: '🌍 Open Earth',
+            text: '🌍 Open Earth 3D',
             web_app: { url: webAppUrl }
           }
         ]]
@@ -18,6 +18,19 @@ bot.onText(/\/start/, async (msg) => {
     });
   } catch (error) {
     console.error('Error in /start command:', error);
+  }
+});
+
+// Handle game callback query
+bot.on('callback_query', async (query) => {
+  try {
+    if (query.game_short_name === 'Earth') {
+      await bot.answerCallbackQuery(query.id, {
+        url: webAppUrl
+      });
+    }
+  } catch (error) {
+    console.error('Error handling game callback:', error);
   }
 });
 
