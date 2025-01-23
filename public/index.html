@@ -506,6 +506,68 @@
                 margin-top: 2px;
             }
         }
+        .wallet-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 24px;
+        }
+        .wallet-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .wallet-header i {
+            font-size: 24px;
+            color: #0098EA;
+        }
+        .wallet-balance {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .balance-currency {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .connect-wallet-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #0098EA;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .connect-wallet-btn:hover {
+            background: #0088d1;
+        }
+        .connect-wallet-btn:active {
+            transform: scale(0.98);
+        }
+        .connect-wallet-btn i {
+            font-size: 20px;
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -832,6 +894,126 @@
                 });
             }
         });
+    </script>
+    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+    <script>
+    // Add TON Connect initialization
+    const manifestUrl = 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json';
+    let connector;
+
+    async function initTonConnect() {
+        try {
+            connector = new TonConnect({
+                manifestUrl: manifestUrl,
+                buttonRootId: 'connect-wallet-btn'
+            });
+            
+            // Listen for wallet events
+            connector.onStatusChange(async (wallet) => {
+                if (wallet) {
+                    await updateWalletInfo(wallet);
+                } else {
+                    resetWalletDisplay();
+                }
+            });
+            
+            // Restore connection if exists
+            const activeWallet = await connector.getWallet();
+            if (activeWallet) {
+                await updateWalletInfo(activeWallet);
+            }
+        } catch (error) {
+            console.error('Failed to initialize TON Connect:', error);
+        }
+    }
+
+    async function updateWalletInfo(wallet) {
+        const balanceDisplay = document.querySelector('.wallet-balance');
+        const connectBtn = document.querySelector('.connect-wallet-btn');
+        const balanceAmount = document.querySelector('.balance-amount');
+        
+        if (balanceDisplay && connectBtn && balanceAmount) {
+            try {
+                // Get wallet balance
+                const balance = await connector.getBalance(wallet.account.address);
+                const formattedBalance = (Number(balance) / 1e9).toFixed(2);
+                
+                // Update UI
+                connectBtn.style.display = 'none';
+                balanceDisplay.style.display = 'flex';
+                balanceAmount.textContent = formattedBalance;
+                
+                // Add disconnect button
+                const disconnectBtn = document.createElement('button');
+                disconnectBtn.className = 'connect-wallet-btn';
+                disconnectBtn.style.marginTop = '16px';
+                disconnectBtn.style.background = '#2C2C35';
+                disconnectBtn.innerHTML = `
+                    <i class="material-icons">link_off</i>
+                    Disconnect Wallet
+                `;
+                
+                disconnectBtn.addEventListener('click', async () => {
+                    await connector.disconnect();
+                    resetWalletDisplay();
+                });
+                
+                balanceDisplay.parentNode.appendChild(disconnectBtn);
+            } catch (error) {
+                console.error('Failed to update wallet info:', error);
+            }
+        }
+    }
+
+    function resetWalletDisplay() {
+        const balanceDisplay = document.querySelector('.wallet-balance');
+        const connectBtn = document.querySelector('.connect-wallet-btn');
+        const disconnectBtn = document.querySelector('.connect-wallet-btn[style*="background: #2C2C35"]');
+        
+        if (balanceDisplay && connectBtn) {
+            balanceDisplay.style.display = 'none';
+            connectBtn.style.display = 'flex';
+        }
+        
+        if (disconnectBtn) {
+            disconnectBtn.remove();
+        }
+    }
+
+    function initializeWalletTab() {
+        const walletContent = `
+            <div class="wallet-container">
+                <div class="wallet-header">
+                    <i class="material-icons">account_balance_wallet</i>
+                    <span>TON Wallet</span>
+                </div>
+                <div class="wallet-content">
+                    <div class="wallet-balance" style="display: none;">
+                        <div class="balance-amount">0.00</div>
+                        <div class="balance-currency">TON</div>
+                    </div>
+                    <button class="connect-wallet-btn" id="connect-wallet-btn">
+                        <i class="material-icons">link</i>
+                        Connect Wallet
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        const walletTab = document.querySelector('[data-section="wallet"]');
+        walletTab.addEventListener('click', () => {
+            const tabContent = document.querySelector('.tab-content-inner');
+            tabContent.innerHTML = walletContent;
+            
+            // Initialize TON Connect after content is added
+            initTonConnect();
+        });
+    }
+
+    // Call this function after DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeWalletTab();
+    });
     </script>
 </body>
 </html>
