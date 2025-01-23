@@ -534,6 +534,7 @@
         <div class="tab-content-inner">
         </div>
     </div>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script type="module" src="/js/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -546,6 +547,16 @@
             let isProfileConnected = false;
             let isFirstTouch = true;
             
+            // Инициализация Telegram WebApp
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            // Функция для проверки, запущено ли приложение в Telegram
+            function isRunningInTelegram() {
+                return window.Telegram && window.Telegram.WebApp;
+            }
+            
             // Показываем панель навигации по первому нажатию на сцену
             sceneContainer.addEventListener('click', () => {
                 if (isFirstTouch && sceneContainer.style.opacity === '1') {
@@ -554,48 +565,12 @@
                 }
             });
 
-            // Также обрабатываем touch события для мобильных устройств
             sceneContainer.addEventListener('touchstart', (e) => {
                 if (isFirstTouch && sceneContainer.style.opacity === '1') {
                     isFirstTouch = false;
                     navPanel.classList.add('visible');
                 }
             }, { passive: true });
-
-            // Убираем обработчик transitionend, так как он больше не нужен
-            sceneContainer.addEventListener('transitionend', () => {
-                if (sceneContainer.style.opacity === '1') {
-                    // Теперь просто ждем нажатия пользователя
-                }
-            });
-            
-            // Функция для проверки, запущено ли приложение в Telegram
-            function isRunningInTelegram() {
-                return window.TelegramGameProxy !== undefined;
-            }
-
-            // Инициализация Telegram Game
-            if (isRunningInTelegram()) {
-                            isProfileConnected = true;
-                // Сообщаем Telegram что игра загружена
-                TelegramGameProxy.initParams({});
-            }
-            
-            // Функция для подключения к Telegram
-            async function connectToTelegram() {
-                if (isRunningInTelegram()) {
-                    // В игре нет прямого доступа к данным пользователя через WebApp
-                    // Поэтому возвращаем базовую информацию
-                    return {
-                        first_name: "Player",
-                        username: "unknown",
-                        photo_url: null
-                    };
-                }
-                // Если приложение открыто не в Telegram, перенаправляем на бота
-                window.location.href = 'https://t.me/notEarthBot/game';
-                    return null;
-            }
 
             // Функция для отображения профиля
             async function showProfile() {
@@ -611,7 +586,7 @@
                         <div class="profile-connecting">
                             <i class="material-icons">telegram</i>
                             <h4>Open in Telegram</h4>
-                            <p>This game can only be played in Telegram</p>
+                            <p>This app can only be used in Telegram</p>
                             <button class="connect-button" id="telegram-connect">
                                 <i class="material-icons">telegram</i>
                                 Open in Telegram
@@ -622,20 +597,23 @@
                     
                     const connectButton = document.querySelector('#telegram-connect');
                     if (connectButton) {
-                        connectButton.addEventListener('click', connectToTelegram);
+                        connectButton.addEventListener('click', () => {
+                            window.location.href = 'https://t.me/notEarthBot';
+                        });
                     }
                         return;
                 }
 
-                // Показываем профиль игрока
+                // Получаем данные пользователя из WebApp
+                const user = window.Telegram.WebApp.initDataUnsafe.user;
                 content += `
                     <div class="profile-header">
                         <div class="profile-avatar">
-                            <img src="https://via.placeholder.com/80/666666/FFFFFF?text=P" alt="Profile Avatar">
+                            <img src="${user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=P'}" alt="Profile Avatar">
                         </div>
                         <div class="profile-info">
-                            <h4 class="profile-name">Player</h4>
-                            <p class="profile-bio">Playing via Telegram</p>
+                            <h4 class="profile-name">${user.first_name} ${user.last_name || ''}</h4>
+                            <p class="profile-bio">@${user.username || 'no_username'}</p>
                         </div>
                         <div class="profile-rating">
                             <p class="rating-number">#7</p>

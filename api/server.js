@@ -1,48 +1,36 @@
-import { Telegraf } from 'telegraf';
+const TelegramBot = require('node-telegram-bot-api');
+const token = process.env.BOT_TOKEN;
+const bot = new TelegramBot(token);
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
-
-// Устанавливаем вебхук при запуске
-const WEBHOOK_URL = 'https://tg-earth-4dzw.vercel.app/api/server';
-const GAME_URL = 'https://tg-earth-4dzw.vercel.app';
-
-bot.telegram.setWebhook(WEBHOOK_URL).then(() => {
-    console.log('Webhook set to:', WEBHOOK_URL);
-}).catch(error => {
-    console.error('Failed to set webhook:', error);
-});
-
-// Обработчик для /start команды
-bot.command('start', (ctx) => {
-    console.log('Received /start command');
-    return ctx.reply('Добро пожаловать! Нажмите кнопку ниже, чтобы начать игру:', {
-        reply_markup: {
-            inline_keyboard: [[
-                { text: '🌍 Играть', callback_game: 'Earth' }
-            ]]
-        }
-    });
-});
-
-// Обработчик для callback query
-bot.on('callback_query', (ctx) => {
-    if (ctx.callbackQuery.game_short_name === 'Earth') {
-        console.log('Game callback received');
-        return ctx.answerGameQuery(GAME_URL);
+// Обработчик для команды /start
+bot.onText(/\/start/, async (msg) => {
+    try {
+        const chatId = msg.chat.id;
+        await bot.sendMessage(chatId, 'Welcome to Earth 3D! Click the button below to open the app:', {
+            reply_markup: {
+                inline_keyboard: [[
+                    {
+                        text: '🌍 Open Earth 3D',
+                        web_app: { url: process.env.APP_URL || 'https://tg-earth-4dzw.vercel.app' }
+                    }
+                ]]
+            }
+        });
+    } catch (error) {
+        console.error('Error in /start command:', error);
     }
 });
 
-// Обработчик для вебхуков
-export default async function handler(req, res) {
+// Экспортируем функцию для обработки вебхуков
+module.exports = async (request, response) => {
     try {
-        if (req.method === 'POST') {
-            const update = req.body;
-            console.log('Received update:', update);
-            await bot.handleUpdate(update);
+        const { body } = request;
+        if (body.message || body.callback_query) {
+            await bot.handleUpdate(body);
         }
-        res.status(200).json({ ok: true });
+        response.status(200).json({ ok: true });
     } catch (error) {
         console.error('Error handling update:', error);
-        res.status(500).json({ error: error.message });
+        response.status(500).json({ ok: false, error: error.message });
     }
-} 
+}; 
