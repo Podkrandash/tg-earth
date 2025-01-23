@@ -706,146 +706,61 @@
     </script>
     <script type="module" src="/js/main.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const loadingScreen = document.getElementById('loading-screen');
-            const navPanel = document.querySelector('.nav-panel');
-            const sceneContainer = document.getElementById('scene-container');
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            
-            let isProfileConnected = false;
-            let isFirstTouch = true;
-            
-            // Функция для проверки, запущено ли приложение в Telegram
-            function isRunningInTelegram() {
-                return window.Telegram && window.Telegram.WebApp;
-            }
-            
-            // Показываем панель навигации по первому нажатию на сцену
-            sceneContainer.addEventListener('click', () => {
-                if (isFirstTouch && sceneContainer.style.opacity === '1') {
-                    isFirstTouch = false;
-                    navPanel.classList.add('visible');
-                }
-            });
-
-            sceneContainer.addEventListener('touchstart', (e) => {
-                if (isFirstTouch && sceneContainer.style.opacity === '1') {
-                    isFirstTouch = false;
-                    navPanel.classList.add('visible');
-                }
-            }, { passive: true });
-
-            // Функция для отображения профиля
-            async function showProfile() {
-                let content = `
-                    <h3>Profile</h3>
-                    <button class="close-button" type="button">
-                        <i class="material-icons">close</i>
-                    </button>
-                `;
-
-                if (!isRunningInTelegram()) {
-                    content += `
-                        <div class="profile-connecting">
-                            <i class="material-icons">telegram</i>
-                            <h4>Open in Telegram</h4>
-                            <p>This app can only be used in Telegram</p>
-                            <button class="connect-button" id="telegram-connect">
-                                <i class="material-icons">telegram</i>
-                                Open in Telegram
-                            </button>
-                        </div>
-                    `;
-                    tabInner.innerHTML = content;
-                    
-                    const connectButton = document.querySelector('#telegram-connect');
-                    if (connectButton) {
-                        connectButton.addEventListener('click', () => {
-                            window.location.href = 'https://t.me/notEarthBot';
-                        });
-                    }
-                        return;
-                }
-
-                // Получаем данные пользователя из WebApp
-                const user = window.Telegram.WebApp.initDataUnsafe.user;
-                content += `
-                    <div class="profile-header">
-                        <div class="profile-avatar">
-                            <img src="${user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=P'}" alt="Profile Avatar">
-                        </div>
-                        <div class="profile-info">
-                            <h4 class="profile-name">${user.first_name} ${user.last_name || ''}</h4>
-                            <p class="profile-bio">@${user.username || 'no_username'}</p>
-                        </div>
-                        <div class="profile-rating">
-                            <p class="rating-number">#7</p>
-                            <p class="rating-label">Rating</p>
-                        </div>
-                    </div>
-                    <div class="rating-list-container">
-                        <ul class="rating-list">
-                            ${Array.from({length: 100}, (_, i) => `
-                                <li class="rating-item ${i === 6 ? 'current' : ''}">
-                                    <span class="rating-position">#${i + 1}</span>
-                                    <div class="rating-avatar">
-                                        <img src="https://via.placeholder.com/40/666666/FFFFFF?text=${i + 1}" alt="User Avatar">
-                                    </div>
-                                    <div class="rating-user-info">
-                                        <h4 class="rating-username">User ${i + 1}</h4>
-                                        <p class="rating-score">${1000 - i * 5} points</p>
-                                    </div>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                `;
-                tabInner.innerHTML = content;
-            }
-            
-            // Обработчики для кнопок навигации
-            const navButtons = document.querySelectorAll('.nav-button');
-            navButtons.forEach(button => {
+        document.querySelectorAll('.nav-button').forEach(button => {
                 ['touchstart', 'click'].forEach(eventType => {
                     button.addEventListener(eventType, (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                         
-                    const section = button.getAttribute('data-section');
-                    handleNavClick(section, button);
-                    }, { passive: false });
-                });
-            });
-
-            // Предотвращаем скролл на навигационной панели
-            navPanel.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, { passive: false });
-
-            // Предотвращаем скролл на кнопках
-            navButtons.forEach(button => {
-                button.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, { passive: false });
-            });
-
-            function handleNavClick(section, clickedButton) {
-                console.log('Button clicked:', section);
-                
-                const buttons = document.querySelectorAll('.nav-button');
-                buttons.forEach(btn => btn.classList.remove('active'));
+                    const clickedButton = button;
+                    const section = clickedButton.dataset.section;
+                    const tabContent = document.querySelector('.tab-content');
+                    const tabInner = tabContent.querySelector('.tab-content-inner');
+                    
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.nav-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked button
                 clickedButton.classList.add('active');
                 
-                if (section === 'profile') {
-                    showProfile();
-                    // Fix scroll after content is loaded
-                    setTimeout(fixRatingScroll, 100);
-                } else {
                     let content = '';
+                    
+                    // Generate content based on section
                     switch(section) {
+                        case 'wallet':
+                            content = `
+                                <button class="close-button">
+                                    <i class="material-icons">close</i>
+                                </button>
+                                <h3>Wallet</h3>
+                                <div class="wallet-container">
+                                    <div class="wallet-header">
+                                        <i class="material-icons">account_balance_wallet</i>
+                                        <span>TON Wallet</span>
+                                    </div>
+                                    <div class="wallet-content">
+                                        <div class="wallet-balance" style="display: none;">
+                                            <div class="balance-amount">0.00</div>
+                                            <div class="balance-currency">TON</div>
+                                        </div>
+                                        <button class="connect-wallet-btn" id="connect-wallet-btn">
+                                            <i class="material-icons">link</i>
+                                            Connect Wallet
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            break;
+                        case 'profile':
+                            content = `
+                                <h3>Profile</h3>
+                                <button class="close-button" type="button">
+                                    <i class="material-icons">close</i>
+                                </button>
+                            `;
+                            break;
                         case 'planet':
                             content = `
                                 <h3>Planet Info</h3>
@@ -862,19 +777,18 @@
                                 </button>
                             `;
                             break;
-                        case 'wallet':
-                            content = `
-                                <h3>Wallet</h3>
-                                <button class="close-button" type="button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                            `;
-                            break;
                     }
+                    
                     tabInner.innerHTML = content;
-                }
-                
-                // Обновляем обработчик закрытия
+                    
+                    // Initialize TON Connect if wallet tab
+                    if (section === 'wallet') {
+                        setTimeout(() => {
+                            initTonConnect();
+                        }, 100);
+                    }
+                    
+                    // Update close button handler
                 const closeButton = tabInner.querySelector('.close-button');
                 ['touchstart', 'click'].forEach(eventType => {
                     closeButton.addEventListener(eventType, (e) => {
@@ -892,7 +806,8 @@
                         tabInner.style.opacity = '1';
                     });
                 });
-            }
+                }, { passive: false });
+            });
         });
     </script>
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
