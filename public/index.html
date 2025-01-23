@@ -345,32 +345,31 @@
             letter-spacing: 0.05em;
         }
         .rating-list-container {
-            padding-bottom: 100px;
-            margin-top: 24px;
-            height: calc(100vh - 300px);
+            flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
+            padding: 0 24px;
+            margin: 0 -24px;
             position: relative;
-            z-index: 1;
+            height: calc(100% - 180px);
+            touch-action: pan-y;
+            pointer-events: auto;
         }
         .rating-list {
+            list-style: none;
             margin: 0;
             padding: 0;
-            list-style: none;
             touch-action: pan-y;
+            pointer-events: auto;
         }
         .rating-item {
             display: flex;
             align-items: center;
             gap: 16px;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            margin-bottom: 8px;
-            transition: all 0.2s ease;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             touch-action: pan-y;
+            pointer-events: auto;
         }
         .rating-item:hover {
             background: rgba(255, 255, 255, 0.05);
@@ -592,6 +591,52 @@
             -webkit-text-fill-color: transparent;
             text-shadow: none;
         }
+        .connect-wallet-btn {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .button-pressed {
+            transform: scale(0.96) translateY(2px) !important;
+            transition: transform 0.15s ease-in-out !important;
+        }
+        
+        @media (hover: none) {
+            .connect-wallet-btn:active {
+                transform: scale(0.96) translateY(2px);
+            }
+        }
+        .no-users {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            background: none !important;
+            border: none !important;
+        }
+        
+        .no-users-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        .no-users-message i {
+            font-size: 48px;
+            opacity: 0.5;
+        }
+        
+        .no-users-message p {
+            font-size: 16px;
+            margin: 0;
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -678,49 +723,78 @@
         function fixRatingScroll() {
             const ratingContainer = document.querySelector('.rating-list-container');
             if (ratingContainer) {
-                // Set initial height
+                // Устанавливаем высоту контейнера
                 const windowHeight = window.innerHeight;
-                const headerHeight = document.querySelector('.profile-header').offsetHeight;
-                const topPadding = 24; // Padding from top
-                const bottomPadding = 100; // Padding for bottom navigation
+                const headerHeight = document.querySelector('.profile-header')?.offsetHeight || 0;
+                const topPadding = 24;
+                const bottomPadding = 100;
                 
-                // Calculate available height
                 const availableHeight = windowHeight - headerHeight - topPadding - bottomPadding;
                 ratingContainer.style.height = `${availableHeight}px`;
                 
-                // Enable smooth scrolling
+                // Включаем плавный скролл
                 ratingContainer.style.overflowY = 'auto';
                 ratingContainer.style.webkitOverflowScrolling = 'touch';
                 
-                // Add touch event handlers
-                ratingContainer.addEventListener('touchstart', (e) => {
+                // Добавляем обработчики для предотвращения конфликтов со скроллом
+                const preventParentScroll = (e) => {
                     e.stopPropagation();
-                }, { passive: true });
+                };
                 
-                ratingContainer.addEventListener('touchmove', (e) => {
-                    e.stopPropagation();
-                }, { passive: true });
+                ratingContainer.addEventListener('touchstart', preventParentScroll, { passive: true });
+                ratingContainer.addEventListener('touchmove', preventParentScroll, { passive: true });
+                
+                // Находим текущего пользователя в списке и скроллим к нему
+                const currentUser = ratingContainer.querySelector('.rating-item.current');
+                if (currentUser) {
+                    setTimeout(() => {
+                        currentUser.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
+                }
             }
         }
         
-        // Update scroll fix on window resize
-        window.addEventListener('resize', () => {
-            fixRatingScroll();
+        // Обновляем скролл при изменении размера окна и ориентации
+        window.addEventListener('resize', fixRatingScroll);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(fixRatingScroll, 100);
         });
 
         // Update user profile when available
         function updateUserProfile() {
             const user = tg.initDataUnsafe.user;
             if (user) {
-                // Update profile info
+                // Update profile header
                 document.getElementById('profile-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
                 document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '';
-                if (user.photo_url) {
-                    // Update all instances of user's avatar
-                    document.querySelectorAll('.current .rating-avatar img, .profile-avatar img').forEach(img => {
-                        img.src = user.photo_url;
-                    });
+                
+                // Update profile avatar
+                const profileAvatar = document.querySelector('.profile-avatar img');
+                if (profileAvatar && user.photo_url) {
+                    profileAvatar.src = user.photo_url;
                 }
+                
+                // Find and update user in rating list
+                const ratingItems = document.querySelectorAll('.rating-item');
+                ratingItems.forEach((item, index) => {
+                    if (item.classList.contains('current')) {
+                        const ratingAvatar = item.querySelector('.rating-avatar img');
+                        const ratingUsername = item.querySelector('.rating-username');
+                        const ratingScore = item.querySelector('.rating-score');
+                        
+                        if (ratingAvatar && user.photo_url) {
+                            ratingAvatar.src = user.photo_url;
+                        }
+                        if (ratingUsername) {
+                            ratingUsername.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                        }
+                        if (ratingScore) {
+                            // Сохраняем текущие очки
+                            const points = ratingScore.textContent.split(' ')[0];
+                            ratingScore.textContent = `${points} points`;
+                        }
+                    }
+                });
                 
                 // Fix rating scroll after profile is loaded
                 fixRatingScroll();
@@ -824,11 +898,11 @@
                         break;
                     case 'profile':
                         if (!isRunningInTelegram()) {
-                        content = `
-                            <h3>Profile</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
+                            content = `
+                                <h3>Profile</h3>
+                                <button class="close-button" type="button">
+                                    <i class="material-icons">close</i>
+                                </button>
                                 <div class="profile-connecting">
                                     <i class="material-icons">telegram</i>
                                     <h4>Open in Telegram</h4>
@@ -841,6 +915,10 @@
                             `;
                         } else {
                             const user = window.Telegram.WebApp.initDataUnsafe.user;
+                            const defaultAvatar = 'https://via.placeholder.com/80/666666/FFFFFF?text=P';
+                            const realUsers = getRealUsers();
+                            const currentUserRating = realUsers.find(u => u.id === user?.id)?.position || '-';
+                            
                             content = `
                                 <h3>Profile</h3>
                                 <button class="close-button" type="button">
@@ -848,31 +926,39 @@
                                 </button>
                                 <div class="profile-header">
                                     <div class="profile-avatar">
-                                        <img src="${user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=P'}" alt="Profile Avatar">
+                                        <img src="${user?.photo_url || defaultAvatar}" alt="Profile Avatar">
                                     </div>
                                     <div class="profile-info">
-                                        <h4 class="profile-name" id="profile-name">${user.first_name} ${user.last_name || ''}</h4>
-                                        <p class="profile-bio" id="profile-username">@${user.username || 'no_username'}</p>
+                                        <h4 class="profile-name" id="profile-name">${user ? user.first_name + (user.last_name ? ' ' + user.last_name : '') : 'Loading...'}</h4>
+                                        <p class="profile-bio" id="profile-username">${user?.username ? '@' + user.username : 'Loading...'}</p>
                                     </div>
                                     <div class="profile-rating">
-                                        <p class="rating-number">#7</p>
+                                        <p class="rating-number">#${currentUserRating}</p>
                                         <p class="rating-label">Rating</p>
                                     </div>
                                 </div>
                                 <div class="rating-list-container">
                                     <ul class="rating-list">
-                                        ${Array.from({length: 100}, (_, i) => `
-                                            <li class="rating-item ${i === 6 ? 'current' : ''}">
-                                                <span class="rating-position">#${i + 1}</span>
-                                                <div class="rating-avatar">
-                                                    <img src="https://via.placeholder.com/40/666666/FFFFFF?text=${i + 1}" alt="User Avatar">
+                                        ${realUsers.length > 0 ? 
+                                            realUsers.map((rUser, index) => `
+                                                <li class="rating-item ${rUser.id === user?.id ? 'current' : ''}">
+                                                    <span class="rating-position">#${rUser.position}</span>
+                                                    <div class="rating-avatar">
+                                                        <img src="${rUser.photo_url || defaultAvatar}" alt="User Avatar">
+                                                    </div>
+                                                    <div class="rating-user-info">
+                                                        <h4 class="rating-username">${rUser.first_name}${rUser.last_name ? ' ' + rUser.last_name : ''}</h4>
+                                                        <p class="rating-score">${rUser.score} points</p>
+                                                    </div>
+                                                </li>
+                                            `).join('') : 
+                                            `<li class="rating-item no-users">
+                                                <div class="no-users-message">
+                                                    <i class="material-icons">people_outline</i>
+                                                    <p>Be the first to join the rating!</p>
                                                 </div>
-                                                <div class="rating-user-info">
-                                                    <h4 class="rating-username">User ${i + 1}</h4>
-                                                    <p class="rating-score">${1000 - i * 5} points</p>
-                                                </div>
-                                            </li>
-                                        `).join('')}
+                                            </li>`
+                                        }
                                     </ul>
                                 </div>
                             `;
@@ -909,6 +995,18 @@
                 if (section === 'profile') {
                     setTimeout(() => {
                         fixRatingScroll();
+                        
+                        // Добавляем обработчики для контейнера рейтинга
+                        const ratingContainer = document.querySelector('.rating-list-container');
+                        if (ratingContainer) {
+                            ratingContainer.addEventListener('touchstart', (e) => {
+                                e.stopPropagation();
+                            }, { passive: true });
+                            
+                            ratingContainer.addEventListener('touchmove', (e) => {
+                                e.stopPropagation();
+                            }, { passive: true });
+                        }
                     }, 100);
                     
                     // Add telegram connect button handler
@@ -953,26 +1051,54 @@
 
             const connectBtn = document.querySelector('#connect-wallet-btn');
             if (connectBtn) {
-                ['touchstart', 'click'].forEach(eventType => {
-                    connectBtn.addEventListener(eventType, async (e) => {
+                // Удаляем старые обработчики
+                const newBtn = connectBtn.cloneNode(true);
+                connectBtn.parentNode.replaceChild(newBtn, connectBtn);
+                
+                // Добавляем новый обработчик
+                newBtn.addEventListener('pointerdown', async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                    
+                    // Добавляем класс для анимации нажатия
+                    newBtn.classList.add('button-pressed');
                         
                         try {
+                        const wallets = await connector.getWallets();
+                        // Предпочитаем TonKeeper на мобильных
+                        const preferredWallet = wallets.find(w => w.name.toLowerCase().includes('tonkeeper')) || wallets[0];
+                        
+                        if (preferredWallet) {
                             const universalLink = await connector.connect({
-                                universalLink: 'https://app.tonkeeper.com/ton-connect',
-                                bridgeUrl: 'https://bridge.tonapi.io/bridge'
+                                universalLink: preferredWallet.universalLink,
+                                bridgeUrl: preferredWallet.bridgeUrl
                             });
                             
-                            // Добавляем небольшую задержку для визуальной обратной связи
+                            // Задержка для анимации
                             setTimeout(() => {
                                 window.location.href = universalLink;
                             }, 150);
+                        } else {
+                            alert('Please install TonKeeper wallet');
+                        }
                         } catch (error) {
                             console.error('Failed to connect wallet:', error);
                             alert('Please install TonKeeper wallet');
                         }
-                    }, { passive: false });
+                    
+                    // Убираем класс анимации
+                    setTimeout(() => {
+                        newBtn.classList.remove('button-pressed');
+                    }, 300);
+                });
+                
+                // Убираем анимацию при отмене нажатия
+                newBtn.addEventListener('pointerup', () => {
+                    newBtn.classList.remove('button-pressed');
+                });
+                
+                newBtn.addEventListener('pointercancel', () => {
+                    newBtn.classList.remove('button-pressed');
                 });
             }
             
@@ -1082,6 +1208,23 @@
     document.addEventListener('DOMContentLoaded', () => {
         initializeWalletTab();
     });
+    </script>
+    <script>
+    // Добавляем функцию для получения реальных пользователей
+    function getRealUsers() {
+        // Здесь в будущем будет запрос к серверу для получения реальных пользователей
+        // Пока возвращаем тестовый массив с текущим пользователем
+        const currentUser = window.Telegram.WebApp.initDataUnsafe.user;
+        return currentUser ? [{
+            id: currentUser.id,
+            first_name: currentUser.first_name,
+            last_name: currentUser.last_name,
+            username: currentUser.username,
+            photo_url: currentUser.photo_url,
+            score: 1000,
+            position: 1
+        }] : [];
+    }
     </script>
 </body>
 </html>
