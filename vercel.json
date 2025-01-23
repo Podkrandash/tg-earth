@@ -2,6 +2,11 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
   "functions": {
     "api/server.js": {
       "memory": 1024,
