@@ -1051,48 +1051,53 @@
 
             const connectBtn = document.querySelector('#connect-wallet-btn');
             if (connectBtn) {
-                // Удаляем старые обработчики
+                // Remove old listeners and create new button
                 const newBtn = connectBtn.cloneNode(true);
                 connectBtn.parentNode.replaceChild(newBtn, connectBtn);
                 
-                // Добавляем новый обработчик
+                // Add universal event handler for both mobile and desktop
                 newBtn.addEventListener('pointerdown', async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                     
-                    // Добавляем класс для анимации нажатия
+                    // Add pressed state
                     newBtn.classList.add('button-pressed');
                         
                         try {
                         const wallets = await connector.getWallets();
-                        // Предпочитаем TonKeeper на мобильных
-                        const preferredWallet = wallets.find(w => w.name.toLowerCase().includes('tonkeeper')) || wallets[0];
+                        // Try to find TonKeeper first
+                        const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
+                        const wallet = tonkeeper || wallets[0];
                         
-                        if (preferredWallet) {
-                            const universalLink = await connector.connect({
-                                universalLink: preferredWallet.universalLink,
-                                bridgeUrl: preferredWallet.bridgeUrl
+                        if (wallet) {
+                            const universalLink = connector.connect({
+                                universalLink: wallet.universalLink,
+                                bridgeUrl: wallet.bridgeUrl
                             });
                             
-                            // Задержка для анимации
+                            // Small delay for button animation
                             setTimeout(() => {
+                                if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
                                 window.location.href = universalLink;
+                                } else {
+                                    window.open(universalLink, '_blank');
+                                }
                             }, 150);
                         } else {
-                            alert('Please install TonKeeper wallet');
+                            window.open('https://tonkeeper.com/download', '_blank');
                         }
                         } catch (error) {
-                            console.error('Failed to connect wallet:', error);
-                            alert('Please install TonKeeper wallet');
-                        }
+                        console.error('Wallet connection error:', error);
+                        window.open('https://tonkeeper.com/download', '_blank');
+                    }
                     
-                    // Убираем класс анимации
+                    // Remove pressed state after animation
                     setTimeout(() => {
                         newBtn.classList.remove('button-pressed');
                     }, 300);
                 });
                 
-                // Убираем анимацию при отмене нажатия
+                // Handle animation cancel
                 newBtn.addEventListener('pointerup', () => {
                     newBtn.classList.remove('button-pressed');
                 });
@@ -1100,6 +1105,12 @@
                 newBtn.addEventListener('pointercancel', () => {
                     newBtn.classList.remove('button-pressed');
                 });
+            }
+
+            // Check if wallet is already connected
+            const activeWallet = await connector.getWallet();
+            if (activeWallet) {
+                updateWalletInfo(activeWallet);
             }
             
             // Listen for wallet events
@@ -1110,14 +1121,8 @@
                     resetWalletDisplay();
                 }
             });
-            
-            // Check if already connected
-            const activeWallet = await connector.getWallet();
-            if (activeWallet) {
-                updateWalletInfo(activeWallet);
-            }
         } catch (error) {
-            console.error('Failed to initialize TON Connect:', error);
+            console.error('TON Connect initialization error:', error);
         }
     }
 
