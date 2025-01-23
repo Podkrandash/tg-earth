@@ -856,7 +856,7 @@
         try {
             connector = new TonConnect({
                 manifestUrl: manifestUrl,
-                buttonRootId: 'connect-wallet-btn'
+                buttonRootId: null // Remove buttonRootId to handle clicks manually
             });
             
             // Listen for wallet events
@@ -872,6 +872,34 @@
             const activeWallet = await connector.getWallet();
             if (activeWallet) {
                 await updateWalletInfo(activeWallet);
+            }
+
+            // Add click handler for connect button
+            const connectBtn = document.querySelector('#connect-wallet-btn');
+            if (connectBtn) {
+                connectBtn.addEventListener('click', async () => {
+                    try {
+                        // Get available wallets
+                        const wallets = await connector.getWallets();
+                        
+                        // On mobile, prefer TonHub or TonKeeper
+                        const mobileWallet = wallets.find(w => 
+                            w.name.toLowerCase().includes('tonhub') || 
+                            w.name.toLowerCase().includes('tonkeeper')
+                        );
+                        
+                        if (mobileWallet) {
+                            // Connect using universal link
+                            await connector.connect({ jsBridgeKey: mobileWallet.jsBridgeKey });
+                        } else {
+                            // Fallback to first available wallet
+                            await connector.connect({ jsBridgeKey: wallets[0].jsBridgeKey });
+                        }
+                    } catch (error) {
+                        console.error('Failed to connect wallet:', error);
+                        alert('Please install TON Wallet (TonKeeper or TonHub)');
+                    }
+                });
             }
         } catch (error) {
             console.error('Failed to initialize TON Connect:', error);
