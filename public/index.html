@@ -637,6 +637,64 @@
             font-size: 16px;
             margin: 0;
         }
+        .task-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
+        .task-item {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+        }
+        .task-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .task-header i {
+            font-size: 24px;
+            color: #0098EA;
+        }
+        .task-description {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+        }
+        .task-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #0098EA, #0063D1);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .task-button:active {
+            transform: scale(0.96);
+        }
+        .task-button i {
+            font-size: 20px;
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -978,6 +1036,19 @@
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
+                            <div class="task-container">
+                                <div class="task-item">
+                                    <div class="task-header">
+                                        <i class="material-icons">group</i>
+                                        <span>Join Community</span>
+                                    </div>
+                                    <p class="task-description">Join our Earth Community to stay updated!</p>
+                                    <button class="task-button" id="join-community-btn">
+                                        <i class="material-icons">telegram</i>
+                                        Join Community
+                                    </button>
+                                </div>
+                            </div>
                         `;
                         break;
                 }
@@ -1035,6 +1106,27 @@
                 setTimeout(() => {
                     tabInner.style.opacity = '1';
                 }, 50);
+
+                // Update task button handler
+                if (section === 'tasks') {
+                    const joinButton = document.querySelector('#join-community-btn');
+                    if (joinButton) {
+                        ['touchstart', 'click'].forEach(eventType => {
+                            joinButton.addEventListener(eventType, (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                if (window.Telegram?.WebApp) {
+                                    window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
+                                        try_instant_view: false
+                                    });
+                                } else {
+                                    window.location.href = 'https://t.me/NotEarthCommunity';
+                                }
+                            }, { passive: false });
+                        });
+                    }
+                }
             }
         });
     </script>
@@ -1051,34 +1143,32 @@
 
             const connectBtn = document.querySelector('#connect-wallet-btn');
             if (connectBtn) {
-                // Удаляем старые обработчики
+                // Remove old handlers
                 const newBtn = connectBtn.cloneNode(true);
                 connectBtn.parentNode.replaceChild(newBtn, connectBtn);
                 
-                // Добавляем обработчики для тач и клик событий
+                // Add touch and click handlers
                 ['touchstart', 'click'].forEach(eventType => {
                     newBtn.addEventListener(eventType, async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         
                         try {
-                            // Получаем список доступных кошельков
                             const wallets = await connector.getWallets();
                             const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
                             
                             if (tonkeeper) {
-                                // Создаем ссылку для подключения
                                 const universalLink = connector.connect({
                                     universalLink: tonkeeper.universalUrl,
                                     bridgeUrl: tonkeeper.bridgeUrl
                                 });
                                 
-                                // Добавляем анимацию нажатия
+                                // Add pressed state
                                 newBtn.classList.add('button-pressed');
+                                
+                                // Open link in Telegram after short delay
                                 setTimeout(() => {
                                     newBtn.classList.remove('button-pressed');
-                                    
-                                    // Открываем ссылку в Telegram
                                     if (window.Telegram?.WebApp) {
                                         window.Telegram.WebApp.openLink(universalLink, { 
                                             try_instant_view: false 
@@ -1088,7 +1178,7 @@
                                     }
                                 }, 150);
                             } else {
-                                // Если TonKeeper не найден, открываем страницу загрузки
+                                // Redirect to TonKeeper download
                                 const downloadUrl = 'https://tonkeeper.com/download';
                                 if (window.Telegram?.WebApp) {
                                     window.Telegram.WebApp.openLink(downloadUrl, { 
@@ -1100,7 +1190,7 @@
                             }
                         } catch (error) {
                             console.error('Wallet connection error:', error);
-                            // В случае ошибки открываем страницу загрузки TonKeeper
+                            // Redirect to TonKeeper download on error
                             const downloadUrl = 'https://tonkeeper.com/download';
                             if (window.Telegram?.WebApp) {
                                 window.Telegram.WebApp.openLink(downloadUrl, { 
