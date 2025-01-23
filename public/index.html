@@ -548,29 +548,49 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            background: #0098EA;
+            gap: 12px;
+            background: linear-gradient(135deg, #0098EA, #0063D1);
             color: #fff;
             border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
+            border-radius: 16px;
+            padding: 16px 28px;
             font-size: 16px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: auto;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
             width: 100%;
             max-width: 300px;
             margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 152, 234, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.3px;
+        }
+        .connect-wallet-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: inherit;
+            pointer-events: none;
         }
         .connect-wallet-btn:active {
-            transform: scale(0.96);
-            background: #0088d1;
+            transform: scale(0.96) translateY(2px);
+            box-shadow: 0 4px 16px rgba(0, 152, 234, 0.15);
         }
         .connect-wallet-btn i {
-            font-size: 20px;
+            font-size: 22px;
+            background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.8));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
         }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -923,59 +943,52 @@
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
     <script>
     // Add TON Connect initialization
-    const manifestUrl = 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json';
     let connector;
 
     async function initTonConnect() {
         try {
             connector = new TonConnect({
-                manifestUrl: manifestUrl
+                manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json'
             });
+
+            const connectBtn = document.querySelector('#connect-wallet-btn');
+            if (connectBtn) {
+                ['touchstart', 'click'].forEach(eventType => {
+                    connectBtn.addEventListener(eventType, async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        try {
+                            const universalLink = await connector.connect({
+                                universalLink: 'https://app.tonkeeper.com/ton-connect',
+                                bridgeUrl: 'https://bridge.tonapi.io/bridge'
+                            });
+                            
+                            // Добавляем небольшую задержку для визуальной обратной связи
+                            setTimeout(() => {
+                                window.location.href = universalLink;
+                            }, 150);
+                        } catch (error) {
+                            console.error('Failed to connect wallet:', error);
+                            alert('Please install TonKeeper wallet');
+                        }
+                    }, { passive: false });
+                });
+            }
             
             // Listen for wallet events
-            connector.onStatusChange(async (wallet) => {
+            connector.onStatusChange((wallet) => {
                 if (wallet) {
-                    await updateWalletInfo(wallet);
+                    updateWalletInfo(wallet);
                 } else {
                     resetWalletDisplay();
                 }
             });
             
-            // Restore connection if exists
+            // Check if already connected
             const activeWallet = await connector.getWallet();
             if (activeWallet) {
-                await updateWalletInfo(activeWallet);
-            }
-
-            // Add click handler for connect button
-            const connectBtn = document.querySelector('#connect-wallet-btn');
-            if (connectBtn) {
-                connectBtn.onclick = async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    try {
-                        // Get available wallets
-                        const wallets = await connector.getWallets();
-                        
-                        // On mobile, prefer TonHub or TonKeeper
-                        const mobileWallet = wallets.find(w => 
-                            w.name.toLowerCase().includes('tonhub') || 
-                            w.name.toLowerCase().includes('tonkeeper')
-                        );
-                        
-                        if (mobileWallet) {
-                            // Connect using universal link
-                            await connector.connect({ jsBridgeKey: mobileWallet.jsBridgeKey });
-                        } else {
-                            // Fallback to first available wallet
-                            await connector.connect({ jsBridgeKey: wallets[0].jsBridgeKey });
-                        }
-                    } catch (error) {
-                        console.error('Failed to connect wallet:', error);
-                        alert('Please install TON Wallet (TonKeeper or TonHub)');
-                    }
-                };
+                updateWalletInfo(activeWallet);
             }
         } catch (error) {
             console.error('Failed to initialize TON Connect:', error);
