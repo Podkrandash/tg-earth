@@ -561,12 +561,13 @@
             pointer-events: auto;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
-        }
-        .connect-wallet-btn:hover {
-            background: #0088d1;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
         }
         .connect-wallet-btn:active {
-            transform: scale(0.98);
+            transform: scale(0.96);
+            background: #0088d1;
         }
         .connect-wallet-btn i {
             font-size: 20px;
@@ -612,6 +613,11 @@
     </div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
+        // Add this at the beginning of your scripts
+        function isRunningInTelegram() {
+            return window.Telegram && window.Telegram.WebApp;
+        }
+
         // Initialize Telegram WebApp
         const tg = window.Telegram.WebApp;
         
@@ -763,6 +769,9 @@
 
             function handleNavClick(section, clickedButton) {
                 const buttons = document.querySelectorAll('.nav-button');
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
+                
                 buttons.forEach(btn => btn.classList.remove('active'));
                 clickedButton.classList.add('active');
                 
@@ -903,12 +912,11 @@
                     }, { passive: false });
                 });
                 
-                requestAnimationFrame(() => {
-                    tabContent.classList.add('active');
-                    requestAnimationFrame(() => {
-                        tabInner.style.opacity = '1';
-                    });
-                });
+                // Show tab content
+                tabContent.classList.add('active');
+                setTimeout(() => {
+                    tabInner.style.opacity = '1';
+                }, 50);
             }
         });
     </script>
@@ -921,8 +929,7 @@
     async function initTonConnect() {
         try {
             connector = new TonConnect({
-                manifestUrl: manifestUrl,
-                buttonRootId: null // Remove buttonRootId to handle clicks manually
+                manifestUrl: manifestUrl
             });
             
             // Listen for wallet events
@@ -943,7 +950,10 @@
             // Add click handler for connect button
             const connectBtn = document.querySelector('#connect-wallet-btn');
             if (connectBtn) {
-                connectBtn.addEventListener('click', async () => {
+                connectBtn.onclick = async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     try {
                         // Get available wallets
                         const wallets = await connector.getWallets();
@@ -965,7 +975,7 @@
                         console.error('Failed to connect wallet:', error);
                         alert('Please install TON Wallet (TonKeeper or TonHub)');
                     }
-                });
+                };
             }
         } catch (error) {
             console.error('Failed to initialize TON Connect:', error);
