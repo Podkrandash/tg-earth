@@ -706,97 +706,134 @@
     </script>
     <script type="module" src="/js/main.js"></script>
     <script>
-        document.querySelectorAll('.nav-button').forEach(button => {
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const navPanel = document.querySelector('.nav-panel');
+            const sceneContainer = document.getElementById('scene-container');
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
+            
+            let isFirstTouch = true;
+            
+            // Show navigation panel on first touch
+            sceneContainer.addEventListener('click', () => {
+                if (isFirstTouch && sceneContainer.style.opacity === '1') {
+                    isFirstTouch = false;
+                    navPanel.classList.add('visible');
+                }
+            });
+
+            sceneContainer.addEventListener('touchstart', (e) => {
+                if (isFirstTouch && sceneContainer.style.opacity === '1') {
+                    isFirstTouch = false;
+                    navPanel.classList.add('visible');
+                }
+            }, { passive: true });
+
+            // Handle navigation button clicks
+            const navButtons = document.querySelectorAll('.nav-button');
+            navButtons.forEach(button => {
                 ['touchstart', 'click'].forEach(eventType => {
                     button.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    }, { passive: false });
+                });
+            });
+
+            // Prevent scroll on navigation panel
+            navPanel.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+
+            // Prevent scroll on buttons
+            navButtons.forEach(button => {
+                button.addEventListener('touchmove', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                        
-                    const clickedButton = button;
-                    const section = clickedButton.dataset.section;
-                    const tabContent = document.querySelector('.tab-content');
-                    const tabInner = tabContent.querySelector('.tab-content-inner');
-                    
-                    // Remove active class from all buttons
-                    document.querySelectorAll('.nav-button').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    
-                    // Add active class to clicked button
+                }, { passive: false });
+            });
+
+            function handleNavClick(section, clickedButton) {
+                const buttons = document.querySelectorAll('.nav-button');
+                buttons.forEach(btn => btn.classList.remove('active'));
                 clickedButton.classList.add('active');
                 
-                    let content = '';
-                    
-                    // Generate content based on section
-                    switch(section) {
-                        case 'wallet':
-                            content = `
-                                <button class="close-button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                                <h3>Wallet</h3>
-                                <div class="wallet-container">
-                                    <div class="wallet-header">
-                                        <i class="material-icons">account_balance_wallet</i>
-                                        <span>TON Wallet</span>
-                                    </div>
-                                    <div class="wallet-content">
-                                        <div class="wallet-balance" style="display: none;">
-                                            <div class="balance-amount">0.00</div>
-                                            <div class="balance-currency">TON</div>
-                                        </div>
-                                        <button class="connect-wallet-btn" id="connect-wallet-btn">
-                                            <i class="material-icons">link</i>
-                                            Connect Wallet
-                                        </button>
-                                    </div>
+                let content = '';
+                
+                switch(section) {
+                    case 'wallet':
+                        content = `
+                            <h3>Wallet</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <div class="wallet-container">
+                                <div class="wallet-header">
+                                    <i class="material-icons">account_balance_wallet</i>
+                                    <span>TON Wallet</span>
                                 </div>
-                            `;
-                            break;
-                        case 'profile':
-                            content = `
-                                <h3>Profile</h3>
-                                <button class="close-button" type="button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                            `;
-                            break;
-                        case 'planet':
-                            content = `
-                                <h3>Planet Info</h3>
-                                <button class="close-button" type="button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                            `;
-                            break;
-                        case 'tasks':
-                            content = `
-                                <h3>Available Tasks</h3>
-                                <button class="close-button" type="button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                            `;
-                            break;
-                    }
-                    
-                    tabInner.innerHTML = content;
-                    
-                    // Initialize TON Connect if wallet tab
-                    if (section === 'wallet') {
-                        setTimeout(() => {
-                            initTonConnect();
-                        }, 100);
-                    }
-                    
-                    // Update close button handler
+                                <div class="wallet-content">
+                                    <div class="wallet-balance" style="display: none;">
+                                        <div class="balance-amount">0.00</div>
+                                        <div class="balance-currency">TON</div>
+                                    </div>
+                                    <button class="connect-wallet-btn" id="connect-wallet-btn">
+                                        <i class="material-icons">link</i>
+                                        Connect Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    case 'profile':
+                        content = `
+                            <h3>Profile</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                        `;
+                        break;
+                    case 'planet':
+                        content = `
+                            <h3>Planet Info</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                        `;
+                        break;
+                    case 'tasks':
+                        content = `
+                            <h3>Available Tasks</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                        `;
+                        break;
+                }
+                
+                tabInner.innerHTML = content;
+                
+                // Initialize TON Connect if wallet tab
+                if (section === 'wallet') {
+                    setTimeout(() => {
+                        initTonConnect();
+                    }, 100);
+                }
+                
+                // Update close button handler
                 const closeButton = tabInner.querySelector('.close-button');
                 ['touchstart', 'click'].forEach(eventType => {
                     closeButton.addEventListener(eventType, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    tabContent.classList.remove('active');
-                    clickedButton.classList.remove('active');
-                    tabInner.style.opacity = '0';
+                        e.preventDefault();
+                        e.stopPropagation();
+                        tabContent.classList.remove('active');
+                        clickedButton.classList.remove('active');
+                        tabInner.style.opacity = '0';
                     }, { passive: false });
                 });
                 
@@ -806,8 +843,7 @@
                         tabInner.style.opacity = '1';
                     });
                 });
-                }, { passive: false });
-            });
+            }
         });
     </script>
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
