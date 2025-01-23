@@ -569,25 +569,26 @@
                 }
             });
             
-            // Функция для подключения к Telegram через deep linking
-            async function connectToTelegram() {
-                try {
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        const webApp = window.Telegram.WebApp;
-                        webApp.ready();
-                        const user = webApp.initDataUnsafe.user;
-                        if (user) {
+            // Функция для проверки, запущено ли приложение в Telegram
+            function isRunningInTelegram() {
+                return window.Telegram && window.Telegram.WebApp;
+            }
+
+            // Инициализация Telegram WebApp
+            if (isRunningInTelegram()) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
                             isProfileConnected = true;
-                            return user;
-                        }
-                    }
-                    // Если мы не в Telegram WebApp, перенаправляем на бота
-                    window.location.href = `https://t.me/notEarthBot`;
-                    return null;
-                } catch (error) {
-                    console.error('Error connecting to Telegram:', error);
-                    return null;
+            }
+            
+            // Функция для подключения к Telegram
+            async function connectToTelegram() {
+                if (isRunningInTelegram()) {
+                    return window.Telegram.WebApp.initDataUnsafe.user;
                 }
+                // Если приложение открыто не в Telegram, перенаправляем
+                window.location.href = 'https://t.me/notEarthBot/app';
+                    return null;
             }
 
             // Функция для отображения профиля
@@ -599,12 +600,12 @@
                     </button>
                 `;
 
-                if (!isProfileConnected) {
+                if (!isRunningInTelegram()) {
                     content += `
                         <div class="profile-connecting">
                             <i class="material-icons">telegram</i>
-                            <h4>Connect with Telegram</h4>
-                            <p>Click the button below to open the game in Telegram</p>
+                            <h4>Open in Telegram</h4>
+                            <p>This game can only be played in Telegram</p>
                             <button class="connect-button" id="telegram-connect">
                                 <i class="material-icons">telegram</i>
                                 Open in Telegram
@@ -613,17 +614,15 @@
                     `;
                     tabInner.innerHTML = content;
                     
-                    // Добавляем обработчик для кнопки подключения
                     const connectButton = document.querySelector('#telegram-connect');
                     if (connectButton) {
-                    connectButton.addEventListener('click', async () => {
-                            await connectToTelegram();
-                        });
+                        connectButton.addEventListener('click', connectToTelegram);
                     }
                         return;
                 }
 
-                // Показываем профиль с данными
+                // Показываем профиль с данными из Telegram
+                const user = window.Telegram.WebApp.initDataUnsafe.user;
                 content = `
                     <h3>Profile</h3>
                     <button class="close-button" type="button">
@@ -631,11 +630,11 @@
                     </button>
                     <div class="profile-header">
                         <div class="profile-avatar">
-                            <img src="${window.Telegram.WebApp.initDataUnsafe.user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=User'}" alt="Profile Avatar" id="profile-avatar-img">
+                            <img src="${user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=User'}" alt="Profile Avatar" id="profile-avatar-img">
                         </div>
                         <div class="profile-info">
-                            <h4 class="profile-name" id="profile-name">${window.Telegram.WebApp.initDataUnsafe.user.first_name} ${window.Telegram.WebApp.initDataUnsafe.user.last_name || ''}</h4>
-                            <p class="profile-bio" id="profile-bio">@${window.Telegram.WebApp.initDataUnsafe.user.username || 'no_username'}</p>
+                            <h4 class="profile-name" id="profile-name">${user.first_name} ${user.last_name || ''}</h4>
+                            <p class="profile-bio" id="profile-bio">@${user.username || 'no_username'}</p>
                         </div>
                         <div class="profile-rating">
                             <p class="rating-number">#7</p>
@@ -661,16 +660,6 @@
                 `;
                 tabInner.innerHTML = content;
             }
-            
-            // Функция обработки авторизации через Telegram
-            window.onTelegramAuth = function(user) {
-                console.log('Telegram auth successful:', user);
-                isProfileConnected = true;
-                // Сохраняем данные пользователя
-                localStorage.setItem('telegramUser', JSON.stringify(user));
-                // Обновляем профиль
-                showProfile();
-            };
             
             // Обработчики для кнопок навигации
             const navButtons = document.querySelectorAll('.nav-button');
