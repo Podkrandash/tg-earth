@@ -535,6 +535,31 @@
         </div>
     </div>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        // Initialize Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        
+        // Expand to full height
+        tg.expand();
+        
+        // Update user profile when available
+        function updateUserProfile() {
+            const user = tg.initDataUnsafe.user;
+            if (user) {
+                document.getElementById('profile-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '';
+                if (user.photo_url) {
+                    document.getElementById('profile-avatar').src = user.photo_url;
+                }
+            }
+        }
+        
+        // Call when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            tg.ready();
+            updateUserProfile();
+        });
+    </script>
     <script type="module" src="/js/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -546,11 +571,6 @@
             
             let isProfileConnected = false;
             let isFirstTouch = true;
-            
-            // Инициализация Telegram WebApp
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
             
             // Функция для проверки, запущено ли приложение в Telegram
             function isRunningInTelegram() {

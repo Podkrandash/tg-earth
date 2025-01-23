@@ -1,36 +1,36 @@
 const TelegramBot = require('node-telegram-bot-api');
-const token = process.env.BOT_TOKEN;
-const bot = new TelegramBot(token);
+const bot = new TelegramBot(process.env.BOT_TOKEN);
 
-// Обработчик для команды /start
+const webAppUrl = 'https://tg-earth-4dzw.vercel.app';
+
+// Handle /start command
 bot.onText(/\/start/, async (msg) => {
-    try {
-        const chatId = msg.chat.id;
-        await bot.sendMessage(chatId, 'Welcome to Earth 3D! Click the button below to open the app:', {
-            reply_markup: {
-                inline_keyboard: [[
-                    {
-                        text: '🌍 Open Earth 3D',
-                        web_app: { url: process.env.APP_URL || 'https://tg-earth-4dzw.vercel.app' }
-                    }
-                ]]
-            }
-        });
-    } catch (error) {
-        console.error('Error in /start command:', error);
-    }
+  try {
+    await bot.sendMessage(msg.chat.id, 'Welcome to Earth 3D! Click the button below to open the app:', {
+      reply_markup: {
+        inline_keyboard: [[
+          {
+            text: '🌍 Open Earth',
+            web_app: { url: webAppUrl }
+          }
+        ]]
+      }
+    });
+  } catch (error) {
+    console.error('Error in /start command:', error);
+  }
 });
 
-// Экспортируем функцию для обработки вебхуков
-module.exports = async (request, response) => {
-    try {
-        const { body } = request;
-        if (body.message || body.callback_query) {
-            await bot.handleUpdate(body);
-        }
-        response.status(200).json({ ok: true });
-    } catch (error) {
-        console.error('Error handling update:', error);
-        response.status(500).json({ ok: false, error: error.message });
+// Export the webhook handler
+module.exports = async (req, res) => {
+  try {
+    const { body } = req;
+    if (body.message || body.callback_query) {
+      await bot.handleUpdate(body);
     }
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('Webhook handler error:', error);
+    res.status(500).json({ error: 'Failed to process update' });
+  }
 }; 
