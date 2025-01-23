@@ -3,7 +3,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "git": {
-    "deploymentEnabled": false
+    "deploymentEnabled": true,
+    "main": {
+      "enabled": true
+    }
   },
   "functions": {
     "api/server.js": {
