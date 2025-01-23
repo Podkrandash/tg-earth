@@ -219,15 +219,14 @@
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 999;
             pointer-events: none;
-            touch-action: none;
         }
         .tab-content.active {
-            transform: translateY(0);
+            transform: translateY(80px);
             pointer-events: auto;
         }
         .tab-content-inner {
             width: 100%;
-            height: 100%;
+            height: calc(100% - 80px);
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -549,35 +548,18 @@
         // Initialize Telegram WebApp
         const tg = window.Telegram.WebApp;
         
-        // Force fullscreen mode immediately
+        // Use Telegram's native fullscreen
         if (tg) {
             tg.expand();
             tg.enableClosingConfirmation();
             
             // Set viewport settings
-            tg.setHeaderColor('#000000');
+            tg.setHeaderColor('secondary_bg_color');
             tg.setBackgroundColor('#000000');
             
-            // Request platform to show fullscreen
-            tg.MainButton.hide();
-            tg.BackButton.hide();
-            
-            // Set viewport settings for iOS
-            const viewport = document.querySelector('meta[name=viewport]');
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
-            
-            // Additional fullscreen request on ready
+            // Initialize on ready
             tg.ready(() => {
                 tg.expand();
-                
-                // Force fullscreen mode
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.webkitRequestFullscreen) {
-                    document.documentElement.webkitRequestFullscreen();
-                }
-                
-                // Update user profile if available
                 updateUserProfile();
             });
             
