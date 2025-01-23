@@ -558,6 +558,9 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
+            pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .connect-wallet-btn:hover {
             background: #0088d1;
@@ -791,12 +794,60 @@
                         `;
                         break;
                     case 'profile':
+                        if (!isRunningInTelegram()) {
                         content = `
                             <h3>Profile</h3>
                             <button class="close-button" type="button">
                                 <i class="material-icons">close</i>
                             </button>
-                        `;
+                                <div class="profile-connecting">
+                                    <i class="material-icons">telegram</i>
+                                    <h4>Open in Telegram</h4>
+                                    <p>This app can only be used in Telegram</p>
+                                    <button class="connect-button" id="telegram-connect">
+                                        <i class="material-icons">telegram</i>
+                                        Open in Telegram
+                                    </button>
+                                </div>
+                            `;
+                        } else {
+                            const user = window.Telegram.WebApp.initDataUnsafe.user;
+                            content = `
+                                <h3>Profile</h3>
+                                <button class="close-button" type="button">
+                                    <i class="material-icons">close</i>
+                                </button>
+                                <div class="profile-header">
+                                    <div class="profile-avatar">
+                                        <img src="${user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=P'}" alt="Profile Avatar">
+                                    </div>
+                                    <div class="profile-info">
+                                        <h4 class="profile-name" id="profile-name">${user.first_name} ${user.last_name || ''}</h4>
+                                        <p class="profile-bio" id="profile-username">@${user.username || 'no_username'}</p>
+                                    </div>
+                                    <div class="profile-rating">
+                                        <p class="rating-number">#7</p>
+                                        <p class="rating-label">Rating</p>
+                                    </div>
+                                </div>
+                                <div class="rating-list-container">
+                                    <ul class="rating-list">
+                                        ${Array.from({length: 100}, (_, i) => `
+                                            <li class="rating-item ${i === 6 ? 'current' : ''}">
+                                                <span class="rating-position">#${i + 1}</span>
+                                                <div class="rating-avatar">
+                                                    <img src="https://via.placeholder.com/40/666666/FFFFFF?text=${i + 1}" alt="User Avatar">
+                                                </div>
+                                                <div class="rating-user-info">
+                                                    <h4 class="rating-username">User ${i + 1}</h4>
+                                                    <p class="rating-score">${1000 - i * 5} points</p>
+                                                </div>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            `;
+                        }
                         break;
                     case 'planet':
                         content = `
@@ -823,6 +874,21 @@
                     setTimeout(() => {
                         initTonConnect();
                     }, 100);
+                }
+                
+                // Fix rating scroll if profile tab
+                if (section === 'profile') {
+                    setTimeout(() => {
+                        fixRatingScroll();
+                    }, 100);
+                    
+                    // Add telegram connect button handler
+                    const connectButton = document.querySelector('#telegram-connect');
+                    if (connectButton) {
+                        connectButton.addEventListener('click', () => {
+                            window.location.href = 'https://t.me/notEarthBot';
+                        });
+                    }
                 }
                 
                 // Update close button handler
