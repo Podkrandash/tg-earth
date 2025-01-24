@@ -54,7 +54,7 @@ export default async function handler(req, res) {
             }
             
             // Обновляем или создаем пользователя
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('users')
                 .upsert({
                     telegram_id: userData.telegram_id,
@@ -68,11 +68,23 @@ export default async function handler(req, res) {
                 console.error('Supabase error:', error);
                 throw error;
             }
+
+            // Получаем созданного пользователя
+            const { data: user, error: fetchError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('telegram_id', userData.telegram_id)
+                .single();
+
+            if (fetchError) {
+                console.error('Error fetching user:', fetchError);
+                throw fetchError;
+            }
             
-            console.log('User saved successfully:', data);
+            console.log('User saved successfully:', user);
             res.status(200).json({ 
                 success: true,
-                data: data
+                data: user
             });
         } catch (error) {
             console.error('Error saving user:', error);
