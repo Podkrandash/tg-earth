@@ -1,39 +1,170 @@
-import express from 'express';
-import { Telegraf } from 'telegraf';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const express = require('express');
+const cors = require('cors');
+const crypto = require('crypto');
+const { MongoClient } = require('mongodb');
 
 const app = express();
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const port = process.env.PORT || 3000;
 
-// Serve static files
-app.use(express.static(path.join(__dirname, '../dist')));
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-// Bot commands
-bot.command('start', (ctx) => {
-    ctx.reply('Welcome to Earth 3D! Click the button below to start:', {
-        reply_markup: {
-            inline_keyboard: [[
-                { text: '🌍 Launch Earth 3D', url: process.env.GAME_URL }
-            ]]
+// MongoDB connection
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri);
+let db;
+
+// Telegram Bot Token для проверки подписки
+const BOT_TOKEN = process.env.BOT_TOKEN;
+
+// Функция для проверки Telegram данных
+function validateTelegramData(data) {
+    const { hash, ...rest } = data;
+    const dataCheckString = Object.keys(rest)
+        .sort()
+        .map(key => `${key}=${rest[key]}`)
+        .join('\n');
+    
+    const secretKey = crypto.createHash('sha256')
+        .update(BOT_TOKEN)
+        .digest();
+    
+    const hmac = crypto.createHmac('sha256', secretKey)
+        .update(dataCheckString)
+        .digest('hex');
+    
+    return hmac === hash;
+}
+
+// Проверка подписки на канал
+async function checkChannelSubscription(userId) {
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: '@NotEarthCommunity',
+                user_id: userId
+            })
+        });
+        
+        const data = await response.json();
+        return data.ok && ['member', 'administrator', 'creator'].includes(data.result.status);
+    } catch (error) {
+        console.error('Error checking subscription:', error);
+        return false;
+    }
+}
+
+// API Routes
+app.post('/users', async (req, res) => {
+    try {
+        const userData = req.body;
+        
+        // Проверяем данные от Telegram
+        if (!validateTelegramData(userData)) {
+            return res.status(401).json({ error: 'Invalid Telegram data' });
         }
-    });
+        
+        const collection = db.collection('users');
+        
+        // Обновляем или создаем пользователя
+        await collection.updateOne(
+            { id: userData.id },
+            { 
+                $set: {
+                    ...userData,
+                    lastSeen: new Date(),
+                    score: userData.score || 0
+                }
+            },
+            { upsert: true }
+        );
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving user:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/users', async (req, res) => {
+    try {
+        const collection = db.collection('users');
+        
+        // Получаем пользователей, отсортированных по очкам
+        const users = await collection.find({
+            lastSeen: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // За последние 24 часа
+        })
+        .sort({ score: -1 })
+        .toArray();
+        
+        // Добавляем позиции
+        const usersWithPosition = users.map((user, index) => ({
+            ...user,
+            position: index + 1
+        }));
+        
+        res.json(usersWithPosition);
+    } catch (error) {
+        console.error('Error getting users:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/check-tasks', async (req, res) => {
+    try {
+        const { userId, auth_date, hash } = req.body;
+        
+        // Проверяем данные от Telegram
+        if (!validateTelegramData({ userId, auth_date, hash })) {
+            return res.status(401).json({ error: 'Invalid Telegram data' });
+        }
+        
+        // Проверяем подписку на канал
+        const isSubscribed = await checkChannelSubscription(userId);
+        
+        if (isSubscribed) {
+            // Обновляем очки пользователя
+            const collection = db.collection('users');
+            await collection.updateOne(
+                { id: userId },
+                { 
+                    $set: { 
+                        hasCompletedTasks: true,
+                        score: 1000 // Начальные очки за выполнение задания
+                    }
+                }
+            );
+        }
+        
+        res.json({ 
+            isSubscribed,
+            score: isSubscribed ? 1000 : 0
+        });
+    } catch (error) {
+        console.error('Error checking tasks:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    
-    // Launch bot
-    bot.launch()
-        .then(() => console.log('Bot is running'))
-        .catch(err => console.error('Bot launch error:', err));
-});
+async function startServer() {
+    try {
+        await client.connect();
+        db = client.db('earth_app');
+        console.log('Connected to MongoDB');
+        
+        app.listen(port, () => {
+            console.log(`Server running on port ${port}`);
+        });
+    } catch (error) {
+        console.error('Failed to connect to MongoDB:', error);
+        process.exit(1);
+    }
+}
 
-// Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM')); 
+startServer(); 
