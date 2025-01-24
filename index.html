@@ -33,10 +33,11 @@
             height: 100%;
             background: rgb(22, 22, 27);
             transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 999;
             pointer-events: none;
             border-radius: 0;
+            will-change: transform, border-radius;
         }
 
         .tab-content.active {
@@ -44,7 +45,11 @@
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.3s ease;
+        }
+
+        .tab-content.closing {
+            transform: translateY(100%);
+            border-radius: 0;
         }
 
         .nav-panel {
@@ -144,16 +149,6 @@
             overscroll-behavior: contain;
         }
 
-        /* Добавляем порог для свайпа */
-        .tab-content.active {
-            transform: translateY(80px);
-            pointer-events: auto;
-        }
-
-        .tab-content.closing {
-            transform: translateY(100%);
-        }
-
         /* Стили для TON Connect */
         .connect-wallet-btn {
             position: relative;
@@ -209,68 +204,96 @@
                 });
             });
 
-            // Обработчик свайпов
+            // Обновляем обработчик свайпов
+            let touchStartY = 0;
+            let touchEndY = 0;
+            
             tabContent.addEventListener('touchstart', (e) => {
-                if (tabContent.classList.contains('active')) {
-                    startY = e.touches[0].clientY;
-                    currentY = startY;
-                    isClosing = false;
-                }
+                touchStartY = e.touches[0].clientY;
             }, { passive: true });
 
             tabContent.addEventListener('touchmove', (e) => {
-                if (tabContent.classList.contains('active')) {
-                    currentY = e.touches[0].clientY;
-                    const diff = currentY - startY;
-
-                    if (diff > 0) { // Свайп вниз
-                        if (diff > SWIPE_THRESHOLD && !isClosing) {
-                            closeTab();
-                            isClosing = true;
-                        }
+                if (!tabContent.classList.contains('active') || isClosing) return;
+                
+                touchEndY = e.touches[0].clientY;
+                const diff = touchEndY - touchStartY;
+                
+                if (diff > SWIPE_THRESHOLD) {
+                    if (!isClosing) {
+                        isClosing = true;
+                        closeTab();
                     }
                 }
             }, { passive: true });
 
-            function closeTab() {
+            tabContent.addEventListener('touchend', () => {
+                touchStartY = 0;
+                touchEndY = 0;
+            }, { passive: true });
+
+            function handleNavClick(section, button) {
                 const activeButton = document.querySelector('.nav-button.active');
                 if (activeButton) {
                     activeButton.classList.remove('active');
                 }
+                
+                if (section === 'profile') {
+                    showProfile();
+                } else if (section === 'wallet') {
+                    showWallet();
+                } else if (section === 'tasks') {
+                    showTasks();
+                } else if (section === 'planet') {
+                    showPlanet();
+                }
+                
+                button.classList.add('active');
+                tabContent.classList.add('active');
+                tabInner.style.opacity = '1';
+            }
+
+            function showProfile() {
+                tabInner.innerHTML = `
+                    <div style="color: white; padding: 20px;">
+                        <h2>Профиль</h2>
+                        <p>ID: ${window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'Не определен'}</p>
+                        <p>Имя: ${window.Telegram?.WebApp?.initDataUnsafe?.user?.username || 'Не определено'}</p>
+                    </div>
+                `;
+            }
+
+            function showWallet() {
+                tabInner.innerHTML = `
+                    <div style="color: white; padding: 20px;">
+                        <h2>Кошелек</h2>
+                        <button id="connect-wallet-btn" class="connect-wallet-btn" 
+                            style="background: #0088CC; color: white; border: none; padding: 12px 24px; 
+                            border-radius: 12px; font-size: 16px; cursor: pointer; margin-top: 20px;">
+                            Подключить кошелек
+                        </button>
+                    </div>
+                `;
+                initTonConnect();
+            }
+
+            // Обновляем функцию закрытия вкладки
+            function closeTab() {
+                if (isClosing) return;
+                
+                const activeButton = document.querySelector('.nav-button.active');
+                if (activeButton) {
+                    activeButton.classList.remove('active');
+                }
+                
                 tabContent.classList.add('closing');
                 setTimeout(() => {
                     tabContent.classList.remove('active', 'closing');
                     tabInner.style.opacity = '0';
+                    isClosing = false;
                 }, 300);
             }
 
-            // Проверка выполнения задания
-            async function checkTaskCompletion(taskId) {
-                try {
-                    const response = await fetch('https://tg-earth-4dzw.vercel.app/api/check-tasks', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            task_id: taskId,
-                            telegram_id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (data.completed) {
-                        const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
-                        if (taskItem) {
-                            taskItem.classList.add('completed');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error checking task completion:', error);
-                }
-            }
-
-            // Инициализация TON Connect
+            // Обновляем инициализацию TON Connect
             async function initTonConnect() {
                 try {
                     const connector = new TonConnect({
@@ -279,32 +302,31 @@
 
                     const connectButton = document.getElementById('connect-wallet-btn');
                     if (connectButton) {
-                        connectButton.addEventListener('click', async () => {
+                        connectButton.onclick = async () => {
                             try {
                                 const wallets = await connector.getWallets();
                                 const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
-
+                                
                                 if (tonkeeper) {
-                                    const universalLink = connector.connect({
+                                    const universalLink = await connector.connect({
                                         universalLink: tonkeeper.universalUrl,
                                         bridgeUrl: tonkeeper.bridgeUrl
                                     });
-
+                                    
                                     if (window.Telegram?.WebApp) {
-                                        window.Telegram.WebApp.openLink(universalLink, {
-                                            try_instant_view: false
-                                        });
+                                        window.Telegram.WebApp.openTelegramLink(universalLink);
                                     } else {
                                         window.location.href = universalLink;
                                     }
                                 }
                             } catch (error) {
-                                console.error('Wallet connection error:', error);
+                                console.error('Error connecting wallet:', error);
+                                alert('Ошибка подключения кошелька. Попробуйте позже.');
                             }
-                        });
+                        };
                     }
                 } catch (error) {
-                    console.error('TON Connect initialization error:', error);
+                    console.error('Error initializing TON Connect:', error);
                 }
             }
 
@@ -315,7 +337,6 @@
             }
 
             navPanel.classList.add('visible');
-            initTonConnect();
         });
     </script>
     <script type="module" src="/js/main.js"></script>
