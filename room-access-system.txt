@@ -1,0 +1,898 @@
+# Система контроля доступа к комнатам
+
+## 1. Структура системы
+
+### 1.1 Основные компоненты
+- Создатель (Главный пользователь)
+- Комнаты разных уровней (1-4)
+- Пользователи с разными правами доступа
+
+### 1.2 Уровни доступа к комнатам
+```javascript
+const rooms = {
+    // Первый уровень
+    level1: {
+        'room1.0': { level: 1, access: ['creator'] },
+        'room1.1': { level: 1, access: ['creator'] },
+        'room1.2': { level: 1, access: ['creator'] },
+        'room1.3': { level: 1, access: ['creator'] }
+    },
+    // Второй уровень
+    level2: {
+        'room2.0': { level: 2, access: ['creator'] },
+        'room2.1': { level: 2, access: ['creator'] },
+        'room2.2': { level: 2, access: ['creator'] }
+    },
+    // Третий уровень
+    level3: {
+        'room3.0': { level: 3, access: ['creator'] }
+    },
+    // Четвертый уровень
+    level4: {
+        'room4.0': { level: 4, access: ['creator'] },
+        'room4.1': { level: 4, access: ['creator'] }
+    }
+};
+
+// Класс управления доступом
+class AccessControl {
+    constructor() {
+        this.rooms = rooms;
+        this.users = new Map();
+    }
+
+    // Добавление нового пользователя
+    addUser(userId, accessLevels) {
+        this.users.set(userId, {
+            id: userId,
+            accessLevels: accessLevels,
+            publicKey: null // Для шифрования
+        });
+    }
+
+    // Предоставление доступа к комнате
+    grantAccess(adminId, userId, roomId) {
+        if (!this.isCreator(adminId)) {
+            throw new Error('Недостаточно прав для выдачи доступа');
+        }
+
+        const room = this.findRoom(roomId);
+        if (!room) {
+            throw new Error('Комната не найдена');
+        }
+
+        room.access.push(userId);
+    }
+
+    // Проверка доступа к комнате
+    checkAccess(userId, roomId) {
+        const room = this.findRoom(roomId);
+        if (!room) return false;
+
+        const user = this.users.get(userId);
+        if (!user) return false;
+
+        return room.access.includes(userId) || this.isCreator(userId);
+    }
+
+    // Проверка является ли пользователь создателем
+    isCreator(userId) {
+        return userId === 'creator';
+    }
+
+    // Поиск комнаты по ID
+    findRoom(roomId) {
+        for (const level of Object.values(this.rooms)) {
+            if (roomId in level) {
+                return level[roomId];
+            }
+        }
+        return null;
+    }
+}
+
+// Пример использования
+const accessSystem = new AccessControl();
+
+// Добавляем пользователей из схемы
+accessSystem.addUser('user1', ['2.0', '4.0', '4.1']);
+accessSystem.addUser('user2', ['1.1', '2.1', '3.0', '4.0', '4.1']);
+accessSystem.addUser('user3', ['2.0']);
+
+// Функция проверки доступа пользователя к комнате
+function checkUserAccess(userId, roomId) {
+    return accessSystem.checkAccess(userId, roomId);
+}
+```
+
+### 1.3 Правила безопасности
+1. Каждая комната имеет уникальный публичный ключ для шифрования
+2. Пользователи могут получить доступ только к разрешенным комнатам
+3. Создатель имеет полный доступ ко всем комнатам
+4. Доступ можно предоставлять и отзывать только на уровне отдельных комнат
+
+### 1.4 Функциональные требования
+1. Шифрование данных для каждой комнаты
+2. Возможность предоставления доступа другим пользователям
+3. Гибкое управление уровнями доступа
+4. Возможность отзыва доступа к комнатам
+
+## 2. Подробная реализация
+
+### 2.1 Система шифрования (encryption-service)
+
+```javascript
+// Класс для работы с шифрованием на уровне комнат
+class RoomEncryption {
+    constructor() {
+        this.algorithm = 'aes-256-gcm';
+        this.keyLength = 32; // 256 бит
+        this.ivLength = 16;  // 128 бит
+    }
+
+    // Генерация уникального ключа для комнаты
+    async generateRoomKey() {
+        const key = await crypto.subtle.generateKey(
+            {
+                name: "AES-GCM",
+                length: 256
+            },
+            true,
+            ["encrypt", "decrypt"]
+        );
+        return key;
+    }
+
+    // Шифрование данных комнаты
+    async encryptRoomData(data, key) {
+        const iv = crypto.getRandomValues(new Uint8Array(this.ivLength));
+        const encodedData = new TextEncoder().encode(JSON.stringify(data));
+
+        const encryptedData = await crypto.subtle.encrypt(
+            {
+                name: "AES-GCM",
+                iv: iv
+            },
+            key,
+            encodedData
+        );
+
+        return {
+            encryptedData,
+            iv
+        };
+    }
+}
+
+// Класс для управления ключами пользователей
+class UserKeyManagement {
+    constructor() {
+        this.keyStore = new SecureKeyStore();
+    }
+
+    // Генерация пары ключей для пользователя
+    async generateUserKeys(userId) {
+        const keyPair = await crypto.subtle.generateKey(
+            {
+                name: "RSA-OAEP",
+                modulusLength: 4096,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: "SHA-256"
+            },
+            true,
+            ["encrypt", "decrypt"]
+        );
+
+        await this.keyStore.saveKeyPair(userId, keyPair);
+        return keyPair;
+    }
+}
+```
+
+### 2.2 Система контроля доступа (access-service)
+
+```javascript
+// Основной класс управления доступом
+class AccessControl {
+    constructor() {
+        this.roomEncryption = new RoomEncryption();
+        this.userKeyManagement = new UserKeyManagement();
+        this.accessRules = new AccessRules();
+    }
+
+    // Предоставление доступа к комнате
+    async grantAccess(adminId, userId, roomId, accessLevel) {
+        // Проверяем права администратора
+        if (!await this.verifyAdminRights(adminId, roomId)) {
+            throw new Error('Недостаточно прав');
+        }
+
+        // Получаем ключи пользователя
+        const userKeys = await this.userKeyManagement.getUserKeys(userId);
+        
+        // Создаем токен доступа
+        const accessToken = await this.createAccessToken(userId, roomId, accessLevel);
+
+        // Шифруем токен публичным ключом пользователя
+        const encryptedToken = await this.encryptAccessToken(accessToken, userKeys.publicKey);
+
+        // Сохраняем в базу данных
+        await this.saveAccessGrant({
+            userId,
+            roomId,
+            accessLevel,
+            encryptedToken,
+            grantedBy: adminId,
+            grantedAt: new Date()
+        });
+
+        // Отправляем уведомление пользователю
+        await this.notifyUser(userId, 'access_granted', roomId);
+    }
+
+    // Проверка доступа в реальном времени
+    async verifyAccess(userId, roomId) {
+        const access = await this.getAccessDetails(userId, roomId);
+        
+        if (!access) return false;
+
+        // Проверяем временные ограничения
+        if (!this.accessRules.checkTimeRestrictions(access)) {
+            return false;
+        }
+
+        // Проверяем геолокацию
+        if (!await this.accessRules.checkLocation(userId)) {
+            return false;
+        }
+
+        // Проверяем дополнительные условия
+        return await this.accessRules.validateAdditionalRules(userId, roomId);
+    }
+}
+
+// Класс для правил доступа
+class AccessRules {
+    // Проверка временных ограничений
+    checkTimeRestrictions(access) {
+        const now = new Date();
+        const currentHour = now.getHours();
+
+        // Проверка рабочего времени
+        if (access.workingHoursOnly && (currentHour < 9 || currentHour > 18)) {
+            return false;
+        }
+
+        // Проверка срока действия доступа
+        if (access.expiresAt && access.expiresAt < now) {
+            return false;
+        }
+
+        return true;
+    }
+
+    // Проверка геолокации
+    async checkLocation(userId) {
+        const userLocation = await this.getUserLocation(userId);
+        const allowedLocations = await this.getAllowedLocations(userId);
+
+        return allowedLocations.some(location => 
+            this.isWithinRadius(userLocation, location, 100) // 100 метров радиус
+        );
+    }
+}
+```
+
+### 2.3 Система мониторинга и аналитики (analytics-service)
+
+```javascript
+// Класс для сбора и анализа данных
+class AccessAnalytics {
+    constructor() {
+        this.db = new AnalyticsDatabase();
+        this.ml = new MachineLearning();
+    }
+
+    // Отслеживание активности
+    async trackActivity(userId, roomId, action) {
+        const activityData = {
+            userId,
+            roomId,
+            action,
+            timestamp: new Date(),
+            deviceInfo: await this.getDeviceInfo(userId),
+            location: await this.getUserLocation(userId)
+        };
+
+        await this.db.saveActivity(activityData);
+        await this.analyzeForAnomalies(activityData);
+    }
+
+    // Анализ аномалий с помощью ML
+    async analyzeForAnomalies(activityData) {
+        const userPattern = await this.ml.getUserPattern(activityData.userId);
+        const anomalyScore = await this.ml.calculateAnomalyScore(activityData, userPattern);
+
+        if (anomalyScore > 0.8) { // Порог подозрительной активности
+            await this.notifySecurityTeam({
+                type: 'suspicious_activity',
+                data: activityData,
+                score: anomalyScore
+            });
+        }
+    }
+}
+
+// Класс для машинного обучения
+class MachineLearning {
+    constructor() {
+        this.model = new TensorFlow.Sequential();
+        this.setupModel();
+    }
+
+    // Настройка модели
+    setupModel() {
+        this.model.add(tf.layers.dense({
+            units: 64,
+            activation: 'relu',
+            inputShape: [10]
+        }));
+        this.model.add(tf.layers.dense({
+            units: 32,
+            activation: 'relu'
+        }));
+        this.model.add(tf.layers.dense({
+            units: 1,
+            activation: 'sigmoid'
+        }));
+
+        this.model.compile({
+            optimizer: 'adam',
+            loss: 'binaryCrossentropy',
+            metrics: ['accuracy']
+        });
+    }
+
+    // Обучение на исторических данных
+    async trainOnHistoricalData() {
+        const historicalData = await this.getHistoricalAccessData();
+        const processedData = this.preprocessData(historicalData);
+        
+        await this.model.fit(processedData.inputs, processedData.labels, {
+            epochs: 50,
+            batchSize: 32,
+            validationSplit: 0.2
+        });
+    }
+}
+```
+
+### 2.4 Фронтенд реализация (web-app)
+
+```javascript
+// Основной класс интерфейса
+class RoomAccessUI {
+    constructor() {
+        this.initializeUI();
+        this.setupWebSocket();
+        this.setupEventListeners();
+    }
+
+    // Инициализация интерфейса
+    initializeUI() {
+        this.roomMap = new InteractiveRoomMap('#room-map');
+        this.accessPanel = new AccessControlPanel('#access-panel');
+        this.notifications = new NotificationSystem();
+    }
+
+    // Настройка WebSocket для real-time обновлений
+    setupWebSocket() {
+        this.ws = new WebSocket('wss://your-server.com/ws');
+        
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            this.handleRealtimeUpdate(data);
+        };
+    }
+
+    // Обработка входа в комнату
+    async handleRoomEntry(roomId) {
+        try {
+            // Анимация загрузки
+            this.showLoadingAnimation();
+
+            // Проверка доступа
+            const accessGranted = await this.checkAccess(roomId);
+            
+            if (accessGranted) {
+                // Получение ключа комнаты
+                const roomKey = await this.getRoomKey(roomId);
+                
+                // Открытие двери (если есть физическая интеграция)
+                await this.openDoor(roomId);
+                
+                // Обновление UI
+                this.updateRoomStatus(roomId, 'occupied');
+                
+                // Логирование входа
+                await this.logEntry(roomId);
+            } else {
+                this.showAccessDenied(roomId);
+            }
+        } catch (error) {
+            this.handleError(error);
+        } finally {
+            this.hideLoadingAnimation();
+        }
+    }
+}
+
+// Класс для интерактивной карты комнат
+class InteractiveRoomMap {
+    constructor(containerId) {
+        this.container = document.querySelector(containerId);
+        this.initializeThreeJS();
+        this.loadRoomModels();
+        this.setupInteractions();
+    }
+
+    // Инициализация 3D рендеринга
+    initializeThreeJS() {
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        this.setupLighting();
+        this.setupControls();
+    }
+
+    // Загрузка 3D моделей комнат
+    async loadRoomModels() {
+        const loader = new THREE.GLTFLoader();
+        
+        this.roomModels = await Promise.all(
+            this.roomConfigs.map(async config => {
+                const model = await loader.loadAsync(config.modelUrl);
+                this.setupRoomInteractions(model, config);
+                return { model, config };
+            })
+        );
+    }
+}
+```
+
+## 3. Дополнительные компоненты
+
+### 3.1 Интеграция с физическими устройствами
+
+```javascript
+// Класс для работы с физическими замками
+class DoorController {
+    constructor() {
+        this.mqtt = new MQTTClient();
+        this.setupEventHandlers();
+    }
+
+    // Открытие двери
+    async openDoor(roomId) {
+        const doorConfig = await this.getDoorConfig(roomId);
+        
+        // Отправка команды на физическое устройство
+        await this.mqtt.publish(`door/${roomId}/command`, {
+            action: 'open',
+            timestamp: Date.now(),
+            signature: this.signCommand('open', roomId)
+        });
+
+        // Ожидание подтверждения
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Door open timeout'));
+            }, 5000);
+
+            this.mqtt.subscribe(`door/${roomId}/status`, (message) => {
+                if (message.action === 'opened') {
+                    clearTimeout(timeout);
+                    resolve(true);
+                }
+            });
+        });
+    }
+}
+```
+
+### 3.2 Биометрическая аутентификация
+
+```javascript
+// Класс для работы с биометрией
+class BiometricAuth {
+    constructor() {
+        this.faceApi = new FaceRecognitionAPI();
+        this.fingerprint = new FingerprintScanner();
+    }
+
+    // Регистрация биометрических данных
+    async registerBiometrics(userId) {
+        // Сканирование лица
+        const faceData = await this.faceApi.scanFace();
+        
+        // Сканирование отпечатка
+        const fingerprintData = await this.fingerprint.scan();
+
+        // Сохранение биометрических данных
+        await this.saveBiometricData(userId, {
+            face: faceData,
+            fingerprint: fingerprintData
+        });
+    }
+
+    // Верификация пользователя
+    async verifyUser(userId) {
+        const storedData = await this.getBiometricData(userId);
+        
+        // Проверка лица
+        const faceMatch = await this.faceApi.verify(storedData.face);
+        
+        // Проверка отпечатка
+        const fingerprintMatch = await this.fingerprint.verify(storedData.fingerprint);
+
+        return faceMatch && fingerprintMatch;
+    }
+}
+```
+
+## 4. Безопасность и мониторинг
+
+### 4.1 Система обнаружения вторжений
+
+```javascript
+// Класс для обнаружения подозрительной активности
+class IntrusionDetection {
+    constructor() {
+        this.rules = new SecurityRules();
+        this.alertSystem = new AlertSystem();
+    }
+
+    // Анализ активности
+    async analyzeActivity(activity) {
+        const riskScore = await this.calculateRiskScore(activity);
+        
+        if (riskScore > this.rules.riskThreshold) {
+            await this.handlePotentialIntrusion(activity, riskScore);
+        }
+    }
+
+    // Расчет оценки риска
+    async calculateRiskScore(activity) {
+        const factors = [
+            this.checkTimeAnomaly(activity.timestamp),
+            this.checkLocationAnomaly(activity.location),
+            this.checkDeviceAnomaly(activity.deviceInfo),
+            this.checkBehaviorAnomaly(activity.userId, activity)
+        ];
+
+        return factors.reduce((score, factor) => score + factor.weight * factor.value, 0);
+    }
+}
+```
+
+## 5. Развертывание и масштабирование
+
+### 5.1 Kubernetes конфигурация
+
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: room-access-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: room-access
+  template:
+    metadata:
+      labels:
+        app: room-access
+    spec:
+      containers:
+      - name: room-access
+        image: room-access:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: host
+```
+
+## 6. Тестирование
+
+### 6.1 Автоматизированные тесты
+
+```javascript
+// Тесты системы доступа
+describe('Access Control System', () => {
+    let accessControl;
+    let user;
+    let room;
+
+    beforeEach(async () => {
+        accessControl = new AccessControl();
+        user = await createTestUser();
+        room = await createTestRoom();
+    });
+
+    it('should grant access to authorized users', async () => {
+        const result = await accessControl.grantAccess(
+            adminId,
+            user.id,
+            room.id,
+            'full'
+        );
+        
+        expect(result.granted).toBe(true);
+        expect(result.accessToken).toBeDefined();
+    });
+
+    it('should detect unauthorized access attempts', async () => {
+        const result = await accessControl.verifyAccess(
+            user.id,
+            room.id
+        );
+        
+        expect(result).toBe(false);
+    });
+});
+```
+
+## 7. Мониторинг производительности
+
+```javascript
+// Класс для мониторинга производительности
+class PerformanceMonitoring {
+    constructor() {
+        this.metrics = new MetricsCollector();
+        this.alerts = new AlertSystem();
+    }
+
+    // Отслеживание метрик
+    async trackMetrics() {
+        const metrics = {
+            responseTime: await this.measureResponseTime(),
+            errorRate: await this.calculateErrorRate(),
+            systemLoad: await this.getSystemLoad(),
+            memoryUsage: await this.getMemoryUsage()
+        };
+
+        await this.metrics.save(metrics);
+        await this.checkThresholds(metrics);
+    }
+}
+```
+
+Это подробная реализация системы контроля доступа к комнатам с использованием современных технологий и подходов. Каждый компонент можно дополнительно настроить и расширить в зависимости от конкретных требований.
+
+Основные преимущества данной реализации:
+1. Высокая безопасность благодаря многоуровневому шифрованию
+2. Масштабируемость через микросервисную архитектуру
+3. Гибкость настройки правил доступа
+4. Real-time мониторинг и аналитика
+5. Интеграция с физическими устройствами
+6. Поддержка биометрической аутентификации
+7. Автоматизированное тестирование
+8. Продвинутый мониторинг производительности
+
+Для запуска системы необходимо:
+1. Настроить все необходимые сервисы
+2. Установить зависимости
+3. Настроить базы данных
+4. Сконфигурировать Kubernetes
+5. Настроить мониторинг
+6. Провести тестирование 
+
+# Система безопасной регистрации пользователей
+
+## 1. Основные компоненты системы
+
+### 1.1 Структура безопасности
+```javascript
+// Класс для управления ключами пользователя
+class UserKeyManager {
+    constructor() {
+        this.crypto = window.crypto.subtle;
+    }
+
+    // Генерация пары ключей для нового пользователя
+    async generateUserKeys() {
+        try {
+            // Создаем пару ключей RSA
+            const keyPair = await this.crypto.generateKey(
+                {
+                    name: "RSA-OAEP",
+                    modulusLength: 4096, // Длина ключа для безопасности
+                    publicExponent: new Uint8Array([1, 0, 1]),
+                    hash: "SHA-256"
+                },
+                true, // Можно экспортировать
+                ["encrypt", "decrypt"]
+            );
+
+            // Экспортируем публичный ключ для сохранения на сервере
+            const publicKey = await this.crypto.exportKey(
+                "spki",
+                keyPair.publicKey
+            );
+
+            // Экспортируем приватный ключ для пользователя
+            const privateKey = await this.crypto.exportKey(
+                "pkcs8",
+                keyPair.privateKey
+            );
+
+            return {
+                publicKey: this._arrayBufferToBase64(publicKey),
+                privateKey: this._arrayBufferToBase64(privateKey)
+            };
+        } catch (error) {
+            console.error('Ошибка при генерации ключей:', error);
+            throw new Error('Не удалось создать ключи безопасности');
+        }
+    }
+
+    // Вспомогательный метод для конвертации ключа в строку
+    _arrayBufferToBase64(buffer) {
+        const binary = String.fromCharCode(...new Uint8Array(buffer));
+        return window.btoa(binary);
+    }
+}
+
+// Класс для регистрации пользователей
+class SecureRegistration {
+    constructor() {
+        this.keyManager = new UserKeyManager();
+        this.levels = {
+            LEVEL_1: 1, // Базовая регистрация
+            LEVEL_2: 2, // Подтверждение email
+            LEVEL_3: 3, // Двухфакторная аутентификация
+            LEVEL_4: 4  // Полный доступ с биометрией
+        };
+    }
+
+    // Регистрация нового пользователя
+    async registerUser(userData) {
+        try {
+            // 1. Генерируем ключи для пользователя
+            const userKeys = await this.keyManager.generateUserKeys();
+
+            // 2. Шифруем персональные данные пользователя
+            const encryptedData = await this._encryptUserData(userData, userKeys.publicKey);
+
+            // 3. Создаем запись о пользователе
+            const userRecord = {
+                id: this._generateUserId(),
+                publicKey: userKeys.publicKey,
+                encryptedData: encryptedData,
+                securityLevel: this.levels.LEVEL_1,
+                createdAt: new Date(),
+                lastAccess: new Date()
+            };
+
+            // 4. Сохраняем в базу данных
+            await this._saveUserToDatabase(userRecord);
+
+            // 5. Возвращаем приватный ключ пользователю
+            // ВАЖНО: Приватный ключ передается только один раз при регистрации
+            return {
+                userId: userRecord.id,
+                privateKey: userKeys.privateKey,
+                message: 'Сохраните приватный ключ в надежном месте! Он не будет показан повторно.'
+            };
+
+        } catch (error) {
+            console.error('Ошибка при регистрации:', error);
+            throw new Error('Не удалось завершить регистрацию');
+        }
+    }
+
+    // Повышение уровня доступа пользователя
+    async upgradeSecurityLevel(userId, targetLevel, verificationData) {
+        const user = await this._getUserById(userId);
+        
+        if (!user) {
+            throw new Error('Пользователь не найден');
+        }
+
+        switch (targetLevel) {
+            case this.levels.LEVEL_2:
+                // Проверка подтверждения email
+                await this._verifyEmail(user, verificationData);
+                break;
+            case this.levels.LEVEL_3:
+                // Настройка 2FA
+                await this._setup2FA(user, verificationData);
+                break;
+            case this.levels.LEVEL_4:
+                // Добавление биометрии
+                await this._setupBiometrics(user, verificationData);
+                break;
+            default:
+                throw new Error('Неверный уровень доступа');
+        }
+
+        // Обновляем уровень доступа пользователя
+        await this._updateUserSecurityLevel(userId, targetLevel);
+    }
+
+    // Проверка доступа пользователя
+    async verifyAccess(userId, requiredLevel) {
+        const user = await this._getUserById(userId);
+        
+        if (!user) {
+            return false;
+        }
+
+        return user.securityLevel >= requiredLevel;
+    }
+}
+
+// Пример использования
+const registration = new SecureRegistration();
+
+// Регистрация нового пользователя
+const newUser = await registration.registerUser({
+    email: 'user@example.com',
+    name: 'Иван Петров'
+});
+
+// Сохранение приватного ключа (например, в защищенном локальном хранилище)
+localStorage.setItem('userPrivateKey', newUser.privateKey);
+
+// Повышение уровня безопасности
+await registration.upgradeSecurityLevel(newUser.userId, 2, {
+    emailVerificationCode: '123456'
+});
+```
+
+### 1.2 Уровни безопасности
+
+1. **Уровень 1 - Базовая регистрация**
+   - Генерация пары ключей RSA
+   - Базовая информация пользователя
+   - Сохранение публичного ключа на сервере
+
+2. **Уровень 2 - Подтверждение email**
+   - Отправка кода подтверждения
+   - Верификация email
+   - Дополнительное шифрование данных
+
+3. **Уровень 3 - Двухфакторная аутентификация**
+   - Настройка 2FA (например, через Google Authenticator)
+   - Генерация резервных кодов
+   - Повышенный уровень доступа
+
+4. **Уровень 4 - Биометрическая защита**
+   - Добавление биометрических данных
+   - Максимальный уровень безопасности
+   - Полный доступ ко всем функциям
+
+### 1.3 Правила безопасности
+
+1. Приватный ключ никогда не хранится на сервере
+2. Каждый уровень имеет свое дополнительное шифрование
+3. Данные шифруются уникальным ключом для каждого пользователя
+4. Доступ к более высоким уровням требует подтверждения личности
+
+### 1.4 Процесс регистрации
+
+1. Пользователь заполняет форму регистрации
+2. Система генерирует пару ключей
+3. Публичный ключ сохраняется на сервере
+4. Приватный ключ передается пользователю
+5. Пользователь может повышать уровень доступа
+6. Каждое повышение требует дополнительной верификации 

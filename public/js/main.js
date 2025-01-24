@@ -10,55 +10,74 @@ const MOON_TILT = 5.14 * Math.PI / 180; // Наклон орбиты Луны к
 
 class Earth {
     constructor() {
-        // Проверяем, запущено ли приложение в Telegram
-        this.isTelegram = window.Telegram !== undefined;
-        
-        // Инициализация только после загрузки всех ресурсов
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.initGame());
-        } else {
-            this.initGame();
-        }
+        this.disposed = false;
+        this.initGame();
+        this.setupEventListeners();
+    }
 
-        // Добавляем обработчик для Telegram Game
-        if (this.isTelegram) {
-            window.TelegramGameProxy = {
-                initParams: {},
-                receiveEvent: function(command, params) {
-                    console.log('Game received command:', command, params);
-                },
-                onEvent: function(event, data) {
-                    console.log('Game sent event:', event, data);
-                }
-            };
+    setupEventListeners() {
+        window.addEventListener('resize', this.onWindowResize.bind(this));
+        window.addEventListener('beforeunload', this.cleanup.bind(this));
+    }
+
+    async initGame() {
+        try {
+            await this.setupTelegram();
+            await this.initScene();
+            this.animate();
+        } catch (error) {
+            console.error('Failed to initialize game:', error);
+            this.showErrorMessage('Failed to load the game. Please refresh the page.');
         }
     }
 
-    initGame() {
-        // Интеграция с Telegram перед созданием сцены
-        if (this.isTelegram) {
+    async setupTelegram() {
+        if (window.Telegram?.WebApp) {
             try {
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
                 
                 window.Telegram.WebApp.onEvent('viewportChanged', () => {
-                    this.onWindowResize();
+                    if (!this.disposed) this.onWindowResize();
                 });
             } catch (error) {
-                console.error('Error initializing Telegram integration:', error);
+                console.error('Telegram initialization error:', error);
             }
         }
+    }
 
-        // Создаем сцену
-        this.createScene();
-        
-        // Запускаем анимацию загрузки
-        this.playLoadingAnimation();
-        
-        // Загружаем текстуры
-        this.loadTextures().catch(error => {
-            console.error('Error loading textures:', error);
-        });
+    cleanup() {
+        this.disposed = true;
+        if (this.controls) this.controls.dispose();
+        if (this.renderer) this.renderer.dispose();
+        if (this.scene) {
+            this.scene.traverse(object => {
+                if (object.geometry) object.geometry.dispose();
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(material => material.dispose());
+                    } else {
+                        object.material.dispose();
+                    }
+                }
+            });
+        }
+        window.removeEventListener('resize', this.onWindowResize.bind(this));
+        window.removeEventListener('beforeunload', this.cleanup.bind(this));
+    }
+
+    showErrorMessage(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.top = '50%';
+        errorDiv.style.left = '50%';
+        errorDiv.style.transform = 'translate(-50%, -50%)';
+        errorDiv.style.background = 'rgba(0,0,0,0.8)';
+        errorDiv.style.color = 'white';
+        errorDiv.style.padding = '20px';
+        errorDiv.style.borderRadius = '10px';
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
     }
 
     loadTextures() {

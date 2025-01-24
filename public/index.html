@@ -216,15 +216,22 @@
             height: 100%;
             background: rgb(22, 22, 27);
             transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.3s ease;
             z-index: 999;
             pointer-events: none;
+            will-change: transform, border-radius;
         }
         .tab-content.active {
             transform: translateY(80px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
+        }
+        .tab-content.dragging {
+            transition: none;
+        }
+        .tab-content.closing {
+            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-radius 0.3s ease;
         }
         .tab-content-inner {
             width: 100%;
@@ -821,97 +828,96 @@
         document.addEventListener('DOMContentLoaded', () => {
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
+            let startY = 0;
+            let currentY = 0;
+            let isDragging = false;
+            const SWIPE_THRESHOLD = 100;
             
-            // Добавляем обработчики для свайпа
+            // Обработчик начала свайпа
             tabContent.addEventListener('touchstart', (e) => {
+                if (!tabContent.classList.contains('active')) return;
                 startY = e.touches[0].clientY;
                 currentY = startY;
+                isDragging = true;
+                tabContent.classList.add('dragging');
             }, { passive: true });
             
+            // Обработчик движения при свайпе
             tabContent.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                
                 currentY = e.touches[0].clientY;
                 const diff = currentY - startY;
                 
                 if (diff > 0) {
-                    const opacity = 1 - (diff / 200);
-                    tabInner.style.opacity = Math.max(opacity, 0);
-                    tabContent.style.transform = `translateY(${diff * 0.5}px)`;
-                }
-            }, { passive: true });
-            
-            tabContent.addEventListener('touchend', (e) => {
-                const diff = currentY - startY;
-                
-                if (diff > 100) {
-                    // Закрываем вкладку
-                    tabContent.classList.remove('active');
-                    document.querySelector('.nav-button.active')?.classList.remove('active');
+                    // Изменяем радиус скругления в зависимости от расстояния свайпа
+                    const radius = Math.min(24 + (diff * 0.1), 40);
+                    tabContent.style.borderTopLeftRadius = `${radius}px`;
+                    tabContent.style.borderTopRightRadius = `${radius}px`;
                     
-                    // Сбрасываем стили
-                                    setTimeout(() => {
-                        tabContent.style.transform = '';
-                        tabInner.style.opacity = '0';
-                    }, 300);
-                                        } else {
-                    // Возвращаем на место
-                    tabContent.style.transform = '';
-                    tabInner.style.opacity = '1';
+                    // Замедляем движение чем дальше свайпаем
+                    const dampenedDiff = Math.pow(diff, 0.8);
+                    const transform = 80 + dampenedDiff;
+                    
+                    tabContent.style.transform = `translateY(${transform}px)`;
+                    
+                    // Уменьшаем прозрачность контента
+                    const opacity = Math.max(0, 1 - (diff / 400));
+                    tabInner.style.opacity = opacity;
                 }
             }, { passive: true });
             
-            // Предотвращаем скрытие при скролле рейтинга
-            const preventHiding = (e) => {
-                if (e.target.closest('.rating-list-container')) {
-                    e.stopPropagation();
+            // Обработчик окончания свайпа
+            tabContent.addEventListener('touchend', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                const diff = currentY - startY;
+                tabContent.classList.remove('dragging');
+                
+                if (diff > SWIPE_THRESHOLD) {
+                    // Закрываем вкладку
+                    closeTab();
+                } else {
+                    // Возвращаем на место
+                    tabContent.classList.add('closing');
+                    tabContent.style.transform = 'translateY(80px)';
+                    tabContent.style.borderTopLeftRadius = '24px';
+                    tabContent.style.borderTopRightRadius = '24px';
+                    tabInner.style.opacity = '1';
+                    
+                                    setTimeout(() => {
+                        tabContent.classList.remove('closing');
+                        tabContent.style.transform = '';
+                        tabContent.style.borderTopLeftRadius = '';
+                        tabContent.style.borderTopRightRadius = '';
+                    }, 300);
                 }
+            }, { passive: true });
+            
+            // Функция закрытия вкладки
+            window.closeTab = function() {
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
+                const activeButton = document.querySelector('.nav-button.active');
+                
+                if (activeButton) {
+                    activeButton.classList.remove('active');
+                }
+                
+                tabContent.classList.add('closing');
+                tabContent.style.transform = 'translateY(100%)';
+                tabContent.style.borderTopLeftRadius = '0';
+                tabContent.style.borderTopRightRadius = '0';
+                tabInner.style.opacity = '0';
+                
+                setTimeout(() => {
+                    tabContent.classList.remove('active', 'closing');
+                    tabContent.style.transform = '';
+                    tabContent.style.borderTopLeftRadius = '';
+                    tabContent.style.borderTopRightRadius = '';
+                }, 300);
             };
-            
-            document.addEventListener('touchmove', preventHiding, { passive: true });
-            document.addEventListener('scroll', preventHiding, { passive: true });
-            
-            // Обновляем обработчик для профиля
-            async function updateProfileContent() {
-                const users = await getRealUsers();
-                const currentUser = tg?.initDataUnsafe?.user;
-                
-                if (!users.length && currentUser) {
-                    users.push({
-                        id: currentUser.id,
-                        first_name: currentUser.first_name,
-                        last_name: currentUser.last_name,
-                        username: currentUser.username,
-                        photo_url: currentUser.photo_url,
-                        score: 0,
-                        position: 1
-                    });
-                }
-                
-                const ratingList = document.querySelector('.rating-list');
-                if (ratingList) {
-                    ratingList.innerHTML = users.length > 0 ? 
-                        users.map((user, index) => `
-                            <li class="rating-item ${user.id === currentUser?.id ? 'current' : ''}">
-                                <span class="rating-position">#${index + 1}</span>
-                                <div class="rating-avatar">
-                                    <img src="${user.photo_url || 'https://via.placeholder.com/80/666666/FFFFFF?text=P'}" alt="User Avatar">
-                                </div>
-                                <div class="rating-user-info">
-                                    <h4 class="rating-username">${user.first_name}${user.last_name ? ' ' + user.last_name : ''}</h4>
-                                    <p class="rating-score">${user.score || 0} points</p>
-                                </div>
-                            </li>
-                        `).join('') : 
-                        `<li class="rating-item no-users">
-                            <div class="no-users-message">
-                                <i class="material-icons">people_outline</i>
-                                <p>Be the first to join the rating!</p>
-                            </div>
-                        </li>`;
-                }
-            }
-            
-            // Обновляем список пользователей каждые 30 секунд
-            setInterval(updateProfileContent, 30000);
         });
     </script>
     <script type="module" src="/js/main.js"></script>
@@ -1004,72 +1010,7 @@
                         `;
                         break;
                     case 'profile':
-                        if (!isRunningInTelegram()) {
-                            content = `
-                                <h3>Profile</h3>
-                                <button class="close-button" type="button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                                <div class="profile-connecting">
-                                    <i class="material-icons">telegram</i>
-                                    <h4>Open in Telegram</h4>
-                                    <p>This app can only be used in Telegram</p>
-                                    <button class="connect-button" id="telegram-connect">
-                                        <i class="material-icons">telegram</i>
-                                        Open in Telegram
-                                    </button>
-                                </div>
-                            `;
-                        } else {
-                            const user = window.Telegram.WebApp.initDataUnsafe.user;
-                            const defaultAvatar = 'https://via.placeholder.com/80/666666/FFFFFF?text=P';
-                            const realUsers = getRealUsers();
-                            const currentUserRating = realUsers.find(u => u.id === user?.id)?.position || '-';
-                            
-                            content = `
-                                <h3>Profile</h3>
-                                <button class="close-button" type="button">
-                                    <i class="material-icons">close</i>
-                                </button>
-                                <div class="profile-header">
-                                    <div class="profile-avatar">
-                                        <img src="${user?.photo_url || defaultAvatar}" alt="Profile Avatar">
-                                    </div>
-                                    <div class="profile-info">
-                                        <h4 class="profile-name" id="profile-name">${user ? user.first_name + (user.last_name ? ' ' + user.last_name : '') : 'Loading...'}</h4>
-                                        <p class="profile-bio" id="profile-username">${user?.username ? '@' + user.username : 'Loading...'}</p>
-                                    </div>
-                                    <div class="profile-rating">
-                                        <p class="rating-number">#${currentUserRating}</p>
-                                        <p class="rating-label">Rating</p>
-                                    </div>
-                                </div>
-                                <div class="rating-list-container">
-                                    <ul class="rating-list">
-                                        ${realUsers.length > 0 ? 
-                                            realUsers.map((rUser, index) => `
-                                                <li class="rating-item ${rUser.id === user?.id ? 'current' : ''}">
-                                                    <span class="rating-position">#${rUser.position}</span>
-                                                    <div class="rating-avatar">
-                                                        <img src="${rUser.photo_url || defaultAvatar}" alt="User Avatar">
-                                                    </div>
-                                                    <div class="rating-user-info">
-                                                        <h4 class="rating-username">${rUser.first_name}${rUser.last_name ? ' ' + rUser.last_name : ''}</h4>
-                                                        <p class="rating-score">${rUser.score} points</p>
-                                                    </div>
-                                                </li>
-                                            `).join('') : 
-                                            `<li class="rating-item no-users">
-                                                <div class="no-users-message">
-                                                    <i class="material-icons">people_outline</i>
-                                                    <p>Be the first to join the rating!</p>
-                                                </div>
-                                            </li>`
-                                        }
-                                    </ul>
-                                </div>
-                            `;
-                        }
+                        showProfile();
                         break;
                     case 'planet':
                         content = `
@@ -1133,7 +1074,7 @@
                     const connectButton = document.querySelector('#telegram-connect');
                     if (connectButton) {
                         connectButton.addEventListener('click', () => {
-                            window.location.href = 'https://t.me/notEarthBot';
+                            window.location.href = 'https://t.me/your_bot_username';
                         });
                     }
                 }
@@ -1181,20 +1122,71 @@
     </script>
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
     <script>
-    // Добавляем функцию для получения реальных пользователей
+    // Функция проверки Telegram окружения
+    function isRunningInTelegram() {
+        return window.Telegram?.WebApp !== undefined;
+    }
+
+    // Функция получения реальных пользователей (заглушка, пока нет бэкенда)
     function getRealUsers() {
-        // Здесь в будущем будет запрос к серверу для получения реальных пользователей
-        // Пока возвращаем тестовый массив с текущим пользователем
-        const currentUser = window.Telegram.WebApp.initDataUnsafe.user;
-        return currentUser ? [{
-            id: currentUser.id,
-            first_name: currentUser.first_name,
-            last_name: currentUser.last_name,
-            username: currentUser.username,
-            photo_url: currentUser.photo_url,
-            score: 1000,
-            position: 1
-        }] : [];
+        return [];
+    }
+
+    // Функция показа профиля
+    function showProfile() {
+        const isInTelegram = isRunningInTelegram();
+        const tabInner = document.querySelector('.tab-content-inner');
+        
+        if (!isInTelegram) {
+            tabInner.innerHTML = `
+                <h3>Profile</h3>
+                <button class="close-button" type="button" onclick="window.closeTab()">
+                    <i class="material-icons">close</i>
+                </button>
+                <div class="profile-connecting">
+                    <i class="material-icons">telegram</i>
+                    <h4>Open in Telegram</h4>
+                    <p>This app can only be used in Telegram</p>
+                    <button class="connect-button" id="telegram-connect">
+                        <i class="material-icons">telegram</i>
+                        Open in Telegram
+                    </button>
+                </div>
+            `;
+            
+            // Добавляем обработчик для кнопки
+            const connectButton = document.getElementById('telegram-connect');
+            if (connectButton) {
+                connectButton.addEventListener('click', () => {
+                    window.location.href = 'https://t.me/your_bot_username';
+                });
+            }
+        } else {
+            const user = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
+            const defaultAvatar = 'https://via.placeholder.com/80/666666/FFFFFF?text=P';
+            const realUsers = getRealUsers();
+            const currentUserRating = realUsers.find(u => u.id === user?.id)?.position || '-';
+            
+            tabInner.innerHTML = `
+                <h3>Profile</h3>
+                <button class="close-button" type="button" onclick="window.closeTab()">
+                    <i class="material-icons">close</i>
+                </button>
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <img src="${user?.photo_url || defaultAvatar}" alt="Profile Avatar">
+                    </div>
+                    <div class="profile-info">
+                        <h4 class="profile-name">${user.first_name || ''} ${user.last_name || ''}</h4>
+                        <p class="profile-bio">${user.username ? '@' + user.username : ''}</p>
+                    </div>
+                    <div class="profile-rating">
+                        <p class="rating-number">#${currentUserRating}</p>
+                        <p class="rating-label">Rating</p>
+                    </div>
+                </div>
+            `;
+        }
     }
     </script>
 </body>
