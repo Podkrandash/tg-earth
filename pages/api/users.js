@@ -3,13 +3,7 @@ import crypto from 'crypto';
 
 const supabase = createClient(
     'https://qfnvnbqjzlsagemyagyn.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmbnZuYnFqemxzYWdlbXlhZ3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc3MjMwMTgsImV4cCI6MjA1MzI5OTAxOH0.xUTWif6OlnkMcI3KII0VPokWrRLKjBVpiVsrm2Ub59Y',
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmbnZuYnFqemxzYWdlbXlhZ3luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc3MjMwMTgsImV4cCI6MjA1MzI5OTAxOH0.xUTWif6OlnkMcI3KII0VPokWrRLKjBVpiVsrm2Ub59Y'
 );
 
 function validateTelegramData(data) {
@@ -31,6 +25,13 @@ function validateTelegramData(data) {
 }
 
 export default async function handler(req, res) {
+    console.log('API Request received:', {
+        method: req.method,
+        url: req.url,
+        body: req.body,
+        headers: req.headers
+    });
+
     // Добавляем CORS заголовки
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -46,11 +47,11 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
         try {
             const userData = req.body;
+            console.log('Processing user data:', userData);
             
-            // Временно отключаем проверку для тестирования
-            // if (!validateTelegramData(userData)) {
-            //     return res.status(401).json({ error: 'Invalid Telegram data' });
-            // }
+            if (!userData.telegram_id || !userData.username) {
+                return res.status(400).json({ error: 'Missing required fields' });
+            }
             
             // Обновляем или создаем пользователя
             const { data, error } = await supabase
@@ -63,31 +64,43 @@ export default async function handler(req, res) {
                     onConflict: 'telegram_id'
                 });
             
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error:', error);
+                throw error;
+            }
             
-            res.json({ 
+            console.log('User saved successfully:', data);
+            res.status(200).json({ 
                 success: true,
                 data: data
             });
         } catch (error) {
             console.error('Error saving user:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     } else if (req.method === 'GET') {
         try {
+            console.log('Fetching users');
             // Получаем топ пользователей
             const { data: users, error } = await supabase
-                .rpc('get_top_users', { limit_count: 100 });
+                .from('users')
+                .select('*')
+                .order('score', { ascending: false })
+                .limit(100);
             
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error:', error);
+                throw error;
+            }
             
-            res.json(users);
+            console.log('Users fetched successfully:', users?.length || 0, 'users');
+            res.status(200).json(users);
         } catch (error) {
             console.error('Error getting users:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     } else {
         res.setHeader('Allow', ['GET', 'POST']);
-        res.status(405).end(`Method ${req.method} Not Allowed`);
+        res.status(405).json({ error: `Method ${req.method} Not Allowed` });
     }
 } 
