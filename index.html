@@ -33,18 +33,21 @@
             height: 100%;
             background: rgb(22, 22, 27);
             transform: translateY(100%);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 999;
             pointer-events: none;
-            border-radius: 0;
+            border-radius: 24px 24px 0 0;
             will-change: transform, border-radius;
+            touch-action: none;
         }
 
         .tab-content.active {
             transform: translateY(80px);
             pointer-events: auto;
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
+        }
+
+        .tab-content.dragging {
+            transition: none;
         }
 
         .tab-content.closing {
@@ -145,8 +148,8 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             padding: 24px;
-            touch-action: pan-y;
             overscroll-behavior: contain;
+            touch-action: pan-y;
         }
 
         /* Стили для TON Connect */
@@ -191,6 +194,9 @@
             const tabInner = document.querySelector('.tab-content-inner');
             let startY = 0;
             let currentY = 0;
+            let startTranslateY = 0;
+            let isScrolling = false;
+            let isDragging = false;
             const SWIPE_THRESHOLD = 50;
             let isClosing = false;
 
@@ -205,30 +211,64 @@
             });
 
             // Обновляем обработчик свайпов
-            let touchStartY = 0;
-            let touchEndY = 0;
-            
             tabContent.addEventListener('touchstart', (e) => {
-                touchStartY = e.touches[0].clientY;
+                if (!tabContent.classList.contains('active')) return;
+                
+                const touch = e.touches[0];
+                startY = touch.clientY;
+                currentY = startY;
+                
+                const transform = window.getComputedStyle(tabContent).transform;
+                const matrix = new DOMMatrix(transform);
+                startTranslateY = matrix.m42;
+                
+                isDragging = false;
+                isScrolling = false;
             }, { passive: true });
 
             tabContent.addEventListener('touchmove', (e) => {
-                if (!tabContent.classList.contains('active') || isClosing) return;
+                if (!tabContent.classList.contains('active')) return;
                 
-                touchEndY = e.touches[0].clientY;
-                const diff = touchEndY - touchStartY;
+                const touch = e.touches[0];
+                currentY = touch.clientY;
+                const deltaY = currentY - startY;
                 
-                if (diff > SWIPE_THRESHOLD) {
-                    if (!isClosing) {
-                        isClosing = true;
-                        closeTab();
+                // Проверяем, можно ли закрыть вкладку (только если скролл в начале)
+                const canClose = tabInner.scrollTop <= 0;
+                
+                if (!isDragging && !isScrolling) {
+                    if (Math.abs(deltaY) > 5) {
+                        if (deltaY > 0 && canClose) {
+                            isDragging = true;
+                            tabContent.classList.add('dragging');
+                        } else {
+                            isScrolling = true;
+                        }
                     }
                 }
-            }, { passive: true });
+                
+                if (isDragging) {
+                    e.preventDefault();
+                    const newTranslateY = Math.max(80, startTranslateY + deltaY);
+                    tabContent.style.transform = `translateY(${newTranslateY}px)`;
+                }
+            }, { passive: false });
 
-            tabContent.addEventListener('touchend', () => {
-                touchStartY = 0;
-                touchEndY = 0;
+            tabContent.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                
+                tabContent.classList.remove('dragging');
+                const deltaY = currentY - startY;
+                
+                if (deltaY > SWIPE_THRESHOLD) {
+                    closeTab();
+                } else {
+                    // Возвращаем на место
+                    tabContent.style.transform = '';
+                }
+                
+                isDragging = false;
+                isScrolling = false;
             }, { passive: true });
 
             function handleNavClick(section, button) {
@@ -237,6 +277,17 @@
                     activeButton.classList.remove('active');
                 }
                 
+                button.classList.add('active');
+                tabContent.classList.add('active');
+                tabInner.style.opacity = '1';
+
+                // Блокируем закрытие приложения
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.setBackButtonVisible(false);
+                    window.Telegram.WebApp.expand();
+                    window.Telegram.WebApp.enableClosingConfirmation();
+                }
+
                 if (section === 'profile') {
                     showProfile();
                 } else if (section === 'wallet') {
@@ -246,18 +297,20 @@
                 } else if (section === 'planet') {
                     showPlanet();
                 }
-                
-                button.classList.add('active');
-                tabContent.classList.add('active');
-                tabInner.style.opacity = '1';
             }
 
             function showProfile() {
+                const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
                 tabInner.innerHTML = `
                     <div style="color: white; padding: 20px;">
-                        <h2>Профиль</h2>
-                        <p>ID: ${window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'Не определен'}</p>
-                        <p>Имя: ${window.Telegram?.WebApp?.initDataUnsafe?.user?.username || 'Не определено'}</p>
+                        <div class="close-button" onclick="closeTab()">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
+                        <div style="margin-top: 20px;">
+                            <p style="margin: 12px 0; font-size: 16px;">ID: ${userData?.id || 'Не определен'}</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Имя: ${userData?.username || 'Не определено'}</p>
+                        </div>
                     </div>
                 `;
             }
@@ -265,7 +318,10 @@
             function showWallet() {
                 tabInner.innerHTML = `
                     <div style="color: white; padding: 20px;">
-                        <h2>Кошелек</h2>
+                        <div class="close-button" onclick="closeTab()">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
                         <button id="connect-wallet-btn" class="connect-wallet-btn" 
                             style="background: #0088CC; color: white; border: none; padding: 12px 24px; 
                             border-radius: 12px; font-size: 16px; cursor: pointer; margin-top: 20px;">
@@ -285,6 +341,12 @@
                     activeButton.classList.remove('active');
                 }
                 
+                // Разрешаем закрытие приложения
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.setBackButtonVisible(true);
+                    window.Telegram.WebApp.disableClosingConfirmation();
+                }
+                
                 tabContent.classList.add('closing');
                 setTimeout(() => {
                     tabContent.classList.remove('active', 'closing');
@@ -296,37 +358,28 @@
             // Обновляем инициализацию TON Connect
             async function initTonConnect() {
                 try {
-                    const connector = new TonConnect({
-                        manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json'
+                    const tonConnectUI = new TONConnect({
+                        manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json',
+                        buttonRootId: 'connect-wallet-btn',
+                        uiPreferences: {
+                            theme: 'DARK'
+                        },
+                        walletsListConfiguration: {
+                            includeWallets: ['Tonkeeper']
+                        }
                     });
 
-                    const connectButton = document.getElementById('connect-wallet-btn');
-                    if (connectButton) {
-                        connectButton.onclick = async () => {
-                            try {
-                                const wallets = await connector.getWallets();
-                                const tonkeeper = wallets.find(w => w.name.toLowerCase().includes('tonkeeper'));
-                                
-                                if (tonkeeper) {
-                                    const universalLink = await connector.connect({
-                                        universalLink: tonkeeper.universalUrl,
-                                        bridgeUrl: tonkeeper.bridgeUrl
-                                    });
-                                    
-                                    if (window.Telegram?.WebApp) {
-                                        window.Telegram.WebApp.openTelegramLink(universalLink);
-                                    } else {
-                                        window.location.href = universalLink;
-                                    }
-                                }
-                            } catch (error) {
-                                console.error('Error connecting wallet:', error);
-                                alert('Ошибка подключения кошелька. Попробуйте позже.');
-                            }
-                        };
-                    }
+                    await tonConnectUI.connectWallet();
+                    
+                    tonConnectUI.onStatusChange(async (wallet) => {
+                        if (wallet) {
+                            console.log('Connected wallet:', wallet);
+                            // Здесь можно добавить логику после подключения
+                        }
+                    });
                 } catch (error) {
                     console.error('Error initializing TON Connect:', error);
+                    alert('Ошибка подключения кошелька. Попробуйте позже.');
                 }
             }
 
@@ -334,6 +387,7 @@
             if (window.Telegram?.WebApp) {
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
+                window.Telegram.WebApp.setBackButtonVisible(true);
             }
 
             navPanel.classList.add('visible');
