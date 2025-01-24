@@ -33,11 +33,11 @@
             height: 100%;
             background: rgb(22, 22, 27);
             transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
             z-index: 999;
             pointer-events: none;
             border-radius: 24px 24px 0 0;
-            will-change: transform, border-radius;
+            will-change: transform;
             touch-action: none;
         }
 
@@ -51,8 +51,7 @@
         }
 
         .tab-content.closing {
-            transform: translateY(100%);
-            border-radius: 0;
+            transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
         .nav-panel {
@@ -150,6 +149,12 @@
             padding: 24px;
             overscroll-behavior: contain;
             touch-action: pan-y;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .tab-content.active .tab-content-inner {
+            opacity: 1;
         }
 
         /* Стили для TON Connect */
@@ -166,6 +171,9 @@
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@tonconnect/sdk@2.1.3/dist/tonconnect-sdk.min.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@1.0.0/dist/tonconnect-ui.min.js"></script>
 </head>
 <body>
     <div id="scene-container"></div>
@@ -186,21 +194,47 @@
     <div class="tab-content">
         <div class="tab-content-inner"></div>
     </div>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
+        // Делаем closeTab глобальной
+        window.closeTab = function() {
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
+            const activeButton = document.querySelector('.nav-button.active');
+            
+            if (activeButton) {
+                activeButton.classList.remove('active');
+            }
+            
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.setBackButtonVisible(true);
+                window.Telegram.WebApp.disableClosingConfirmation();
+            }
+            
+            tabContent.classList.add('closing');
+            setTimeout(() => {
+                tabContent.classList.remove('active', 'closing');
+                tabInner.style.opacity = '0';
+                window.isClosing = false;
+            }, 300);
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             const navPanel = document.querySelector('.nav-panel');
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
-            let startY = 0;
-            let currentY = 0;
-            let startTranslateY = 0;
-            let isScrolling = false;
-            let isDragging = false;
-            const SWIPE_THRESHOLD = 50;
-            let isClosing = false;
+            
+            // Глобальные переменные для свайпа
+            window.startY = 0;
+            window.currentY = 0;
+            window.lastY = 0;
+            window.startTime = 0;
+            window.isScrolling = false;
+            window.isDragging = false;
+            window.VELOCITY_THRESHOLD = 0.5;
+            window.DISTANCE_THRESHOLD = 100;
+            window.isClosing = false;
 
-            // Обработчик для кнопок навигации
+            // Обработчики навигации
             const navButtons = document.querySelectorAll('.nav-button');
             navButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
@@ -210,65 +244,79 @@
                 });
             });
 
-            // Обновляем обработчик свайпов
+            // Обработчики свайпа
             tabContent.addEventListener('touchstart', (e) => {
                 if (!tabContent.classList.contains('active')) return;
                 
                 const touch = e.touches[0];
-                startY = touch.clientY;
-                currentY = startY;
-                
-                const transform = window.getComputedStyle(tabContent).transform;
-                const matrix = new DOMMatrix(transform);
-                startTranslateY = matrix.m42;
-                
-                isDragging = false;
-                isScrolling = false;
+                window.startY = touch.clientY;
+                window.currentY = window.startY;
+                window.lastY = window.startY;
+                window.startTime = Date.now();
+                window.isDragging = false;
+                window.isScrolling = false;
             }, { passive: true });
 
             tabContent.addEventListener('touchmove', (e) => {
                 if (!tabContent.classList.contains('active')) return;
                 
                 const touch = e.touches[0];
-                currentY = touch.clientY;
-                const deltaY = currentY - startY;
+                window.lastY = window.currentY;
+                window.currentY = touch.clientY;
                 
-                // Проверяем, можно ли закрыть вкладку (только если скролл в начале)
+                const deltaY = window.currentY - window.startY;
                 const canClose = tabInner.scrollTop <= 0;
                 
-                if (!isDragging && !isScrolling) {
+                if (!window.isDragging && !window.isScrolling) {
                     if (Math.abs(deltaY) > 5) {
                         if (deltaY > 0 && canClose) {
-                            isDragging = true;
+                            window.isDragging = true;
                             tabContent.classList.add('dragging');
                         } else {
-                            isScrolling = true;
+                            window.isScrolling = true;
                         }
                     }
                 }
                 
-                if (isDragging) {
+                if (window.isDragging) {
                     e.preventDefault();
-                    const newTranslateY = Math.max(80, startTranslateY + deltaY);
-                    tabContent.style.transform = `translateY(${newTranslateY}px)`;
+                    requestAnimationFrame(() => {
+                        const progress = Math.max(0, Math.min(1, deltaY / window.innerHeight));
+                        const translateY = 80 + deltaY;
+                        tabContent.style.transform = `translateY(${translateY}px)`;
+                        tabInner.style.opacity = 1 - progress;
+                    });
                 }
             }, { passive: false });
 
-            tabContent.addEventListener('touchend', (e) => {
-                if (!isDragging) return;
+            tabContent.addEventListener('touchend', () => {
+                if (!window.isDragging) return;
+                
+                const deltaY = window.currentY - window.startY;
+                const deltaTime = Date.now() - window.startTime;
+                const velocity = (window.currentY - window.lastY) / deltaTime;
                 
                 tabContent.classList.remove('dragging');
-                const deltaY = currentY - startY;
                 
-                if (deltaY > SWIPE_THRESHOLD) {
-                    closeTab();
+                if (deltaY > window.DISTANCE_THRESHOLD || velocity > window.VELOCITY_THRESHOLD) {
+                    const duration = Math.min(0.3, deltaY / 1000);
+                    tabContent.style.transition = `transform ${duration}s cubic-bezier(0.19, 1, 0.22, 1)`;
+                    tabContent.style.transform = `translateY(${window.innerHeight}px)`;
+                    
+                    setTimeout(() => {
+                        window.closeTab();
+                        tabContent.style.transition = '';
+                    }, duration * 1000);
                 } else {
-                    // Возвращаем на место
-                    tabContent.style.transform = '';
+                    tabContent.style.transition = 'transform 0.2s cubic-bezier(0.19, 1, 0.22, 1)';
+                    tabContent.style.transform = 'translateY(80px)';
+                    setTimeout(() => {
+                        tabContent.style.transition = '';
+                    }, 200);
                 }
                 
-                isDragging = false;
-                isScrolling = false;
+                window.isDragging = false;
+                window.isScrolling = false;
             }, { passive: true });
 
             function handleNavClick(section, button) {
@@ -281,7 +329,6 @@
                 tabContent.classList.add('active');
                 tabInner.style.opacity = '1';
 
-                // Блокируем закрытие приложения
                 if (window.Telegram?.WebApp) {
                     window.Telegram.WebApp.setBackButtonVisible(false);
                     window.Telegram.WebApp.expand();
@@ -303,7 +350,7 @@
                 const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
                 tabInner.innerHTML = `
                     <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="closeTab()">
+                        <div class="close-button" onclick="window.closeTab()">
                             <i class="material-icons">close</i>
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
@@ -318,47 +365,21 @@
             function showWallet() {
                 tabInner.innerHTML = `
                     <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="closeTab()">
+                        <div class="close-button" onclick="window.closeTab()">
                             <i class="material-icons">close</i>
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
-                        <button id="connect-wallet-btn" class="connect-wallet-btn" 
-                            style="background: #0088CC; color: white; border: none; padding: 12px 24px; 
-                            border-radius: 12px; font-size: 16px; cursor: pointer; margin-top: 20px;">
-                            Подключить кошелек
-                        </button>
+                        <div id="wallet-container">
+                            <div id="connect-wallet-btn"></div>
+                        </div>
                     </div>
                 `;
                 initTonConnect();
             }
 
-            // Обновляем функцию закрытия вкладки
-            function closeTab() {
-                if (isClosing) return;
-                
-                const activeButton = document.querySelector('.nav-button.active');
-                if (activeButton) {
-                    activeButton.classList.remove('active');
-                }
-                
-                // Разрешаем закрытие приложения
-                if (window.Telegram?.WebApp) {
-                    window.Telegram.WebApp.setBackButtonVisible(true);
-                    window.Telegram.WebApp.disableClosingConfirmation();
-                }
-                
-                tabContent.classList.add('closing');
-                setTimeout(() => {
-                    tabContent.classList.remove('active', 'closing');
-                    tabInner.style.opacity = '0';
-                    isClosing = false;
-                }, 300);
-            }
-
-            // Обновляем инициализацию TON Connect
             async function initTonConnect() {
                 try {
-                    const tonConnectUI = new TONConnect({
+                    const tonConnectUI = new TonConnectUI({
                         manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json',
                         buttonRootId: 'connect-wallet-btn',
                         uiPreferences: {
@@ -369,9 +390,7 @@
                         }
                     });
 
-                    await tonConnectUI.connectWallet();
-                    
-                    tonConnectUI.onStatusChange(async (wallet) => {
+                    tonConnectUI.onStatusChange((wallet) => {
                         if (wallet) {
                             console.log('Connected wallet:', wallet);
                             // Здесь можно добавить логику после подключения
@@ -379,11 +398,10 @@
                     });
                 } catch (error) {
                     console.error('Error initializing TON Connect:', error);
-                    alert('Ошибка подключения кошелька. Попробуйте позже.');
                 }
             }
 
-            // Инициализация при загрузке
+            // Инициализация
             if (window.Telegram?.WebApp) {
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
@@ -394,6 +412,5 @@
         });
     </script>
     <script type="module" src="/js/main.js"></script>
-    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
 </body>
 </html> 
