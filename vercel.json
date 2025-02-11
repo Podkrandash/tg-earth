@@ -4,6 +4,11 @@
   "devCommand": "next dev",
   "outputDirectory": ".next",
   "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
   "headers": [
     {
       "source": "/api/(.*)",
