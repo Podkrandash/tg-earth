@@ -580,79 +580,97 @@
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', async () => {
-            // Показываем лоадер при старте
-            loader.show();
-
-            const navPanel = document.querySelector('.nav-panel');
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            
-            // Инициализация Telegram WebApp
             try {
-                if (!window.Telegram?.WebApp) {
-                    throw new Error('Telegram WebApp не инициализирован');
-                }
+                // Показываем лоадер при старте
+                loader.show();
+
+                const navPanel = document.querySelector('.nav-panel');
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
                 
-                // Ждем загрузки Telegram WebApp
-                await new Promise((resolve) => {
-                    if (window.Telegram.WebApp.initDataUnsafe?.user) {
-                        resolve();
-                    } else {
+                // Инициализация Telegram WebApp
+                let initializationTimeout;
+                try {
+                    await new Promise((resolve, reject) => {
+                        // Проверяем каждые 100мс
                         const checkInterval = setInterval(() => {
-                            if (window.Telegram.WebApp.initDataUnsafe?.user) {
+                            if (window.Telegram?.WebApp) {
                                 clearInterval(checkInterval);
+                                clearTimeout(initializationTimeout);
                                 resolve();
                             }
                         }, 100);
                         
                         // Таймаут через 5 секунд
-                        setTimeout(() => {
+                        initializationTimeout = setTimeout(() => {
                             clearInterval(checkInterval);
-                            resolve();
+                            reject(new Error('Таймаут инициализации Telegram WebApp'));
                         }, 5000);
-                    }
+                    });
+
+                    // Ждем загрузки данных пользователя
+                    await new Promise((resolve, reject) => {
+                        const userDataTimeout = setTimeout(() => {
+                            reject(new Error('Таймаут получения данных пользователя'));
+                        }, 5000);
+
+                        const checkUserData = () => {
+                            if (window.Telegram.WebApp.initDataUnsafe?.user) {
+                                clearTimeout(userDataTimeout);
+                                resolve();
+                            } else {
+                                setTimeout(checkUserData, 100);
+                            }
+                        };
+                        
+                        checkUserData();
+                    });
+
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                } catch (error) {
+                    console.error('Error initializing Telegram WebApp:', error);
+                    errorHandler.show('Ошибка инициализации приложения');
+                    throw error;
+                }
+
+                // Очистка кэша при долгом бездействии
+                let inactivityTimer;
+                function resetInactivityTimer() {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = setTimeout(() => {
+                        tabCache.clear();
+                    }, 5 * 60 * 1000); // 5 минут
+                }
+                
+                document.addEventListener('touchstart', resetInactivityTimer);
+                document.addEventListener('mousemove', resetInactivityTimer);
+                resetInactivityTimer();
+
+                // Инициализация навигации
+                const navButtons = document.querySelectorAll('.nav-button');
+                navButtons.forEach(button => {
+                    const handler = (e) => {
+                        e.preventDefault();
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    };
+                    button.addEventListener('click', handler);
+                    appState.eventListeners.add({ element: button, event: 'click', handler });
                 });
 
-                window.Telegram.WebApp.ready();
-                window.Telegram.WebApp.expand();
+                // Восстанавливаем состояние
+                await restoreState();
+
+                // Показываем навигацию
+                navPanel.classList.add('visible');
             } catch (error) {
-                console.error('Error initializing Telegram WebApp:', error);
+                console.error('Initialization error:', error);
                 errorHandler.show('Ошибка инициализации приложения');
+            } finally {
+                // Скрываем лоадер после инициализации
+                loader.hide();
             }
-
-            // Очистка кэша при долгом бездействии
-            let inactivityTimer;
-            function resetInactivityTimer() {
-                clearTimeout(inactivityTimer);
-                inactivityTimer = setTimeout(() => {
-                    tabCache.clear();
-                }, 5 * 60 * 1000); // 5 минут
-            }
-            
-            document.addEventListener('touchstart', resetInactivityTimer);
-            document.addEventListener('mousemove', resetInactivityTimer);
-            resetInactivityTimer();
-
-            // Инициализация навигации
-            const navButtons = document.querySelectorAll('.nav-button');
-            navButtons.forEach(button => {
-                const handler = (e) => {
-                    e.preventDefault();
-                    const section = button.getAttribute('data-section');
-                    handleNavClick(section, button);
-                };
-                button.addEventListener('click', handler);
-                appState.eventListeners.add({ element: button, event: 'click', handler });
-            });
-
-            // Восстанавливаем состояние
-            restoreState().catch(console.error);
-
-            // Показываем навигацию
-            navPanel.classList.add('visible');
-
-            // Скрываем лоадер после инициализации
-            loader.hide();
         });
 
         // Очистка при выгрузке страницы
