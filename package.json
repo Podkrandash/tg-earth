@@ -1,0 +1,17 @@
+{
+  "name": "earth-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1",
+    "next": "^14.0.3",
+    "node-telegram-bot-api": "^0.66.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

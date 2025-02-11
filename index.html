@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Earth 3D</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            image-rendering: pixelated;
+            overscroll-behavior: none;
+            position: fixed;
+            background: #000000;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.01em;
+        }
+
+        .tab-content {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: rgb(22, 22, 27);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 999;
+            pointer-events: none;
+            border-radius: 24px 24px 0 0;
+            will-change: transform;
+            touch-action: none;
+        }
+
+        .tab-content.active {
+            transform: translateY(80px);
+            pointer-events: auto;
+        }
+
+        .tab-content.dragging {
+            transition: none;
+        }
+
+        .tab-content.closing {
+            transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .nav-panel {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 18, 23, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 8px;
+            display: flex;
+            gap: 16px;
+            z-index: 998;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        .nav-panel.visible {
+            bottom: 20px;
+            opacity: 1;
+        }
+
+        .nav-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.5);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-button.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .close-button {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(18, 18, 23, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .task-item {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .task-item.completed {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .task-item:not(.completed) {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Стили для предотвращения случайных свайпов */
+        .tab-content-inner {
+            height: calc(100% - 80px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 24px;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .tab-content.active .tab-content-inner {
+            opacity: 1;
+        }
+
+        /* Стили для TON Connect */
+        .connect-wallet-btn {
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .connect-wallet-btn:active {
+            transform: scale(0.98) translateZ(0);
+        }
+
+        /* Стили для лоадера */
+        .loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .loader-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #fff;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            animation: loader-spin 1s linear infinite;
+        }
+
+        @keyframes loader-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 59, 48, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .error-message.visible {
+            opacity: 1;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Оптимизированная загрузка скриптов -->
+    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script defer src="https://unpkg.com/@tonconnect/sdk@2.1.3/dist/tonconnect-sdk.min.js"></script>
+    <script defer src="https://unpkg.com/@tonconnect/ui@1.0.0/dist/tonconnect-ui.min.js"></script>
+</head>
+<body>
+    <div id="scene-container"></div>
+    <div class="loader-container">
+        <div class="loader"></div>
+    </div>
+    <div class="error-message"></div>
+    <div class="nav-panel">
+        <div class="nav-button" data-section="profile">
+            <i class="material-icons">person</i>
+        </div>
+        <div class="nav-button" data-section="planet">
+            <i class="material-icons">public</i>
+        </div>
+        <div class="nav-button" data-section="tasks">
+            <i class="material-icons">assignment</i>
+        </div>
+        <div class="nav-button" data-section="wallet">
+            <i class="material-icons">account_balance_wallet</i>
+        </div>
+    </div>
+    <div class="tab-content">
+        <div class="tab-content-inner"></div>
+    </div>
+    <script>
+        // Кэш для содержимого вкладок
+        const tabCache = new Map();
+        
+        // Состояние приложения
+        const appState = {
+            currentTab: null,
+            isLoading: false,
+            eventListeners: new Set()
+        };
+
+        // Улучшенный loader с счетчиком запросов
+        const loader = {
+            requestCount: 0,
+            show() {
+                this.requestCount++;
+                document.querySelector('.loader-container').classList.add('visible');
+            },
+            hide() {
+                this.requestCount--;
+                if (this.requestCount <= 0) {
+                    this.requestCount = 0;
+                    document.querySelector('.loader-container').classList.remove('visible');
+                }
+            }
+        };
+
+        const errorHandler = {
+            show(message, duration = 3000) {
+                const errorElement = document.querySelector('.error-message');
+                errorElement.textContent = message;
+                errorElement.classList.add('visible');
+                setTimeout(() => {
+                    errorElement.classList.remove('visible');
+                }, duration);
+            }
+        };
+
+        // Улучшенная функция для запросов с повторными попытками
+        async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+            let lastError;
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    loader.show();
+                    const response = await fetchWithTimeout(url, options);
+                    return response;
+                } catch (error) {
+                    lastError = error;
+                    if (error.name !== 'AbortError') {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+                    }
+                } finally {
+                    loader.hide();
+                }
+            }
+            
+            throw lastError;
+        }
+
+        // Функция для сохранения состояния
+        function saveState() {
+            const state = {
+                currentTab: appState.currentTab
+            };
+            sessionStorage.setItem('appState', JSON.stringify(state));
+        }
+
+        // Функция для восстановления состояния
+        function restoreState() {
+            try {
+                const savedState = sessionStorage.getItem('appState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    if (state.currentTab) {
+                        const button = document.querySelector(`[data-section="${state.currentTab}"]`);
+                        if (button) {
+                            handleNavClick(state.currentTab, button, true);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error restoring state:', error);
+            }
+        }
+
+        async function handleNavClick(section, button, isRestore = false) {
+            if (appState.isLoading || section === appState.currentTab) return;
+            
+            appState.isLoading = true;
+            loader.show();
+            
+            try {
+                const activeButton = document.querySelector('.nav-button.active');
+                if (activeButton) {
+                    activeButton.classList.remove('active');
+                }
+                
+                button.classList.add('active');
+                appState.currentTab = section;
+                
+                if (!isRestore) {
+                    saveState();
+                }
+                
+                // Проверяем кэш
+                if (tabCache.has(section)) {
+                    tabInner.innerHTML = tabCache.get(section);
+                } else {
+                    await loadTabContent(section);
+                }
+                
+                tabContent.classList.add('active');
+                tabInner.style.opacity = '1';
+
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.setBackButtonVisible(false);
+                    window.Telegram.WebApp.expand();
+                    window.Telegram.WebApp.enableClosingConfirmation();
+                }
+            } catch (error) {
+                errorHandler.show('Ошибка при загрузке вкладки');
+                console.error('Tab loading error:', error);
+            } finally {
+                appState.isLoading = false;
+                loader.hide();
+            }
+        }
+
+        async function loadTabContent(section) {
+            switch (section) {
+                case 'profile':
+                    await loadProfile();
+                    break;
+                case 'wallet':
+                    await loadWallet();
+                    break;
+                case 'tasks':
+                    await loadTasks();
+                    break;
+                case 'planet':
+                    await loadPlanet();
+                    break;
+            }
+        }
+
+        async function loadProfile() {
+            try {
+                const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                const content = `
+                    <div style="color: white; padding: 20px;">
+                        <div class="close-button" onclick="window.closeTab()">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
+                        <div style="margin-top: 20px;">
+                            <p style="margin: 12px 0; font-size: 16px;">ID: ${userData?.id || 'Не определен'}</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Имя: ${userData?.username || 'Не определено'}</p>
+                        </div>
+                    </div>
+                `;
+                tabCache.set('profile', content);
+                tabInner.innerHTML = content;
+            } catch (error) {
+                throw new Error('Ошибка загрузки профиля');
+            }
+        }
+
+        async function loadWallet() {
+            try {
+                const content = `
+                    <div style="color: white; padding: 20px;">
+                        <div class="close-button" onclick="window.closeTab()">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
+                        <div id="wallet-container">
+                            <div id="connect-wallet-btn"></div>
+                        </div>
+                    </div>
+                `;
+                tabCache.set('wallet', content);
+                tabInner.innerHTML = content;
+                await initTonConnect();
+            } catch (error) {
+                throw new Error('Ошибка загрузки кошелька');
+            }
+        }
+
+        async function initTonConnect() {
+            try {
+                const tonConnectUI = new TonConnectUI({
+                    manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json',
+                    buttonRootId: 'connect-wallet-btn',
+                    uiPreferences: {
+                        theme: 'DARK'
+                    },
+                    walletsListConfiguration: {
+                        includeWallets: ['Tonkeeper']
+                    }
+                });
+
+                tonConnectUI.onStatusChange((wallet) => {
+                    if (wallet) {
+                        console.log('Connected wallet:', wallet);
+                        // Здесь можно добавить логику после подключения
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing TON Connect:', error);
+            }
+        }
+
+        // Очистка при закрытии вкладки
+        window.closeTab = function() {
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
+            const activeButton = document.querySelector('.nav-button.active');
+            
+            if (activeButton) {
+                activeButton.classList.remove('active');
+            }
+            
+            appState.currentTab = null;
+            saveState();
+            
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.setBackButtonVisible(true);
+                window.Telegram.WebApp.disableClosingConfirmation();
+            }
+            
+            tabContent.classList.add('closing');
+            setTimeout(() => {
+                tabContent.classList.remove('active', 'closing');
+                tabInner.style.opacity = '0';
+                window.isClosing = false;
+            }, 300);
+        };
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', () => {
+            const navPanel = document.querySelector('.nav-panel');
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
+            
+            // Очистка кэша при долгом бездействии
+            let inactivityTimer;
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    tabCache.clear();
+                }, 5 * 60 * 1000); // 5 минут
+            }
+            
+            document.addEventListener('touchstart', resetInactivityTimer);
+            document.addEventListener('mousemove', resetInactivityTimer);
+            resetInactivityTimer();
+
+            // Инициализация навигации
+            const navButtons = document.querySelectorAll('.nav-button');
+            navButtons.forEach(button => {
+                const handler = (e) => {
+                    e.preventDefault();
+                    const section = button.getAttribute('data-section');
+                    handleNavClick(section, button);
+                };
+                button.addEventListener('click', handler);
+                appState.eventListeners.add({ element: button, event: 'click', handler });
+            });
+
+            // Восстанавливаем состояние
+            restoreState();
+
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+            }
+
+            navPanel.classList.add('visible');
+        });
+
+        // Очистка при выгрузке страницы
+        window.addEventListener('unload', () => {
+            appState.eventListeners.forEach(({ element, event, handler }) => {
+                element.removeEventListener(event, handler);
+            });
+            appState.eventListeners.clear();
+        });
+    </script>
+    <script type="module" src="/js/main.js"></script>
+</body>
+</html> 

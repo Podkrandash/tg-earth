@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Earth 3D</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            image-rendering: pixelated;
+            overscroll-behavior: none;
+            position: fixed;
+            background: #000000;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.01em;
+        }
+        body * {
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+        #scene-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            touch-action: none;
+            z-index: 1;
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+        #loading-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+        #loading-earth {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 48px;
+            height: 48px;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg,
+                #1a237e 0%, #1a237e 10%,    /* Темно-синий */
+                #283593 10%, #283593 20%,   /* Синий */
+                #3949ab 20%, #3949ab 30%,   /* Светло-синий */
+                #42a5f5 30%, #42a5f5 40%,   /* Голубой (океаны) */
+                #81c784 40%, #81c784 50%,   /* Зеленый (континенты) */
+                #42a5f5 50%, #42a5f5 60%,   /* Голубой */
+                #3949ab 60%, #3949ab 70%,   /* Светло-синий */
+                #283593 70%, #283593 80%,   /* Синий */
+                #1a237e 80%, #1a237e 90%,   /* Темно-синий */
+                #0d47a1 90%, #0d47a1 100%   /* Глубокий синий */
+            );
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(66, 165, 245, 0.5);
+            image-rendering: pixelated;
+        }
+        #loading-moon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 12px;
+            height: 12px;
+            background: linear-gradient(45deg,
+                #9e9e9e 0%, #9e9e9e 25%,    /* Светло-серый */
+                #757575 25%, #757575 50%,   /* Серый */
+                #616161 50%, #616161 75%,   /* Темно-серый */
+                #424242 75%, #424242 100%   /* Очень темно-серый */
+            );
+            border-radius: 50%;
+            transform-origin: 30px center;
+            box-shadow: 0 0 5px rgba(158, 158, 158, 0.5);
+            image-rendering: pixelated;
+        }
+        @keyframes rotate {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            25% { transform: translate(-50%, -50%) rotate(90deg); }
+            50% { transform: translate(-50%, -50%) rotate(180deg); }
+            75% { transform: translate(-50%, -50%) rotate(270deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes orbit {
+            0% { transform: translate(-50%, -50%) rotate(0deg) translateX(30px); }
+            25% { transform: translate(-50%, -50%) rotate(90deg) translateX(30px); }
+            50% { transform: translate(-50%, -50%) rotate(180deg) translateX(30px); }
+            75% { transform: translate(-50%, -50%) rotate(270deg) translateX(30px); }
+            100% { transform: translate(-50%, -50%) rotate(360deg) translateX(30px); }
+        }
+        @keyframes explosion {
+            0% { 
+                transform: translate(-50%, -50%);
+                clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+                opacity: 1;
+            }
+            50% { 
+                transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
+                clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+                opacity: 0.7;
+            }
+            100% { 
+                transform: translate(-50%, -50%) rotate(90deg) scale(3);
+                clip-path: polygon(50% 0%, 70% 30%, 100% 50%, 70% 70%, 50% 100%, 30% 70%, 0% 50%, 30% 30%);
+                opacity: 0;
+            }
+        }
+        .explosion-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: linear-gradient(45deg,
+                #fff 0%, #fff 50%,
+                #ccc 50%, #ccc 100%
+            );
+            border-radius: 2px;
+            pointer-events: none;
+            image-rendering: pixelated;
+        }
+        .nav-panel {
+            position: fixed;
+            bottom: -100px; /* Начальная позиция за пределами экрана */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 18, 23, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 8px;
+            display: flex; /* Всегда flex, но скрыт за пределами экрана */
+            gap: 16px;
+            z-index: 998;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .nav-panel.visible {
+            bottom: 20px;
+            opacity: 1;
+        }
+        .nav-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.5);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            pointer-events: auto;
+        }
+        .nav-button i {
+            font-size: 24px;
+            pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+        .nav-button:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .nav-button:hover {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .nav-button:hover i {
+            transform: scale(1.1);
+        }
+        .nav-button.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .tab-content {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: rgb(22, 22, 27);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.3s ease;
+            z-index: 999;
+            pointer-events: none;
+            will-change: transform, border-radius;
+        }
+        .tab-content.active {
+            transform: translateY(80px);
+            pointer-events: auto;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+        }
+        .tab-content.dragging {
+            transition: none;
+        }
+        .tab-content.closing {
+            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), border-radius 0.3s ease;
+        }
+        .tab-content-inner {
+            width: 100%;
+            height: calc(100% - 80px);
+            padding: 24px;
+            box-sizing: border-box;
+            color: rgba(255, 255, 255, 0.9);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            position: relative;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+        .profile-connecting {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            margin-top: 40px;
+        }
+        .profile-connecting i {
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 16px;
+        }
+        .profile-connecting h4 {
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 8px 0;
+        }
+        .profile-connecting p {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+            line-height: 1.5;
+        }
+        .profile-header {
+            position: sticky;
+            top: 24px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 40px 0 24px 0;
+            padding: 20px;
+            background: rgba(18, 18, 23, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            flex-wrap: wrap;
+        }
+        .profile-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .profile-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0 0 4px 0;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .profile-bio {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .profile-rating {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            text-align: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-left: auto;
+        }
+        .rating-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin: 0;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        .rating-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .rating-list-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 24px;
+            margin: 0 -24px;
+            position: relative;
+            height: calc(100% - 180px);
+            touch-action: pan-y;
+            pointer-events: auto;
+        }
+        .rating-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            touch-action: pan-y;
+            pointer-events: auto;
+        }
+        .rating-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            touch-action: pan-y;
+            pointer-events: auto;
+        }
+        .rating-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .rating-item.current {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+        .rating-item.current::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #fff;
+            border-radius: 0 2px 2px 0;
+        }
+        .rating-position {
+            font-size: 16px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            width: 30px;
+            text-align: center;
+        }
+        .rating-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .rating-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .rating-user-info {
+            flex-grow: 1;
+        }
+        .rating-username {
+            font-size: 15px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0 0 2px 0;
+        }
+        .rating-score {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin: 0;
+        }
+        .tab-content h3 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+        }
+        .close-button {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(18, 18, 23, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 1002;
+            pointer-events: auto;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            padding: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .connect-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #0088cc;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+            width: 100%;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .connect-button:active {
+            transform: scale(0.98);
+            background: #0077b5;
+        }
+        @media (max-width: 480px) {
+            .profile-header {
+                padding: 16px;
+                gap: 12px;
+            }
+            .profile-avatar {
+                width: 48px;
+                height: 48px;
+            }
+            .profile-name {
+                font-size: 18px;
+            }
+            .profile-bio {
+                font-size: 13px;
+            }
+            .profile-rating {
+                padding: 6px 12px;
+            }
+            .rating-number {
+                font-size: 20px;
+            }
+            .rating-label {
+                font-size: 10px;
+                margin-top: 2px;
+            }
+        }
+        .wallet-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 24px;
+        }
+        .wallet-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .wallet-header i {
+            font-size: 24px;
+            color: #0098EA;
+        }
+        .wallet-balance {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .balance-amount {
+            font-size: 32px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .balance-currency {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .connect-wallet-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #0098EA, #0063D1);
+            color: #fff;
+            border: none;
+            border-radius: 16px;
+            padding: 16px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 152, 234, 0.2);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .connect-wallet-btn:active {
+            transform: scale(0.96) translateY(2px);
+            box-shadow: 0 4px 16px rgba(0, 152, 234, 0.15);
+        }
+        .connect-wallet-btn i {
+            font-size: 22px;
+        }
+        .button-pressed {
+            transform: scale(0.96) translateY(2px) !important;
+            transition: transform 0.15s ease-in-out !important;
+        }
+        
+        @media (hover: none) {
+            .connect-wallet-btn:active {
+                transform: scale(0.96) translateY(2px);
+            }
+        }
+        .no-users {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            background: none !important;
+            border: none !important;
+        }
+        
+        .no-users-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        .no-users-message i {
+            font-size: 48px;
+            opacity: 0.5;
+        }
+        
+        .no-users-message p {
+            font-size: 16px;
+            margin: 0;
+        }
+        .task-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
+        .task-item {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+        }
+        .task-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .task-header i {
+            font-size: 24px;
+            color: #0098EA;
+        }
+        .task-description {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0;
+        }
+        .task-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #0098EA, #0063D1);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .task-button:active {
+            transform: scale(0.96);
+        }
+        .task-button i {
+            font-size: 20px;
+        }
+        .task-button.completed {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            cursor: default;
+            pointer-events: none;
+        }
+        .task-button.completed i {
+            color: #4CAF50;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div id="loading-container">
+            <div id="loading-earth"></div>
+            <div id="loading-moon"></div>
+        </div>
+    </div>
+    <div id="scene-container"></div>
+    <div class="nav-panel">
+        <div class="nav-button" data-section="profile">
+            <i class="material-icons">person</i>
+        </div>
+        <div class="nav-button" data-section="planet">
+            <i class="material-icons">public</i>
+        </div>
+        <div class="nav-button" data-section="tasks">
+            <i class="material-icons">assignment</i>
+        </div>
+        <div class="nav-button" data-section="wallet">
+            <i class="material-icons">account_balance_wallet</i>
+        </div>
+    </div>
+    <div class="tab-content">
+        <div class="tab-content-inner">
+        </div>
+    </div>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        let tg = window.Telegram?.WebApp;
+        let startY = 0;
+        let currentY = 0;
+        
+        if (tg) {
+            // Отключаем стандартное поведение свайпа в Telegram
+            tg.setBackgroundColor('#000000');
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            // Запрещаем скрытие приложения
+            tg.onEvent('viewportChanged', () => {
+                tg.expand();
+            });
+            
+            // Инициализация при готовности
+            tg.ready(() => {
+                console.log('Telegram WebApp ready');
+                tg.expand();
+                updateUserProfile();
+                checkTasksCompletion();
+                
+                // Отправляем информацию о пользователе на сервер
+                if (tg.initDataUnsafe?.user) {
+                    sendUserData(tg.initDataUnsafe.user);
+                }
+            });
+        }
+
+        // Функция для отправки данных пользователя
+        async function sendUserData(user) {
+            try {
+                const response = await fetch('https://tg-earth-4dzw.vercel.app/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: user.id,
+                        first_name: user.first_name,
+                        last_name: user.last_name,
+                        username: user.username,
+                        photo_url: user.photo_url,
+                        auth_date: tg.initDataUnsafe.auth_date,
+                        hash: tg.initDataUnsafe.hash
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to send user data');
+                }
+            } catch (error) {
+                console.error('Error sending user data:', error);
+            }
+        }
+
+        // Функция для получения реальных пользователей
+        async function getRealUsers() {
+            try {
+                const response = await fetch('https://tg-earth-4dzw.vercel.app/api/users');
+                const users = await response.json();
+                return users;
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                return [];
+            }
+        }
+
+        // Функция для проверки выполнения заданий
+        async function checkTasksCompletion() {
+            try {
+                const response = await fetch('https://tg-earth-4dzw.vercel.app/api/check-tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: tg.initDataUnsafe?.user?.id,
+                        auth_date: tg.initDataUnsafe?.auth_date,
+                        hash: tg.initDataUnsafe?.hash
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Обновляем состояние кнопки подписки
+                const joinButton = document.querySelector('#join-community-btn');
+                if (joinButton && data.isSubscribed) {
+                    joinButton.classList.add('completed');
+                    joinButton.disabled = true;
+                    joinButton.innerHTML = `
+                        <i class="material-icons">check_circle</i>
+                        Completed
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to check tasks completion:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
+            let startY = 0;
+            let currentY = 0;
+            let isDragging = false;
+            const SWIPE_THRESHOLD = 100;
+            
+            // Обработчик начала свайпа
+            tabContent.addEventListener('touchstart', (e) => {
+                if (!tabContent.classList.contains('active')) return;
+                startY = e.touches[0].clientY;
+                currentY = startY;
+                isDragging = true;
+                tabContent.classList.add('dragging');
+            }, { passive: true });
+            
+            // Обработчик движения при свайпе
+            tabContent.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                
+                currentY = e.touches[0].clientY;
+                const diff = currentY - startY;
+                
+                if (diff > 0) {
+                    // Изменяем радиус скругления в зависимости от расстояния свайпа
+                    const radius = Math.min(24 + (diff * 0.1), 40);
+                    tabContent.style.borderTopLeftRadius = `${radius}px`;
+                    tabContent.style.borderTopRightRadius = `${radius}px`;
+                    
+                    // Замедляем движение чем дальше свайпаем
+                    const dampenedDiff = Math.pow(diff, 0.8);
+                    const transform = 80 + dampenedDiff;
+                    
+                    tabContent.style.transform = `translateY(${transform}px)`;
+                    
+                    // Уменьшаем прозрачность контента
+                    const opacity = Math.max(0, 1 - (diff / 400));
+                    tabInner.style.opacity = opacity;
+                }
+            }, { passive: true });
+            
+            // Обработчик окончания свайпа
+            tabContent.addEventListener('touchend', () => {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                const diff = currentY - startY;
+                tabContent.classList.remove('dragging');
+                
+                if (diff > SWIPE_THRESHOLD) {
+                    // Закрываем вкладку
+                    closeTab();
+                } else {
+                    // Возвращаем на место
+                    tabContent.classList.add('closing');
+                    tabContent.style.transform = 'translateY(80px)';
+                    tabContent.style.borderTopLeftRadius = '24px';
+                    tabContent.style.borderTopRightRadius = '24px';
+                    tabInner.style.opacity = '1';
+                    
+                                    setTimeout(() => {
+                        tabContent.classList.remove('closing');
+                        tabContent.style.transform = '';
+                        tabContent.style.borderTopLeftRadius = '';
+                        tabContent.style.borderTopRightRadius = '';
+                    }, 300);
+                }
+            }, { passive: true });
+            
+            // Функция закрытия вкладки
+            window.closeTab = function() {
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
+                const activeButton = document.querySelector('.nav-button.active');
+                
+                if (activeButton) {
+                    activeButton.classList.remove('active');
+                }
+                
+                tabContent.classList.add('closing');
+                tabContent.style.transform = 'translateY(100%)';
+                tabContent.style.borderTopLeftRadius = '0';
+                tabContent.style.borderTopRightRadius = '0';
+                tabInner.style.opacity = '0';
+                
+                setTimeout(() => {
+                    tabContent.classList.remove('active', 'closing');
+                    tabContent.style.transform = '';
+                    tabContent.style.borderTopLeftRadius = '';
+                    tabContent.style.borderTopRightRadius = '';
+                }, 300);
+            };
+        });
+    </script>
+    <script type="module" src="/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const navPanel = document.querySelector('.nav-panel');
+            const sceneContainer = document.getElementById('scene-container');
+            const tabContent = document.querySelector('.tab-content');
+            const tabInner = document.querySelector('.tab-content-inner');
+            
+            let isFirstTouch = true;
+            
+            // Show navigation panel on first touch
+            sceneContainer.addEventListener('click', () => {
+                if (isFirstTouch && sceneContainer.style.opacity === '1') {
+                    isFirstTouch = false;
+                    navPanel.classList.add('visible');
+                }
+            });
+
+            sceneContainer.addEventListener('touchstart', (e) => {
+                if (isFirstTouch && sceneContainer.style.opacity === '1') {
+                    isFirstTouch = false;
+                    navPanel.classList.add('visible');
+                }
+            }, { passive: true });
+
+            // Handle navigation button clicks
+            const navButtons = document.querySelectorAll('.nav-button');
+            navButtons.forEach(button => {
+                ['touchstart', 'click'].forEach(eventType => {
+                    button.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    }, { passive: false });
+                });
+            });
+
+            // Prevent scroll on navigation panel
+            navPanel.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+
+            // Prevent scroll on buttons
+            navButtons.forEach(button => {
+                button.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, { passive: false });
+            });
+
+            function handleNavClick(section, clickedButton) {
+                const buttons = document.querySelectorAll('.nav-button');
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
+                
+                buttons.forEach(btn => btn.classList.remove('active'));
+                clickedButton.classList.add('active');
+                
+                let content = '';
+                
+                switch(section) {
+                    case 'wallet':
+                        content = `
+                            <h3>Wallet</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <div class="wallet-container">
+                                <div class="wallet-header">
+                                    <i class="material-icons">account_balance_wallet</i>
+                                    <span>TON Wallet</span>
+                                </div>
+                                <div class="wallet-content">
+                                    <div class="wallet-balance" style="display: none;">
+                                        <div class="balance-amount">0.00</div>
+                                        <div class="balance-currency">TON</div>
+                                    </div>
+                                    <button class="connect-wallet-btn" id="connect-wallet-btn">
+                                        <i class="material-icons">link</i>
+                                        Connect Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    case 'profile':
+                        showProfile();
+                        break;
+                    case 'planet':
+                        content = `
+                            <h3>Planet Info</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                        `;
+                        break;
+                    case 'tasks':
+                        content = `
+                            <h3>Available Tasks</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <div class="task-container">
+                                <div class="task-item">
+                                    <div class="task-header">
+                                        <i class="material-icons">group</i>
+                                        <span>Join Community</span>
+                                    </div>
+                                    <p class="task-description">Join our Earth Community to stay updated!</p>
+                                    <button class="task-button" id="join-community-btn">
+                                        <i class="material-icons">telegram</i>
+                                        Join Community
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
+                }
+                
+                tabInner.innerHTML = content;
+                
+                // Initialize TON Connect if wallet tab
+                if (section === 'wallet') {
+                    setTimeout(() => {
+                        initTonConnect();
+                    }, 100);
+                }
+                
+                // Fix rating scroll if profile tab
+                if (section === 'profile') {
+                    setTimeout(() => {
+                        fixRatingScroll();
+                        
+                        // Добавляем обработчики для контейнера рейтинга
+                        const ratingContainer = document.querySelector('.rating-list-container');
+                        if (ratingContainer) {
+                            ratingContainer.addEventListener('touchstart', (e) => {
+                                e.stopPropagation();
+                            }, { passive: true });
+                            
+                            ratingContainer.addEventListener('touchmove', (e) => {
+                                e.stopPropagation();
+                            }, { passive: true });
+                        }
+                    }, 100);
+                    
+                    // Add telegram connect button handler
+                    const connectButton = document.querySelector('#telegram-connect');
+                    if (connectButton) {
+                        connectButton.addEventListener('click', () => {
+                            window.location.href = 'https://t.me/your_bot_username';
+                        });
+                    }
+                }
+                
+                // Update close button handler
+                const closeButton = tabInner.querySelector('.close-button');
+                ['touchstart', 'click'].forEach(eventType => {
+                    closeButton.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        tabContent.classList.remove('active');
+                        clickedButton.classList.remove('active');
+                        tabInner.style.opacity = '0';
+                    }, { passive: false });
+                });
+                
+                // Show tab content
+                tabContent.classList.add('active');
+                setTimeout(() => {
+                    tabInner.style.opacity = '1';
+                }, 50);
+
+                // Update task button handler
+                if (section === 'tasks') {
+                    const joinButton = document.querySelector('#join-community-btn');
+                    if (joinButton) {
+                        ['touchstart', 'click'].forEach(eventType => {
+                            joinButton.addEventListener(eventType, (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                if (window.Telegram?.WebApp) {
+                                    window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
+                                        try_instant_view: false
+                                    });
+                                } else {
+                                    window.location.href = 'https://t.me/NotEarthCommunity';
+                                }
+                            }, { passive: false });
+                        });
+                    }
+                }
+            }
+        });
+    </script>
+    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+    <script>
+    // Функция проверки Telegram окружения
+    function isRunningInTelegram() {
+        return window.Telegram?.WebApp !== undefined;
+    }
+
+    // Функция получения реальных пользователей (заглушка, пока нет бэкенда)
+    function getRealUsers() {
+        return [];
+    }
+
+    // Функция показа профиля
+    function showProfile() {
+        const isInTelegram = isRunningInTelegram();
+        const tabInner = document.querySelector('.tab-content-inner');
+        
+        if (!isInTelegram) {
+            tabInner.innerHTML = `
+                <h3>Profile</h3>
+                <button class="close-button" type="button" onclick="window.closeTab()">
+                    <i class="material-icons">close</i>
+                </button>
+                <div class="profile-connecting">
+                    <i class="material-icons">telegram</i>
+                    <h4>Open in Telegram</h4>
+                    <p>This app can only be used in Telegram</p>
+                    <button class="connect-button" id="telegram-connect">
+                        <i class="material-icons">telegram</i>
+                        Open in Telegram
+                    </button>
+                </div>
+            `;
+            
+            // Добавляем обработчик для кнопки
+            const connectButton = document.getElementById('telegram-connect');
+            if (connectButton) {
+                connectButton.addEventListener('click', () => {
+                    window.location.href = 'https://t.me/your_bot_username';
+                });
+            }
+        } else {
+            const user = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
+            const defaultAvatar = 'https://via.placeholder.com/80/666666/FFFFFF?text=P';
+            const realUsers = getRealUsers();
+            const currentUserRating = realUsers.find(u => u.id === user?.id)?.position || '-';
+            
+            tabInner.innerHTML = `
+                <h3>Profile</h3>
+                <button class="close-button" type="button" onclick="window.closeTab()">
+                    <i class="material-icons">close</i>
+                </button>
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <img src="${user?.photo_url || defaultAvatar}" alt="Profile Avatar">
+                    </div>
+                    <div class="profile-info">
+                        <h4 class="profile-name">${user.first_name || ''} ${user.last_name || ''}</h4>
+                        <p class="profile-bio">${user.username ? '@' + user.username : ''}</p>
+                    </div>
+                    <div class="profile-rating">
+                        <p class="rating-number">#${currentUserRating}</p>
+                        <p class="rating-label">Rating</p>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    </script>
+</body>
+</html>
