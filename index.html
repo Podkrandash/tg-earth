@@ -42,7 +42,7 @@
         }
 
         .tab-content.active {
-            transform: translateY(90px);
+            transform: translateY(85px);
             pointer-events: auto;
         }
 
@@ -376,28 +376,6 @@
             }
         };
 
-        // Улучшенная функция для запросов с повторными попытками
-        async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-            let lastError;
-            
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    loader.show();
-                    const response = await fetchWithTimeout(url, options);
-                    return response;
-                } catch (error) {
-                    lastError = error;
-                    if (error.name !== 'AbortError') {
-                        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
-                    }
-                } finally {
-                    loader.hide();
-                }
-            }
-            
-            throw lastError;
-        }
-
         // Функция для сохранения состояния
         function saveState() {
             const state = {
@@ -428,7 +406,6 @@
             if (appState.isLoading || section === appState.currentTab) return;
             
             appState.isLoading = true;
-            loader.show();
             
             try {
                 const activeButton = document.querySelector('.nav-button.active');
@@ -463,9 +440,12 @@
             } catch (error) {
                 console.error('Tab loading error:', error);
                 errorHandler.show('Ошибка при загрузке вкладки');
+                button.classList.remove('active');
+                if (activeButton) {
+                    activeButton.classList.add('active');
+                }
             } finally {
                 appState.isLoading = false;
-                loader.hide();
             }
         }
 
