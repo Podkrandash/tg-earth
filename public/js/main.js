@@ -22,8 +22,14 @@ class Earth {
 
     async initGame() {
         try {
+            // Показываем загрузочный экран сразу
+            this.playLoadingAnimation();
+            
+            // Инициализируем Telegram и сцену последовательно
             await this.setupTelegram();
             await this.initScene();
+            
+            // Запускаем анимацию только после полной инициализации
             this.animate();
         } catch (error) {
             console.error('Failed to initialize game:', error);
@@ -110,89 +116,30 @@ class Earth {
         const navPanel = document.querySelector('.nav-panel');
 
         // Показываем загрузочный экран
-        loadingScreen.style.display = 'flex';
-        loadingScreen.style.opacity = '1';
+        if (loadingScreen) {
+            loadingScreen.style.display = 'flex';
+            loadingScreen.style.opacity = '1';
+        }
         
         // Скрываем основную сцену и панель навигации
-        sceneContainer.style.display = 'block';
-        sceneContainer.style.opacity = '0';
-        navPanel.style.display = 'none';
+        if (sceneContainer) {
+            sceneContainer.style.display = 'block';
+            sceneContainer.style.opacity = '0';
+        }
+        if (navPanel) {
+            navPanel.style.display = 'none';
+        }
 
         // Запускаем пиксельную анимацию вращения
-        loadingEarth.style.animation = 'rotate 2s steps(4) infinite';
-        loadingMoon.style.animation = 'orbit 2s steps(4) infinite';
-
-        // Через 4 секунды запускаем анимацию взрыва
-        setTimeout(() => {
-            // Останавливаем вращение
-            loadingEarth.style.animation = 'none';
-            loadingMoon.style.animation = 'none';
-
-            // Создаем частицы для взрыва
-            for (let i = 0; i < 20; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'explosion-particle';
-                const angle = (i / 20) * Math.PI * 2;
-                const speed = 2 + Math.random() * 2;
-                const size = 4 + Math.random() * 4;
-                
-                particle.style.width = size + 'px';
-                particle.style.height = size + 'px';
-                
-                loadingContainer.appendChild(particle);
-                
-                // Анимируем частицы
-                particle.animate([
-                    { 
-                        transform: 'translate(-50%, -50%)',
-                        opacity: 1
-                    },
-                    { 
-                        transform: `translate(
-                            calc(-50% + ${Math.cos(angle) * 100 * speed}px), 
-                            calc(-50% + ${Math.sin(angle) * 100 * speed}px)
-                        )`,
-                        opacity: 0
-                    }
-                ], {
-                    duration: 1000,
-                    easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
-                });
-            }
-
-            // Запускаем анимацию взрыва для Земли и Луны
-            loadingEarth.style.animation = 'explosion 0.5s forwards';
-            loadingMoon.style.animation = 'explosion 0.5s forwards';
-
-            // Плавно показываем основную сцену
-                setTimeout(() => {
-                // Показываем сцену
-                sceneContainer.style.opacity = '1';
-                    
-                // Скрываем загрузочный экран
-                    loadingScreen.style.opacity = '0';
-                    
-                // Показываем панель навигации
-                    setTimeout(() => {
-                        navPanel.style.display = 'flex';
-                        requestAnimationFrame(() => {
-                            navPanel.style.opacity = '1';
-                        });
-                        
-                        // Полностью удаляем загрузочный экран
-        setTimeout(() => {
-                        loadingScreen.style.display = 'none';
-                        // Очищаем частицы
-                        while (loadingContainer.firstChild) {
-                            loadingContainer.removeChild(loadingContainer.firstChild);
-                        }
-                    }, 500);
-                }, 300);
-            }, 800);
-        }, 4000);
+        if (loadingEarth) {
+            loadingEarth.style.animation = 'rotate 2s steps(4) infinite';
+        }
+        if (loadingMoon) {
+            loadingMoon.style.animation = 'orbit 2s steps(4) infinite';
+        }
     }
 
-    createScene() {
+    async initScene() {
         // Инициализация сцены
         this.container = document.getElementById('scene-container');
         this.scene = new THREE.Scene();
@@ -311,6 +258,42 @@ class Earth {
         // Запускаем анимацию
         this.startTime = Date.now();
         this.animate();
+
+        // После полной инициализации скрываем загрузочный экран
+        this.hideLoadingScreen();
+    }
+
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const loadingContainer = document.getElementById('loading-container');
+        const loadingMoon = document.getElementById('loading-moon');
+        const loadingEarth = document.getElementById('loading-earth');
+        const sceneContainer = document.getElementById('scene-container');
+        const navPanel = document.querySelector('.nav-panel');
+
+        if (loadingEarth) loadingEarth.style.animation = 'none';
+        if (loadingMoon) loadingMoon.style.animation = 'none';
+
+        // Показываем сцену
+        if (sceneContainer) {
+            sceneContainer.style.opacity = '1';
+        }
+
+        // Скрываем загрузочный экран
+        if (loadingScreen) {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 300);
+        }
+
+        // Показываем панель навигации
+        if (navPanel) {
+            navPanel.style.display = 'flex';
+            requestAnimationFrame(() => {
+                navPanel.style.opacity = '1';
+            });
+        }
     }
 
     onWindowResize() {
