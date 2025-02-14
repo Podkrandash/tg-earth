@@ -417,8 +417,16 @@
                     window.Telegram.WebApp.expand();
                     appState.telegramInitialized = true;
                     appState.webApp = window.Telegram.WebApp;
+                    
+                    // Добавляем обработчик изменения viewport
+                    window.Telegram.WebApp.onEvent('viewportChanged', () => {
+                        if (window.earth && !window.earth.disposed) {
+                            window.earth.onWindowResize();
+                        }
+                    });
                 } catch (error) {
                     console.warn('Telegram WebApp API warning:', error);
+                    // Продолжаем работу даже при ошибке
                     appState.telegramInitialized = true;
                 }
             } else {

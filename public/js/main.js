@@ -16,6 +16,7 @@ class Earth {
         this.camera = null;
         this.renderer = null;
         this.scene = null;
+        this.textures = [];
         this.initGame().catch(error => {
             console.error('Failed to initialize game:', error);
             this.showError('Ошибка инициализации игры');
@@ -291,18 +292,104 @@ class Earth {
         this.renderer.render(this.scene, this.camera);
     }
 
-    createEarth() {
-        // Загрузка текстур
-        const textureLoader = new THREE.TextureLoader();
-        const dayTexture = textureLoader.load('textures/earth_daymap.jpg');
-        const nightTexture = textureLoader.load('textures/earth_nightmap.jpg');
-        const normalTexture = textureLoader.load('textures/earth_normal_map.jpg');
-        const specularTexture = textureLoader.load('textures/earth_specular_map.jpg');
-        const cloudsTexture = textureLoader.load('textures/earth_clouds.jpg');
+    async initScene() {
+        // Инициализация сцены
+        this.container = document.getElementById('scene-container');
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x000000);
+        
+        // Настройка камеры
+        this.camera = new THREE.PerspectiveCamera(
+            45,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        this.camera.position.set(0, 5, 15);
 
-        // Настраиваем текстуры
-        dayTexture.encoding = THREE.sRGBEncoding;
-        nightTexture.encoding = THREE.sRGBEncoding;
+        // Настройка рендерера
+        this.renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            logarithmicDepthBuffer: true
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.container.appendChild(this.renderer.domElement);
+
+        // Добавляем направленный свет (Солнце)
+        this.sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        this.sunLight.position.set(50, 0, 0);
+        this.sunLight.castShadow = true;
+        this.scene.add(this.sunLight);
+
+        // Создаем группу для системы Земля-Луна
+        this.earthMoonSystem = new THREE.Group();
+        this.scene.add(this.earthMoonSystem);
+
+        // Создаем группу для Земли с наклоном оси
+        this.earthGroup = new THREE.Group();
+        this.earthGroup.rotation.z = EARTH_TILT;
+        this.earthMoonSystem.add(this.earthGroup);
+
+        // Создаем группу для орбиты Луны с наклоном
+        this.moonOrbit = new THREE.Group();
+        this.moonOrbit.rotation.x = MOON_TILT;
+        this.earthMoonSystem.add(this.moonOrbit);
+
+        // Настройка контролей для камеры
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        
+        // Базовые настройки
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        
+        // Настройки для мобильных устройств
+        if (isMobile()) {
+            this.controls.rotateSpeed = 0.5;
+            this.controls.zoomSpeed = 0.5;
+            this.controls.enableZoom = true;
+            this.controls.enableRotate = true;
+            this.controls.enablePan = false;
+            this.controls.touches = {
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_PAN
+            };
+        } else {
+            this.controls.rotateSpeed = 0.8;
+            this.controls.zoomSpeed = 1.0;
+        }
+        
+        // Общие ограничения
+        this.controls.minDistance = 4;
+        this.controls.maxDistance = 30;
+        this.controls.minPolarAngle = Math.PI * 0.1;
+        this.controls.maxPolarAngle = Math.PI * 0.9;
+        
+        // Сброс позиции камеры
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
+        
+        // Загружаем текстуры
+        this.textures = await this.loadTextures();
+        
+        // Создаем объекты сцены
+        this.createEarth();
+        this.createMoon();
+        this.createStars();
+        
+        // Настраиваем обработчики событий
+        this.setupEventListeners();
+    }
+
+    createEarth() {
+        // Используем уже загруженные текстуры
+        const dayTexture = this.textures[0];
+        const nightTexture = this.textures[1];
+        const normalTexture = this.textures[2];
+        const specularTexture = this.textures[3];
+        const cloudsTexture = this.textures[4];
 
         // Создаем геометрию земли
         const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
@@ -454,13 +541,9 @@ class Earth {
     }
 
     createMoon() {
-        // Загрузка текстур Луны
-        const textureLoader = new THREE.TextureLoader();
-        const moonTexture = textureLoader.load('textures/moon_map.jpg');
-        const moonNormalMap = textureLoader.load('textures/moon_normal.jpg');
-
-        // Настройка текстур
-        moonTexture.encoding = THREE.sRGBEncoding;
+        // Используем уже загруженные текстуры
+        const moonTexture = this.textures[5];
+        const moonNormalMap = this.textures[6];
 
         // Создаем геометрию луны (примерно 27% от размера Земли)
         const moonGeometry = new THREE.SphereGeometry(0.54, 64, 64);
