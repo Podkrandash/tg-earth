@@ -419,12 +419,10 @@
                     appState.webApp = window.Telegram.WebApp;
                 } catch (error) {
                     console.warn('Telegram WebApp API warning:', error);
-                    // Продолжаем работу даже при ошибках
                     appState.telegramInitialized = true;
                 }
             } else {
                 console.warn('Telegram WebApp не доступен');
-                // Устанавливаем флаг инициализации даже если WebApp недоступен
                 appState.telegramInitialized = true;
             }
         }
@@ -449,7 +447,10 @@
                 
                 // Проверяем кэш
                 if (tabCache.has(section)) {
-                    tabInner.innerHTML = tabCache.get(section);
+                    if (tabInner) {
+                        tabInner.innerHTML = tabCache.get(section);
+                        initTabContent(section);
+                    }
                 } else {
                     await loadTabContent(section);
                 }
@@ -467,6 +468,16 @@
                 }
             } finally {
                 appState.isLoading = false;
+            }
+        }
+
+        // Инициализация содержимого вкладки
+        function initTabContent(section) {
+            if (section === 'wallet') {
+                const connectWalletBtn = document.getElementById('connect-wallet-btn');
+                if (connectWalletBtn) {
+                    initTonConnect();
+                }
             }
         }
 
@@ -628,15 +639,12 @@
             appState.currentTab = null;
             saveState();
             
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.setBackButtonVisible(true);
-                window.Telegram.WebApp.disableClosingConfirmation();
-            }
-            
             tabContent.classList.add('closing');
             setTimeout(() => {
                 tabContent.classList.remove('active', 'closing');
-                tabInner.style.opacity = '0';
+                if (tabInner) {
+                    tabInner.style.opacity = '0';
+                }
                 window.isClosing = false;
             }, 300);
         };

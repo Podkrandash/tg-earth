@@ -121,220 +121,112 @@ class Earth {
     loadTextures() {
         const textureLoader = new THREE.TextureLoader();
         const texturesToLoad = [
-            'textures/earth_daymap.jpg',
-            'textures/earth_nightmap.jpg',
-            'textures/earth_normal_map.jpg',
-            'textures/earth_specular_map.jpg',
-            'textures/earth_clouds.jpg',
-            'textures/moon_map.jpg',
-            'textures/moon_normal.jpg'
+            '/assets/textures/earth_daymap.jpg',
+            '/assets/textures/earth_nightmap.jpg',
+            '/assets/textures/earth_normal_map.jpg',
+            '/assets/textures/earth_specular_map.jpg',
+            '/assets/textures/earth_clouds.jpg',
+            '/assets/textures/moon_map.jpg',
+            '/assets/textures/moon_normal.jpg'
         ];
 
-        const loadPromises = texturesToLoad.map(url => 
-            new Promise((resolve, reject) => {
-                textureLoader.load(url, resolve, undefined, reject);
+        return Promise.all(texturesToLoad.map(url => 
+            new Promise((resolve) => {
+                textureLoader.load(
+                    url,
+                    (texture) => {
+                        // Используем colorSpace вместо encoding
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        resolve(texture);
+                    },
+                    undefined,
+                    () => {
+                        console.warn(`Failed to load texture: ${url}`);
+                        // Создаем пустую текстуру при ошибке загрузки
+                        const emptyTexture = new THREE.Texture();
+                        emptyTexture.colorSpace = THREE.SRGBColorSpace;
+                        resolve(emptyTexture);
+                    }
+                );
             })
-        );
-
-        return Promise.all(loadPromises);
+        ));
     }
 
     playLoadingAnimation() {
-        const loadingScreen = document.getElementById('loading-screen');
-        const loadingContainer = document.getElementById('loading-container');
-        const loadingMoon = document.getElementById('loading-moon');
-        const loadingEarth = document.getElementById('loading-earth');
-        const sceneContainer = document.getElementById('scene-container');
-        const navPanel = document.querySelector('.nav-panel');
+        const elements = {
+            loadingScreen: document.getElementById('loading-screen'),
+            loadingContainer: document.getElementById('loading-container'),
+            loadingMoon: document.getElementById('loading-moon'),
+            loadingEarth: document.getElementById('loading-earth'),
+            sceneContainer: document.getElementById('scene-container'),
+            navPanel: document.querySelector('.nav-panel')
+        };
 
         // Показываем загрузочный экран
-        if (loadingScreen) {
-            loadingScreen.style.display = 'flex';
-            loadingScreen.style.opacity = '1';
-            // Добавляем класс для анимации
-            loadingScreen.classList.add('visible');
+        if (elements.loadingScreen) {
+            elements.loadingScreen.style.display = 'flex';
+            elements.loadingScreen.style.opacity = '1';
+            elements.loadingScreen.classList.add('visible');
         }
         
         // Скрываем основную сцену и панель навигации
-        if (sceneContainer) {
-            sceneContainer.style.display = 'block';
-            sceneContainer.style.opacity = '0';
+        if (elements.sceneContainer) {
+            elements.sceneContainer.style.display = 'block';
+            elements.sceneContainer.style.opacity = '0';
         }
-        if (navPanel) {
-            navPanel.style.display = 'none';
+        if (elements.navPanel) {
+            elements.navPanel.style.display = 'none';
         }
 
-        // Запускаем пиксельную анимацию вращения с задержкой
+        // Запускаем анимацию
         setTimeout(() => {
-            if (loadingEarth) {
-                loadingEarth.style.animation = 'rotate 2s linear infinite';
+            if (elements.loadingEarth) {
+                elements.loadingEarth.style.animation = 'rotate 2s linear infinite';
             }
-            if (loadingMoon) {
-                loadingMoon.style.animation = 'orbit 2s linear infinite';
+            if (elements.loadingMoon) {
+                elements.loadingMoon.style.animation = 'orbit 2s linear infinite';
             }
         }, 100);
     }
 
-    async initScene() {
-        // Инициализация сцены
-        this.container = document.getElementById('scene-container');
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
-        
-        // Настройка камеры
-        this.camera = new THREE.PerspectiveCamera(
-            45,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-        );
-        this.camera.position.set(0, 5, 15);
-
-        // Настройка рендерера
-        this.renderer = new THREE.WebGLRenderer({ 
-            antialias: true,
-            logarithmicDepthBuffer: true // Включаем логарифмический буфер глубины
-        });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.container.appendChild(this.renderer.domElement);
-
-        // Добавляем направленный свет (Солнце)
-        this.sunLight = new THREE.DirectionalLight(0xffffff, 1);
-        this.sunLight.position.set(50, 0, 0);
-        this.sunLight.castShadow = true;
-        this.scene.add(this.sunLight);
-
-        // Создаем группу для системы Земля-Луна
-        this.earthMoonSystem = new THREE.Group();
-        this.scene.add(this.earthMoonSystem);
-
-        // Создаем группу для Земли с наклоном оси
-        this.earthGroup = new THREE.Group();
-        this.earthGroup.rotation.z = EARTH_TILT;
-        this.earthMoonSystem.add(this.earthGroup);
-
-        // Создаем группу для орбиты Луны с наклоном
-        this.moonOrbit = new THREE.Group();
-        this.moonOrbit.rotation.x = MOON_TILT;
-        this.earthMoonSystem.add(this.moonOrbit);
-
-        // Настройка контролей для камеры
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        
-        // Базовые настройки
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.05;
-        
-        // Настройки для мобильных устройств
-        if (isMobile()) {
-            this.controls.rotateSpeed = 0.5;
-            this.controls.zoomSpeed = 0.5;
-            this.controls.enableZoom = true;
-            this.controls.enableRotate = true;
-            this.controls.enablePan = false;
-            this.controls.touches = {
-                ONE: THREE.TOUCH.ROTATE,
-                TWO: THREE.TOUCH.DOLLY_PAN
-            };
-            
-            // Предотвращаем свайпы
-            document.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-            
-            document.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-            
-            // Предотвращаем масштабирование страницы
-            document.addEventListener('gesturestart', (e) => {
-                e.preventDefault();
-            }, { passive: false });
-            
-            // Обработка потери контекста WebGL
-            this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
-                event.preventDefault();
-                this.renderer.setAnimationLoop(null);
-            }, false);
-            
-            this.renderer.domElement.addEventListener('webglcontextrestored', () => {
-                this.renderer.setAnimationLoop(() => this.animate());
-            }, false);
-        } else {
-            this.controls.rotateSpeed = 0.8;
-            this.controls.zoomSpeed = 1.0;
-        }
-        
-        // Общие ограничения
-        this.controls.minDistance = 4;
-        this.controls.maxDistance = 30;
-        this.controls.minPolarAngle = Math.PI * 0.1;
-        this.controls.maxPolarAngle = Math.PI * 0.9;
-        
-        // Сброс позиции камеры
-        this.controls.target.set(0, 0, 0);
-        this.controls.update();
-        
-        // Сохраняем начальный зум
-        this.lastZoom = this.camera.zoom;
-
-        // Создаем Землю и Луну
-        this.createEarth();
-        this.createMoon();
-
-        // Создаем звездное небо
-        this.createStars();
-
-        // Обработчики событий
-        window.addEventListener('resize', () => this.onWindowResize());
-
-        // Запускаем анимацию
-        this.startTime = Date.now();
-        this.animate();
-
-        // После полной инициализации скрываем загрузочный экран
-        this.hideLoading();
-    }
-
     hideLoading() {
-        const loadingScreen = document.getElementById('loading-screen');
-        const loadingContainer = document.getElementById('loading-container');
-        const loadingMoon = document.getElementById('loading-moon');
-        const loadingEarth = document.getElementById('loading-earth');
-        const sceneContainer = document.getElementById('scene-container');
-        const navPanel = document.querySelector('.nav-panel');
+        const elements = {
+            loadingScreen: document.getElementById('loading-screen'),
+            loadingContainer: document.getElementById('loading-container'),
+            loadingMoon: document.getElementById('loading-moon'),
+            loadingEarth: document.getElementById('loading-earth'),
+            sceneContainer: document.getElementById('scene-container'),
+            navPanel: document.querySelector('.nav-panel')
+        };
 
-        // Плавно останавливаем анимации
-        if (loadingEarth) {
-            loadingEarth.style.animationPlayState = 'paused';
+        // Останавливаем анимации
+        if (elements.loadingEarth) {
+            elements.loadingEarth.style.animationPlayState = 'paused';
         }
-        if (loadingMoon) {
-            loadingMoon.style.animationPlayState = 'paused';
+        if (elements.loadingMoon) {
+            elements.loadingMoon.style.animationPlayState = 'paused';
         }
 
         // Показываем сцену
-        if (sceneContainer) {
-            sceneContainer.style.opacity = '1';
+        if (elements.sceneContainer) {
+            elements.sceneContainer.style.opacity = '1';
         }
 
-        // Плавно скрываем загрузочный экран
-        if (loadingScreen) {
-            loadingScreen.classList.remove('visible');
-            loadingScreen.style.opacity = '0';
+        // Скрываем загрузочный экран
+        if (elements.loadingScreen) {
+            elements.loadingScreen.classList.remove('visible');
+            elements.loadingScreen.style.opacity = '0';
             setTimeout(() => {
-                loadingScreen.style.display = 'none';
-            }, 500); // Увеличиваем время для плавного исчезновения
+                elements.loadingScreen.style.display = 'none';
+            }, 500);
         }
 
         // Показываем панель навигации
-        if (navPanel) {
+        if (elements.navPanel) {
             setTimeout(() => {
-                navPanel.style.display = 'flex';
+                elements.navPanel.style.display = 'flex';
                 requestAnimationFrame(() => {
-                    navPanel.style.opacity = '1';
+                    elements.navPanel.style.opacity = '1';
                 });
             }, 300);
         }
