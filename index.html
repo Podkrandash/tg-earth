@@ -42,7 +42,7 @@
         }
 
         .tab-content.active {
-            transform: translateY(85px);
+            transform: translateY(90px);
             pointer-events: auto;
         }
 
@@ -470,19 +470,26 @@
         }
 
         async function loadTabContent(section) {
-            switch (section) {
-                case 'profile':
-                    await loadProfile();
-                    break;
-                case 'wallet':
-                    await loadWallet();
-                    break;
-                case 'tasks':
-                    await loadTasks();
-                    break;
-                case 'planet':
-                    await loadPlanet();
-                    break;
+            try {
+                switch (section) {
+                    case 'profile':
+                        await loadProfile();
+                        break;
+                    case 'wallet':
+                        await loadWallet();
+                        break;
+                    case 'tasks':
+                        await loadTasks();
+                        break;
+                    case 'planet':
+                        await loadPlanet();
+                        break;
+                    default:
+                        throw new Error('Неизвестная вкладка');
+                }
+            } catch (error) {
+                console.error(`Error loading tab ${section}:`, error);
+                throw error;
             }
         }
 
@@ -553,6 +560,52 @@
                 });
             } catch (error) {
                 console.error('Error initializing TON Connect:', error);
+            }
+        }
+
+        async function loadTasks() {
+            try {
+                const content = `
+                    <div style="color: white; padding: 20px;">
+                        <div class="close-button" onclick="window.closeTab()">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Задания</h2>
+                        <div style="margin-top: 20px;">
+                            <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
+                        </div>
+                    </div>
+                `;
+                tabCache.set('tasks', content);
+                if (tabInner) {
+                    tabInner.innerHTML = content;
+                }
+            } catch (error) {
+                console.error('Tasks loading error:', error);
+                throw new Error('Ошибка загрузки заданий');
+            }
+        }
+
+        async function loadPlanet() {
+            try {
+                const content = `
+                    <div style="color: white; padding: 20px;">
+                        <div class="close-button" onclick="window.closeTab()">
+                            <i class="material-icons">close</i>
+                        </div>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Планета</h2>
+                        <div style="margin-top: 20px;">
+                            <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
+                        </div>
+                    </div>
+                `;
+                tabCache.set('planet', content);
+                if (tabInner) {
+                    tabInner.innerHTML = content;
+                }
+            } catch (error) {
+                console.error('Planet loading error:', error);
+                throw new Error('Ошибка загрузки планеты');
             }
         }
 
