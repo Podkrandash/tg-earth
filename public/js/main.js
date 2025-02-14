@@ -25,6 +25,9 @@ class Earth {
             // Показываем загрузочный экран сразу
             this.playLoadingAnimation();
             
+            // Добавляем минимальную задержку для отображения анимации
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             // Инициализируем Telegram и сцену последовательно
             await this.setupTelegram();
             await this.initScene();
@@ -119,6 +122,8 @@ class Earth {
         if (loadingScreen) {
             loadingScreen.style.display = 'flex';
             loadingScreen.style.opacity = '1';
+            // Добавляем класс для анимации
+            loadingScreen.classList.add('visible');
         }
         
         // Скрываем основную сцену и панель навигации
@@ -130,13 +135,15 @@ class Earth {
             navPanel.style.display = 'none';
         }
 
-        // Запускаем пиксельную анимацию вращения
-        if (loadingEarth) {
-            loadingEarth.style.animation = 'rotate 2s steps(4) infinite';
-        }
-        if (loadingMoon) {
-            loadingMoon.style.animation = 'orbit 2s steps(4) infinite';
-        }
+        // Запускаем пиксельную анимацию вращения с задержкой
+        setTimeout(() => {
+            if (loadingEarth) {
+                loadingEarth.style.animation = 'rotate 2s linear infinite';
+            }
+            if (loadingMoon) {
+                loadingMoon.style.animation = 'orbit 2s linear infinite';
+            }
+        }, 100);
     }
 
     async initScene() {
@@ -271,28 +278,36 @@ class Earth {
         const sceneContainer = document.getElementById('scene-container');
         const navPanel = document.querySelector('.nav-panel');
 
-        if (loadingEarth) loadingEarth.style.animation = 'none';
-        if (loadingMoon) loadingMoon.style.animation = 'none';
+        // Плавно останавливаем анимации
+        if (loadingEarth) {
+            loadingEarth.style.animationPlayState = 'paused';
+        }
+        if (loadingMoon) {
+            loadingMoon.style.animationPlayState = 'paused';
+        }
 
         // Показываем сцену
         if (sceneContainer) {
             sceneContainer.style.opacity = '1';
         }
 
-        // Скрываем загрузочный экран
+        // Плавно скрываем загрузочный экран
         if (loadingScreen) {
+            loadingScreen.classList.remove('visible');
             loadingScreen.style.opacity = '0';
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
-            }, 300);
+            }, 500); // Увеличиваем время для плавного исчезновения
         }
 
         // Показываем панель навигации
         if (navPanel) {
-            navPanel.style.display = 'flex';
-            requestAnimationFrame(() => {
-                navPanel.style.opacity = '1';
-            });
+            setTimeout(() => {
+                navPanel.style.display = 'flex';
+                requestAnimationFrame(() => {
+                    navPanel.style.opacity = '1';
+                });
+            }, 300);
         }
     }
 
