@@ -41,20 +41,39 @@
             touch-action: none;
             display: flex;
             flex-direction: column;
+            -webkit-user-select: none;
+            user-select: none;
+            overscroll-behavior: contain;
         }
 
         .tab-content.active {
             transform: translateY(90px);
             pointer-events: auto;
             min-height: calc(100% - 90px);
+            transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
         .tab-content.dragging {
-            transition: none;
+            transition: none !important;
+            cursor: grabbing;
         }
 
         .tab-content.closing {
             transition: transform 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        /* Добавляем индикатор свайпа */
+        .tab-content::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            z-index: 1000;
         }
 
         .nav-panel {
@@ -155,6 +174,8 @@
             touch-action: pan-y;
             opacity: 0;
             transition: opacity 0.2s ease;
+            position: relative;
+            z-index: 1;
         }
 
         .tab-content.active .tab-content-inner {
@@ -345,7 +366,10 @@
             isLoading: false,
             eventListeners: new Set(),
             telegramInitialized: false,
-            webApp: null
+            webApp: null,
+            isDragging: false,
+            startY: 0,
+            currentY: 0
         };
 
         // Кэш для содержимого вкладок
@@ -515,23 +539,43 @@
 
         async function loadProfile() {
             try {
-                const userData = appState.webApp?.initDataUnsafe?.user || {
-                    id: 'Демо режим',
-                    username: 'Демо пользователь'
-                };
+                // Проверяем инициализацию Telegram
+                if (!window.Telegram?.WebApp) {
+                    throw new Error('Telegram WebApp не доступен');
+                }
+
+                // Получаем данные пользователя
+                const initData = window.Telegram.WebApp.initData || '';
+                const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+
+                let userData;
+                if (initDataUnsafe && initDataUnsafe.user) {
+                    userData = initDataUnsafe.user;
+                } else {
+                    // Если данные недоступны, используем демо режим
+                    userData = {
+                        id: 'Демо режим',
+                        username: 'Демо пользователь',
+                        first_name: 'Демо',
+                        last_name: 'Пользователь'
+                    };
+                }
 
                 const content = `
                     <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="window.closeTab()">
+                        <div class="close-button" onclick="closeTab()">
                             <i class="material-icons">close</i>
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
                         <div style="margin-top: 20px;">
                             <p style="margin: 12px 0; font-size: 16px;">ID: ${userData.id}</p>
-                            <p style="margin: 12px 0; font-size: 16px;">Имя: ${userData.username}</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Имя: ${userData.first_name || 'Не указано'}</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Фамилия: ${userData.last_name || 'Не указана'}</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Username: ${userData.username || 'Не указан'}</p>
                         </div>
                     </div>
                 `;
+
                 tabCache.set('profile', content);
                 if (tabInner) {
                     tabInner.innerHTML = content;
@@ -656,6 +700,55 @@
                 window.isClosing = false;
             }, 300);
         };
+
+        // Добавляем обработчики свайпов
+        let touchStartY = 0;
+        let touchCurrentY = 0;
+        let isDragging = false;
+
+        tabContent.addEventListener('touchstart', (e) => {
+            if (!appState.currentTab) return;
+            touchStartY = e.touches[0].clientY;
+            isDragging = true;
+            tabContent.classList.add('dragging');
+            e.stopPropagation(); // Предотвращаем всплытие события
+        }, { passive: false });
+
+        tabContent.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            touchCurrentY = e.touches[0].clientY;
+            const deltaY = touchCurrentY - touchStartY;
+            
+            // Если свайп вниз и вкладка активна
+            if (deltaY > 0 && tabContent.classList.contains('active')) {
+                e.preventDefault(); // Блокируем стандартное поведение
+                tabContent.style.transform = `translateY(${deltaY + 90}px)`;
+            }
+            e.stopPropagation(); // Предотвращаем всплытие события
+        }, { passive: false });
+
+        tabContent.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const deltaY = touchCurrentY - touchStartY;
+            
+            tabContent.classList.remove('dragging');
+            tabContent.style.transform = '';
+            
+            // Если свайп достаточно большой - закрываем вкладку
+            if (deltaY > 100) {
+                closeTab();
+            }
+            e.stopPropagation(); // Предотвращаем всплытие события
+        }, { passive: false });
+
+        // Предотвращаем закрытие приложения при свайпе
+        document.body.addEventListener('touchmove', (e) => {
+            // Если есть активная вкладка или идет перетаскивание, блокируем стандартное поведение
+            if (appState.currentTab || isDragging) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', async () => {
