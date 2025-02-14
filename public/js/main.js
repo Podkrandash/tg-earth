@@ -10,9 +10,16 @@ const MOON_TILT = 5.14 * Math.PI / 180; // Наклон орбиты Луны к
 
 class Earth {
     constructor() {
+        this.initialized = false;
         this.disposed = false;
-        this.initGame();
-        this.setupEventListeners();
+        this.initPromise = null;
+        this.camera = null;
+        this.renderer = null;
+        this.scene = null;
+        this.initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            this.showError('Ошибка инициализации игры');
+        });
     }
 
     setupEventListeners() {
@@ -21,41 +28,64 @@ class Earth {
     }
 
     async initGame() {
-        try {
-            // Показываем загрузочный экран сразу
-            this.playLoadingAnimation();
-            
-            // Добавляем минимальную задержку для отображения анимации
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Инициализируем Telegram и сцену последовательно
-            await this.setupTelegram();
-            await this.initScene();
-            
-            // Запускаем анимацию только после полной инициализации
-            this.animate();
-        } catch (error) {
-            console.error('Failed to initialize game:', error);
-            this.showErrorMessage('Failed to load the game. Please refresh the page.');
+        if (this.initPromise) {
+            return this.initPromise;
         }
+
+        this.initPromise = new Promise(async (resolve, reject) => {
+            try {
+                // Показываем загрузочный экран сразу
+                this.playLoadingAnimation();
+                
+                // Инициализируем сцену
+                await this.initScene();
+                
+                // Пытаемся инициализировать Telegram WebApp
+                try {
+                    await this.setupTelegram();
+                } catch (error) {
+                    console.warn('Telegram initialization warning:', error);
+                    // Продолжаем работу даже при ошибке инициализации Telegram
+                }
+                
+                // Запускаем анимацию только после полной инициализации
+                this.initialized = true;
+                this.animate();
+                
+                // Скрываем загрузочный экран
+                this.hideLoading();
+                resolve();
+            } catch (error) {
+                console.error('Game initialization error:', error);
+                this.hideLoading();
+                this.showError('Ошибка инициализации игры');
+                reject(error);
+            }
+        });
+
+        return this.initPromise;
     }
 
     async setupTelegram() {
-        try {
-            // Используем глобальную функцию проверки
-            if (window.checkTelegramWebAppReady) {
-                await window.checkTelegramWebAppReady();
+        // Ждем небольшую задержку для инициализации Telegram WebApp
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (window.Telegram?.WebApp) {
+            try {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
                 
                 // Добавляем обработчик изменения viewport
                 window.Telegram.WebApp.onEvent('viewportChanged', () => {
-                    if (!this.disposed) this.onWindowResize();
+                    if (!this.disposed && this.initialized) {
+                        this.onWindowResize();
+                    }
                 });
-            } else {
-                throw new Error('Функция проверки Telegram WebApp не найдена');
+            } catch (error) {
+                console.warn('Telegram WebApp API warning:', error);
             }
-        } catch (error) {
-            console.error('Telegram initialization error:', error);
-            throw error;
+        } else {
+            console.warn('Telegram WebApp не доступен');
         }
     }
 
@@ -79,18 +109,13 @@ class Earth {
         window.removeEventListener('beforeunload', this.cleanup.bind(this));
     }
 
-    showErrorMessage(message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.position = 'fixed';
-        errorDiv.style.top = '50%';
-        errorDiv.style.left = '50%';
-        errorDiv.style.transform = 'translate(-50%, -50%)';
-        errorDiv.style.background = 'rgba(0,0,0,0.8)';
-        errorDiv.style.color = 'white';
-        errorDiv.style.padding = '20px';
-        errorDiv.style.borderRadius = '10px';
-        errorDiv.textContent = message;
-        document.body.appendChild(errorDiv);
+    showError(message) {
+        // Показываем ошибку пользователю
+        if (window.errorHandler) {
+            window.errorHandler.show(message);
+        } else {
+            alert(message);
+        }
     }
 
     loadTextures() {
@@ -271,10 +296,10 @@ class Earth {
         this.animate();
 
         // После полной инициализации скрываем загрузочный экран
-        this.hideLoadingScreen();
+        this.hideLoading();
     }
 
-    hideLoadingScreen() {
+    hideLoading() {
         const loadingScreen = document.getElementById('loading-screen');
         const loadingContainer = document.getElementById('loading-container');
         const loadingMoon = document.getElementById('loading-moon');
@@ -316,6 +341,10 @@ class Earth {
     }
 
     onWindowResize() {
+        if (!this.initialized || this.disposed || !this.camera || !this.renderer) {
+            return;
+        }
+        
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -323,6 +352,8 @@ class Earth {
     }
 
     animate() {
+        if (!this.initialized || this.disposed) return;
+        
         requestAnimationFrame(() => this.animate());
         
         // Вращаем Землю вокруг своей оси

@@ -339,35 +339,18 @@
         <div class="tab-content-inner"></div>
     </div>
     <script>
-        // Глобальная функция для проверки инициализации Telegram
-        window.checkTelegramWebAppReady = () => {
-            return new Promise((resolve, reject) => {
-                if (window.Telegram?.WebApp) {
-                    try {
-                        window.Telegram.WebApp.ready();
-                        window.Telegram.WebApp.expand();
-                        resolve(window.Telegram.WebApp);
-                    } catch (error) {
-                        console.warn('Telegram WebApp API warning:', error);
-                        resolve(window.Telegram.WebApp);
-                    }
-                } else {
-                    reject(new Error('Telegram WebApp не инициализирован'));
-                }
-            });
-        };
-
-        // Кэш для содержимого вкладок
-        const tabCache = new Map();
-        
         // Состояние приложения
         const appState = {
             currentTab: null,
             isLoading: false,
             eventListeners: new Set(),
-            telegramInitialized: false
+            telegramInitialized: false,
+            webApp: null
         };
 
+        // Кэш для содержимого вкладок
+        const tabCache = new Map();
+        
         // Получаем элементы DOM
         const tabContent = document.querySelector('.tab-content');
         const tabInner = document.querySelector('.tab-content-inner');
@@ -426,6 +409,26 @@
             }
         }
 
+        // Инициализация Telegram WebApp
+        async function initTelegramWebApp() {
+            if (window.Telegram?.WebApp) {
+                try {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                    appState.telegramInitialized = true;
+                    appState.webApp = window.Telegram.WebApp;
+                } catch (error) {
+                    console.warn('Telegram WebApp API warning:', error);
+                    // Продолжаем работу даже при ошибках
+                    appState.telegramInitialized = true;
+                }
+            } else {
+                console.warn('Telegram WebApp не доступен');
+                // Устанавливаем флаг инициализации даже если WebApp недоступен
+                appState.telegramInitialized = true;
+            }
+        }
+
         async function handleNavClick(section, button, isRestore = false) {
             if (appState.isLoading || section === appState.currentTab) return;
             
@@ -454,12 +457,6 @@
                 if (tabContent && tabInner) {
                     tabContent.classList.add('active');
                     tabInner.style.opacity = '1';
-                }
-
-                if (window.Telegram?.WebApp) {
-                    window.Telegram.WebApp.setBackButtonVisible(false);
-                    window.Telegram.WebApp.expand();
-                    window.Telegram.WebApp.enableClosingConfirmation();
                 }
             } catch (error) {
                 console.error('Tab loading error:', error);
@@ -499,20 +496,7 @@
 
         async function loadProfile() {
             try {
-                // Проверяем инициализацию Telegram
-                if (!appState.telegramInitialized) {
-                    try {
-                        const webApp = await window.checkTelegramWebAppReady();
-                        appState.telegramInitialized = true;
-                        appState.webApp = webApp;
-                    } catch (error) {
-                        console.warn('Telegram initialization warning:', error);
-                        // Продолжаем работу даже если есть предупреждения
-                        appState.telegramInitialized = true;
-                    }
-                }
-
-                const userData = window.Telegram?.WebApp?.initDataUnsafe?.user || {
+                const userData = appState.webApp?.initDataUnsafe?.user || {
                     id: 'Демо режим',
                     username: 'Демо пользователь'
                 };
@@ -660,16 +644,8 @@
         // Инициализация
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Пытаемся инициализировать Telegram WebApp
-                try {
-                    const webApp = await window.checkTelegramWebAppReady();
-                    appState.telegramInitialized = true;
-                    appState.webApp = webApp;
-                } catch (error) {
-                    console.warn('Telegram initialization warning:', error);
-                    // Продолжаем работу даже если есть предупреждения
-                    appState.telegramInitialized = true;
-                }
+                // Инициализируем Telegram WebApp
+                await initTelegramWebApp();
 
                 // Очистка кэша при долгом бездействии
                 let inactivityTimer;
