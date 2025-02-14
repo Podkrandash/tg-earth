@@ -41,17 +41,21 @@ class Earth {
     }
 
     async setupTelegram() {
-        if (window.Telegram?.WebApp) {
-            try {
-                window.Telegram.WebApp.ready();
-                window.Telegram.WebApp.expand();
+        try {
+            // Используем глобальную функцию проверки
+            if (window.checkTelegramWebAppReady) {
+                await window.checkTelegramWebAppReady();
                 
+                // Добавляем обработчик изменения viewport
                 window.Telegram.WebApp.onEvent('viewportChanged', () => {
                     if (!this.disposed) this.onWindowResize();
                 });
-            } catch (error) {
-                console.error('Telegram initialization error:', error);
+            } else {
+                throw new Error('Функция проверки Telegram WebApp не найдена');
             }
+        } catch (error) {
+            console.error('Telegram initialization error:', error);
+            throw error;
         }
     }
 
