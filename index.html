@@ -42,7 +42,7 @@
         }
 
         .tab-content.active {
-            transform: translateY(80px);
+            transform: translateY(85px);
             pointer-events: auto;
         }
 
@@ -344,6 +344,11 @@
             eventListeners: new Set()
         };
 
+        // Получаем элементы DOM
+        const tabContent = document.querySelector('.tab-content');
+        const tabInner = document.querySelector('.tab-content-inner');
+        const navPanel = document.querySelector('.nav-panel');
+
         // Улучшенный loader с счетчиком запросов
         const loader = {
             requestCount: 0,
@@ -402,7 +407,7 @@
         }
 
         // Функция для восстановления состояния
-        function restoreState() {
+        async function restoreState() {
             try {
                 const savedState = sessionStorage.getItem('appState');
                 if (savedState) {
@@ -410,7 +415,7 @@
                     if (state.currentTab) {
                         const button = document.querySelector(`[data-section="${state.currentTab}"]`);
                         if (button) {
-                            handleNavClick(state.currentTab, button, true);
+                            await handleNavClick(state.currentTab, button, true);
                         }
                     }
                 }
@@ -445,8 +450,10 @@
                     await loadTabContent(section);
                 }
                 
-                tabContent.classList.add('active');
-                tabInner.style.opacity = '1';
+                if (tabContent && tabInner) {
+                    tabContent.classList.add('active');
+                    tabInner.style.opacity = '1';
+                }
 
                 if (window.Telegram?.WebApp) {
                     window.Telegram.WebApp.setBackButtonVisible(false);
@@ -454,8 +461,8 @@
                     window.Telegram.WebApp.enableClosingConfirmation();
                 }
             } catch (error) {
-                errorHandler.show('Ошибка при загрузке вкладки');
                 console.error('Tab loading error:', error);
+                errorHandler.show('Ошибка при загрузке вкладки');
             } finally {
                 appState.isLoading = false;
                 loader.hide();
@@ -495,8 +502,11 @@
                     </div>
                 `;
                 tabCache.set('profile', content);
-                tabInner.innerHTML = content;
+                if (tabInner) {
+                    tabInner.innerHTML = content;
+                }
             } catch (error) {
+                console.error('Profile loading error:', error);
                 throw new Error('Ошибка загрузки профиля');
             }
         }
@@ -573,45 +583,50 @@
         };
 
         // Инициализация
-        document.addEventListener('DOMContentLoaded', () => {
-            const navPanel = document.querySelector('.nav-panel');
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            
-            // Очистка кэша при долгом бездействии
-            let inactivityTimer;
-            function resetInactivityTimer() {
-                clearTimeout(inactivityTimer);
-                inactivityTimer = setTimeout(() => {
-                    tabCache.clear();
-                }, 5 * 60 * 1000); // 5 минут
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Инициализируем Telegram WebApp
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                }
+
+                // Очистка кэша при долгом бездействии
+                let inactivityTimer;
+                function resetInactivityTimer() {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = setTimeout(() => {
+                        tabCache.clear();
+                    }, 5 * 60 * 1000); // 5 минут
+                }
+                
+                document.addEventListener('touchstart', resetInactivityTimer);
+                document.addEventListener('mousemove', resetInactivityTimer);
+                resetInactivityTimer();
+
+                // Инициализация навигации
+                const navButtons = document.querySelectorAll('.nav-button');
+                navButtons.forEach(button => {
+                    const handler = (e) => {
+                        e.preventDefault();
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    };
+                    button.addEventListener('click', handler);
+                    appState.eventListeners.add({ element: button, event: 'click', handler });
+                });
+
+                // Восстанавливаем состояние
+                await restoreState();
+
+                // Показываем панель навигации
+                if (navPanel) {
+                    navPanel.classList.add('visible');
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+                errorHandler.show('Ошибка инициализации приложения');
             }
-            
-            document.addEventListener('touchstart', resetInactivityTimer);
-            document.addEventListener('mousemove', resetInactivityTimer);
-            resetInactivityTimer();
-
-            // Инициализация навигации
-            const navButtons = document.querySelectorAll('.nav-button');
-            navButtons.forEach(button => {
-                const handler = (e) => {
-                    e.preventDefault();
-                    const section = button.getAttribute('data-section');
-                    handleNavClick(section, button);
-                };
-                button.addEventListener('click', handler);
-                appState.eventListeners.add({ element: button, event: 'click', handler });
-            });
-
-            // Восстанавливаем состояние
-            restoreState();
-
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.ready();
-                window.Telegram.WebApp.expand();
-            }
-
-            navPanel.classList.add('visible');
         });
 
         // Очистка при выгрузке страницы
