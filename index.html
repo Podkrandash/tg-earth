@@ -372,6 +372,40 @@
             currentY: 0
         };
 
+        // Делаем функцию closeTab глобально доступной
+        if (typeof window.closeTab !== 'function') {
+            window.closeTab = function() {
+                try {
+                    const tabContent = document.querySelector('.tab-content');
+                    const tabInner = document.querySelector('.tab-content-inner');
+                    const activeButton = document.querySelector('.nav-button.active');
+                    
+                    if (activeButton) {
+                        activeButton.classList.remove('active');
+                    }
+                    
+                    appState.currentTab = null;
+                    saveState();
+                    
+                    tabContent.classList.add('closing');
+                    setTimeout(() => {
+                        tabContent.classList.remove('active', 'closing');
+                        if (tabInner) {
+                            tabInner.style.opacity = '0';
+                        }
+                        window.isClosing = false;
+                    }, 300);
+                } catch (error) {
+                    console.error('Error closing tab:', error);
+                    // Аварийное закрытие вкладки
+                    const tabContent = document.querySelector('.tab-content');
+                    if (tabContent) {
+                        tabContent.classList.remove('active', 'closing', 'dragging');
+                    }
+                }
+            };
+        }
+
         // Кэш для содержимого вкладок
         const tabCache = new Map();
         
@@ -507,11 +541,30 @@
 
         // Инициализация содержимого вкладки
         function initTabContent(section) {
-            if (section === 'wallet') {
-                const connectWalletBtn = document.getElementById('connect-wallet-btn');
-                if (connectWalletBtn) {
-                    initTonConnect();
+            try {
+                console.log(`[initTabContent] Initializing content for ${section} tab`);
+                
+                // Убедимся, что кнопки закрытия работают
+                const closeButtons = document.querySelectorAll('.close-button');
+                closeButtons.forEach(button => {
+                    button.onclick = function() {
+                        window.closeTab();
+                    };
+                });
+                
+                // Специфичная инициализация для разных вкладок
+                if (section === 'wallet') {
+                    const connectWalletBtn = document.getElementById('connect-wallet-btn');
+                    if (connectWalletBtn) {
+                        initTonConnect();
+                    }
+                } else if (section === 'profile') {
+                    // Добавим специфичную инициализацию для профиля, если будет нужна
+                    console.log('[initTabContent] Profile tab initialized');
                 }
+            } catch (error) {
+                console.error('Error initializing tab content:', error);
+                // Не выбрасываем ошибку, чтобы не ломать интерфейс
             }
         }
 
@@ -542,35 +595,33 @@
         async function loadProfile() {
             try {
                 console.log("[loadProfile] Loading profile tab...");
-                // Проверяем инициализацию Telegram
-                if (!window.Telegram?.WebApp) {
-                    console.error("[loadProfile] Telegram WebApp not available.");
-                    throw new Error('Telegram WebApp не доступен');
-                }
-
+                
                 // Получаем данные пользователя
-                const initData = window.Telegram.WebApp.initData || '';
-                const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-                console.log("[loadProfile] initDataUnsafe:", initDataUnsafe);
-
-                let userData;
-                if (initDataUnsafe && initDataUnsafe.user) {
-                    userData = initDataUnsafe.user;
-                    console.log("[loadProfile] Using real user data:", userData);
+                let userData = {
+                    id: 'Демо режим',
+                    username: 'Демо пользователь',
+                    first_name: 'Демо',
+                    last_name: 'Пользователь'
+                };
+                
+                // Пытаемся получить реальные данные из Telegram WebApp
+                if (window.Telegram?.WebApp) {
+                    const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+                    console.log("[loadProfile] initDataUnsafe:", initDataUnsafe);
+                    
+                    if (initDataUnsafe && initDataUnsafe.user) {
+                        userData = initDataUnsafe.user;
+                        console.log("[loadProfile] Using real user data:", userData);
+                    } else {
+                        console.log("[loadProfile] No user data in initDataUnsafe, using demo data.");
+                    }
                 } else {
-                    // Если данные недоступны, используем демо режим
-                    userData = {
-                        id: 'Демо режим',
-                        username: 'Демо пользователь',
-                        first_name: 'Демо',
-                        last_name: 'Пользователь'
-                    };
-                    console.log("[loadProfile] Using demo user data.");
+                    console.log("[loadProfile] Telegram WebApp not available, using demo data.");
                 }
 
                 const content = `
                     <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="closeTab()">
+                        <div class="close-button" onclick="window.closeTab()">
                             <i class="material-icons">close</i>
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
@@ -590,7 +641,7 @@
                 }
             } catch (error) {
                 console.error('Profile loading error:', error);
-                errorHandler.show('Ошибка загрузки профиля: ' + error.message);
+                errorHandler.show('Ошибка загрузки профиля');
                 throw error;
             }
         }
@@ -686,29 +737,6 @@
             }
         }
 
-        // Очистка при закрытии вкладки
-        window.closeTab = function() {
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            const activeButton = document.querySelector('.nav-button.active');
-            
-            if (activeButton) {
-                activeButton.classList.remove('active');
-            }
-            
-            appState.currentTab = null;
-            saveState();
-            
-            tabContent.classList.add('closing');
-            setTimeout(() => {
-                tabContent.classList.remove('active', 'closing');
-                if (tabInner) {
-                    tabInner.style.opacity = '0';
-                }
-                window.isClosing = false;
-            }, 300);
-        };
-
         // Добавляем обработчики свайпов
         let touchStartY = 0;
         let touchCurrentY = 0;
@@ -784,10 +812,29 @@
                     const handler = (e) => {
                         e.preventDefault();
                         const section = button.getAttribute('data-section');
+                        console.log(`[Navigation] Clicked on ${section} button`);
                         handleNavClick(section, button);
                     };
+                    
+                    // Удаляем предыдущий обработчик события, если он был
+                    button.removeEventListener('click', handler);
+                    
+                    // Добавляем новый обработчик с улучшенным событием
                     button.addEventListener('click', handler);
                     appState.eventListeners.add({ element: button, event: 'click', handler });
+                    
+                    // Добавляем также обработчик на touchend для лучшей мобильной совместимости
+                    const touchHandler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const section = button.getAttribute('data-section');
+                        console.log(`[Navigation] Touch ended on ${section} button`);
+                        handleNavClick(section, button);
+                    };
+                    
+                    button.removeEventListener('touchend', touchHandler);
+                    button.addEventListener('touchend', touchHandler, { passive: false });
+                    appState.eventListeners.add({ element: button, event: 'touchend', handler: touchHandler });
                 });
 
                 // Восстанавливаем состояние
