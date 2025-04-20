@@ -343,7 +343,7 @@ class Earth {
         
         // Предотвращаем всплытие событий касания, чтобы они не закрывали Mini App
         this.renderer.domElement.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
-        this.renderer.domElement.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive: true });
+        // this.renderer.domElement.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive: true }); // Временно убрано для теста
         this.renderer.domElement.addEventListener('touchend', (e) => { e.stopPropagation(); }, { passive: true });
 
         // Базовые настройки
