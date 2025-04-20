@@ -792,10 +792,10 @@
                 // Восстанавливаем состояние
                 await restoreState();
 
-                // Показываем панель навигации
-                if (navPanel) {
+                // Показываем панель навигации - УБРАНО, теперь это делается в main.js после загрузки сцены
+                /*if (navPanel) {
                     navPanel.classList.add('visible');
-                }
+                }*/
             } catch (error) {
                 console.error('Initialization error:', error);
                 errorHandler.show('Ошибка инициализации приложения');
