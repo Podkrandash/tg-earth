@@ -338,9 +338,18 @@ class Earth {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         
         // Предотвращаем всплытие событий касания, чтобы они не закрывали Mini App
-        this.renderer.domElement.addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: true });
-        this.renderer.domElement.addEventListener('touchmove', (e) => { e.stopPropagation(); }, { passive: true });
-        this.renderer.domElement.addEventListener('touchend', (e) => { e.stopPropagation(); }, { passive: true });
+        this.renderer.domElement.addEventListener('touchstart', (e) => { 
+            e.stopPropagation(); 
+            e.preventDefault();
+        }, { passive: false });
+        this.renderer.domElement.addEventListener('touchmove', (e) => { 
+            e.stopPropagation(); 
+            e.preventDefault();
+        }, { passive: false });
+        this.renderer.domElement.addEventListener('touchend', (e) => { 
+            e.stopPropagation(); 
+            e.preventDefault();
+        }, { passive: false });
 
         // Базовые настройки
         this.controls.enableDamping = true;

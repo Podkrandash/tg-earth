@@ -752,8 +752,11 @@
 
         // Предотвращаем закрытие приложения при свайпе (всегда)
         document.body.addEventListener('touchmove', (e) => {
-            // Блокируем стандартное поведение свайпа всегда
-            e.preventDefault();
+            // Проверяем, происходит ли событие внутри канваса Three.js
+            if (!e.target.closest('#scene-container')) {
+                // Блокируем стандартное поведение свайпа только вне канваса
+                e.preventDefault();
+            }
         }, { passive: false });
 
         // Инициализация
