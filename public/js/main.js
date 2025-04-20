@@ -224,12 +224,8 @@ class Earth {
 
         // Показываем панель навигации
         if (elements.navPanel) {
-            setTimeout(() => {
-                elements.navPanel.style.display = 'flex';
-                requestAnimationFrame(() => {
-                    elements.navPanel.style.opacity = '1';
-                });
-            }, 300);
+            elements.navPanel.style.display = 'flex'; // Убедимся, что она видима
+            elements.navPanel.classList.add('visible'); // Добавляем класс для стилей (позиция и opacity)
         }
     }
 
