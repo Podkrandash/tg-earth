@@ -491,6 +491,7 @@
                 if (tabContent && tabInner) {
                     tabContent.classList.add('active');
                     tabInner.style.opacity = '1';
+                    console.log(`[handleNavClick] Tab ${section} activated.`);
                 }
             } catch (error) {
                 console.error('Tab loading error:', error);
@@ -540,18 +541,22 @@
 
         async function loadProfile() {
             try {
+                console.log("[loadProfile] Loading profile tab...");
                 // Проверяем инициализацию Telegram
                 if (!window.Telegram?.WebApp) {
+                    console.error("[loadProfile] Telegram WebApp not available.");
                     throw new Error('Telegram WebApp не доступен');
                 }
 
                 // Получаем данные пользователя
                 const initData = window.Telegram.WebApp.initData || '';
                 const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+                console.log("[loadProfile] initDataUnsafe:", initDataUnsafe);
 
                 let userData;
                 if (initDataUnsafe && initDataUnsafe.user) {
                     userData = initDataUnsafe.user;
+                    console.log("[loadProfile] Using real user data:", userData);
                 } else {
                     // Если данные недоступны, используем демо режим
                     userData = {
@@ -560,6 +565,7 @@
                         first_name: 'Демо',
                         last_name: 'Пользователь'
                     };
+                    console.log("[loadProfile] Using demo user data.");
                 }
 
                 const content = `
@@ -580,6 +586,7 @@
                 tabCache.set('profile', content);
                 if (tabInner) {
                     tabInner.innerHTML = content;
+                    console.log("[loadProfile] Profile content set to tabInner.");
                 }
             } catch (error) {
                 console.error('Profile loading error:', error);
@@ -801,6 +808,20 @@
                 element.removeEventListener(event, handler);
             });
             appState.eventListeners.clear();
+        });
+
+        // Обработка изменения размера окна (например, при повороте экрана)
+        window.addEventListener('resize', () => {
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.expand();
+            }
+            // Восстанавливаем вкладку, если была открыта
+            if (appState.currentTab) {
+                const button = document.querySelector(`[data-section="${appState.currentTab}"]`);
+                if (button) {
+                    handleNavClick(appState.currentTab, button, true);
+                }
+            }
         });
     </script>
     <script type="module" src="/js/main.js"></script>
