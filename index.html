@@ -439,6 +439,7 @@
                 try {
                     window.Telegram.WebApp.ready();
                     window.Telegram.WebApp.expand();
+                    window.Telegram.WebApp.disableClosingConfirmation();
                     appState.telegramInitialized = true;
                     appState.webApp = window.Telegram.WebApp;
                     
