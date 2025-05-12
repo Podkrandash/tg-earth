@@ -1016,8 +1016,13 @@
                         return;
                     }
 
+                    // Удаляем старые обработчики, чтобы избежать дублирования
+                    button.removeEventListener('click', clickHandler);
+                    button.removeEventListener('touchend', touchEndHandler);
+
                     const clickHandler = (e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         const section = button.getAttribute('data-section');
                         if (!section) {
                             console.warn('Nav-button without data-section attribute clicked.', button);
@@ -1027,7 +1032,7 @@
                         handleNavClick(section, button);
                     };
                     
-                    button.addEventListener('click', clickHandler);
+                    button.addEventListener('click', clickHandler, { passive: false });
 
                     const touchEndHandler = (e) => {
                         e.preventDefault();

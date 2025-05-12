@@ -1119,202 +1119,10 @@
     </script>
     <script type="module" src="/js/main.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const loadingScreen = document.getElementById('loading-screen');
-            const navPanel = document.querySelector('.nav-panel');
-            const sceneContainer = document.getElementById('scene-container');
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            
-            // Обновляем баланс токенов
-            updateTokenBalance();
-            
-            let isFirstTouch = true;
-            let startY = 0;
-            let currentY = 0;
-            let isDragging = false;
-            const SWIPE_THRESHOLD = 100;
-            
-            // Предотвращаем любое стандартное поведение свайпа в Telegram
-            document.body.addEventListener('touchmove', (e) => {
-                // Если открыта вкладка или происходит взаимодействие со сценой - блокируем стандартное поведение свайпа
-                if (tabContent.classList.contains('active') || sceneContainer.contains(e.target)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            }, { passive: false });
-            
-            // Обработчик начала свайпа
-            tabContent.addEventListener('touchstart', (e) => {
-                if (!tabContent.classList.contains('active')) return;
-                startY = e.touches[0].clientY;
-                currentY = startY;
-                isDragging = true;
-                tabContent.classList.add('dragging');
-                
-                // Предотвращаем стандартное поведение свайпа
-                e.preventDefault();
-                e.stopPropagation();
-            }, { passive: false });
-            
-            // Обработчик движения при свайпе
-            tabContent.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                
-                // Предотвращаем стандартное поведение свайпа
-                e.preventDefault();
-                e.stopPropagation();
-                
-                currentY = e.touches[0].clientY;
-                const diff = currentY - startY;
-                
-                if (diff > 0) {
-                    // Изменяем радиус скругления в зависимости от расстояния свайпа
-                    const radius = Math.min(24 + (diff * 0.1), 40);
-                    tabContent.style.borderTopLeftRadius = `${radius}px`;
-                    tabContent.style.borderTopRightRadius = `${radius}px`;
-                    
-                    // Замедляем движение чем дальше свайпаем
-                    const dampenedDiff = Math.pow(diff, 0.8);
-                    const transform = 60 + dampenedDiff;
-                    
-                    tabContent.style.transform = `translateY(${transform}px)`;
-                    
-                    // Уменьшаем прозрачность контента
-                    const opacity = Math.max(0, 1 - (diff / 400));
-                    tabInner.style.opacity = opacity;
-                }
-            }, { passive: false });
-            
-            // Обработчик окончания свайпа
-            tabContent.addEventListener('touchend', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                
-                // Предотвращаем стандартное поведение свайпа
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const diff = currentY - startY;
-                tabContent.classList.remove('dragging');
-                
-                if (diff > SWIPE_THRESHOLD) {
-                    // Закрываем вкладку
-                    closeTab();
-                } else {
-                    // Возвращаем на место
-                    tabContent.classList.add('closing');
-                    tabContent.style.transform = 'translateY(60px)';
-                    tabContent.style.borderTopLeftRadius = '24px';
-                    tabContent.style.borderTopRightRadius = '24px';
-                    tabInner.style.opacity = '1';
-                    
-                    setTimeout(() => {
-                        tabContent.classList.remove('closing');
-                        tabContent.style.transform = '';
-                        tabContent.style.borderTopLeftRadius = '';
-                        tabContent.style.borderTopRightRadius = '';
-                    }, 300);
-                }
-            }, { passive: false });
-            
-            // Функция закрытия вкладки
-            window.closeTab = function() {
-                const tabContent = document.querySelector('.tab-content');
-                const tabInner = document.querySelector('.tab-content-inner');
-                const activeButton = document.querySelector('.nav-button.active');
-                
-                if (activeButton) {
-                    activeButton.classList.remove('active');
-                }
-                
-                tabContent.classList.add('closing');
-                tabContent.style.transform = 'translateY(100%)';
-                tabContent.style.borderTopLeftRadius = '0';
-                tabContent.style.borderTopRightRadius = '0';
-                tabInner.style.opacity = '0';
-                
-                setTimeout(() => {
-                    tabContent.classList.remove('active', 'closing');
-                    tabContent.style.transform = '';
-                    tabContent.style.borderTopLeftRadius = '';
-                    tabContent.style.borderTopRightRadius = '';
-                }, 300);
-            };
-            
-            // Show navigation panel on first touch - используем preventDefault
-            sceneContainer.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (isFirstTouch && sceneContainer.style.opacity === '1') {
-                    isFirstTouch = false;
-                    navPanel.classList.add('visible');
-                }
-            }, { passive: false });
-
-            sceneContainer.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (isFirstTouch && sceneContainer.style.opacity === '1') {
-                    isFirstTouch = false;
-                    navPanel.classList.add('visible');
-                }
-            }, { passive: false });
-            
-            // Handle navigation button clicks
-            const navButtons = document.querySelectorAll('.nav-button');
-            navButtons.forEach(button => {
-                ['touchstart', 'click'].forEach(eventType => {
-                    button.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        const section = button.getAttribute('data-section');
-                        handleNavClick(section, button);
-                    }, { passive: false });
-                });
-            });
-
-            // Prevent scroll on navigation panel
-            navPanel.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            }, { passive: false });
-
-            // Prevent scroll on buttons
-            navButtons.forEach(button => {
-                button.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }, { passive: false });
-            });
-
-            // Предотвращение скролла на закрывающей кнопке
-            document.addEventListener('click', function(e) {
-                if (e.target.closest('.close-button')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.closeTab();
-                }
-            }, { passive: false });
-            
-            document.addEventListener('touchstart', function(e) {
-                if (e.target.closest('.close-button')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.closeTab();
-                }
-            }, { passive: false });
-            
-            // Обработка повторных открытий вкладок
-            tabContent.addEventListener('transitionend', function(e) {
-                if (e.propertyName === 'transform' && !tabContent.classList.contains('active')) {
-                    tabInner.innerHTML = '';
-                }
-            });
-        });
+        // Удаляем дублирование кода - весь слушатель DOMContentLoaded уже определен выше
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     ...
+        // });
     </script>
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
     <script>
@@ -1562,6 +1370,233 @@
             <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFFFFF; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">toll</i>
             <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
         `;
+    }
+
+    // Добавляем функцию обработки нажатий на кнопки навигации
+    function handleNavClick(section, clickedButton) {
+        const buttons = document.querySelectorAll('.nav-button');
+        const tabContent = document.querySelector('.tab-content');
+        const tabInner = document.querySelector('.tab-content-inner');
+        
+        buttons.forEach(btn => btn.classList.remove('active'));
+        clickedButton.classList.add('active');
+        
+        let content = '';
+        
+        switch(section) {
+            case 'wallet':
+                content = `
+                    <h3>Wallet</h3>
+                    <button class="close-button" type="button">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <div class="wallet-container">
+                        <div class="wallet-header">
+                            <i class="material-icons">account_balance_wallet</i>
+                            <span>TON Wallet</span>
+                        </div>
+                        <div class="wallet-content">
+                            <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Подключение кошелька будет доступно ближе к аирдропу.</p>
+                            <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Следите за новостями!</p>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'profile':
+                showProfile();
+                break;
+            case 'planet':
+                content = `
+                    <h3>Планета</h3>
+                    <button class="close-button" type="button">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <div class="planet-container" style="display: flex; flex-direction: column; gap: 24px; padding: 0;">
+                        <!-- Статус планеты -->
+                        <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                            <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                                <i class="material-icons" style="font-size: 28px; color: #78AAFF; margin-right: 12px;">public</i>
+                                <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Состояние экосистемы</h4>
+                            </div>
+                            
+                            <div class="pollution-info" style="margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">Уровень загрязнения</span>
+                                    <span id="pollution-value" style="font-size: 14px; font-weight: 600; font-family: 'Courier New', monospace;"></span>
+                                </div>
+                                <div style="height: 6px; width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
+                                    <div id="pollution-bar" style="height: 100%; width: 50%; transition: width 0.5s ease, background-color 0.5s ease;"></div>
+                                </div>
+                                <p id="pollution-status" style="margin: 4px 0 0; font-size: 13px; color: rgba(255, 255, 255, 0.6);"></p>
+                            </div>
+                            
+                            <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; margin-top: 8px;">
+                                <i class="material-icons" style="font-size: 20px; color: #FFCC00; margin-right: 10px;">info_outline</i>
+                                <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.4;">Загрязнение автоматически увеличивается на 10% каждый день. Снижайте уровень загрязнения, чтобы получать больше EARTH токенов.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Действия по очистке -->
+                        <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                                <i class="material-icons" style="font-size: 28px; color: #4CAF50; margin-right: 12px;">eco</i>
+                                <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Действия по защите планеты</h4>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <button class="action-button" data-reduction="5" data-reward="10" style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.2); padding: 16px; border-radius: 16px; display: flex; align-items: center; transition: all 0.2s ease; text-align: left;">
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(76, 175, 80, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                                        <i class="material-icons" style="font-size: 24px; color: #4CAF50;">nature</i>
+                                    </div>
+                                    <div style="flex-grow: 1;">
+                                        <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">Посадить дерево</div>
+                                        <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Снижает загрязнение на 5%</div>
+                                    </div>
+                                    <div style="background: rgba(76, 175, 80, 0.2); color: #4CAF50; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: 8px; display: flex; align-items: center;">
+                                        <i class="material-icons" style="font-size: 16px; margin-right: 4px;">toll</i>
+                                        <span>+10</span>
+                                    </div>
+                                </button>
+                                
+                                <button class="action-button" data-reduction="10" data-reward="20" style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.2); padding: 16px; border-radius: 16px; display: flex; align-items: center; transition: all 0.2s ease; text-align: left;">
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(33, 150, 243, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                                        <i class="material-icons" style="font-size: 24px; color: #2196F3;">waves</i>
+                                    </div>
+                                    <div style="flex-grow: 1;">
+                                        <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">Очистить океан</div>
+                                        <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Снижает загрязнение на 10%</div>
+                                    </div>
+                                    <div style="background: rgba(33, 150, 243, 0.2); color: #2196F3; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: 8px; display: flex; align-items: center;">
+                                        <i class="material-icons" style="font-size: 16px; margin-right: 4px;">toll</i>
+                                        <span>+20</span>
+                                    </div>
+                                </button>
+                                
+                                <button class="action-button" data-reduction="7.5" data-reward="15" style="background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.2); padding: 16px; border-radius: 16px; display: flex; align-items: center; transition: all 0.2s ease; text-align: left;">
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 152, 0, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                                        <i class="material-icons" style="font-size: 24px; color: #FF9800;">recycling</i>
+                                    </div>
+                                    <div style="flex-grow: 1;">
+                                        <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">Переработать отходы</div>
+                                        <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Снижает загрязнение на 7.5%</div>
+                                    </div>
+                                    <div style="background: rgba(255, 152, 0, 0.2); color: #FF9800; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: 8px; display: flex; align-items: center;">
+                                        <i class="material-icons" style="font-size: 16px; margin-right: 4px;">toll</i>
+                                        <span>+15</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'tasks':
+                content = `
+                    <h3>Available Tasks</h3>
+                    <button class="close-button" type="button">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <div class="task-container">
+                        <div class="task-item">
+                            <div class="task-header">
+                                <i class="material-icons">group</i>
+                                <span>Join Community</span>
+                            </div>
+                            <p class="task-description">Join our Earth Community to stay updated!</p>
+                            <button class="task-button" id="join-community-btn">
+                                <i class="material-icons">telegram</i>
+                                Join Community
+                            </button>
+                        </div>
+                    </div>
+                `;
+                break;
+        }
+        
+        if (section !== 'profile') {
+            tabInner.innerHTML = content;
+        }
+        
+        // Initialize TON Connect if wallet tab
+        if (section === 'wallet') {
+            // Функционал подключения кошелька будет доступен позже
+            console.log('Wallet functionality will be available later');
+        }
+        
+        // Fix rating scroll if profile tab
+        if (section === 'profile') {
+            // Настройка элементов профиля
+            console.log('Profile tab initialized');
+            
+            // Добавляем обработчики для контейнера рейтинга (если он существует)
+            const ratingContainer = document.querySelector('.rating-list-container');
+            if (ratingContainer) {
+                ratingContainer.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+                
+                ratingContainer.addEventListener('touchmove', (e) => {
+                    e.stopPropagation();
+                }, { passive: true });
+            }
+            
+            // Add telegram connect button handler (если он существует)
+            const connectButton = document.querySelector('#telegram-connect');
+            if (connectButton) {
+                connectButton.addEventListener('click', () => {
+                    window.location.href = 'https://t.me/your_bot_username';
+                });
+            }
+        }
+        
+        // Настройка вкладки планеты
+        if (section === 'planet') {
+            // Инициализируем обработчики действий планеты
+            setTimeout(() => {
+                setupPlanetActions();
+            }, 100);
+        }
+        
+        // Update close button handler
+        const closeButton = tabInner.querySelector('.close-button');
+        if (closeButton) {
+            ['touchstart', 'click'].forEach(eventType => {
+                closeButton.addEventListener(eventType, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.closeTab();
+                }, { passive: false });
+            });
+        } else {
+            console.warn('Close button not found in the current tab');
+        }
+        
+        // Show tab content
+        tabContent.classList.add('active');
+        setTimeout(() => {
+            tabInner.style.opacity = '1';
+        }, 50);
+
+        // Update task button handler
+        if (section === 'tasks') {
+            const joinButton = document.querySelector('#join-community-btn');
+            if (joinButton) {
+                ['touchstart', 'click'].forEach(eventType => {
+                    joinButton.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (window.Telegram?.WebApp) {
+                            window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
+                                try_instant_view: false
+                            });
+                        } else {
+                            window.location.href = 'https://t.me/NotEarthCommunity';
+                        }
+                    }, { passive: false });
+                });
+            }
+        }
     }
     </script>
 </body>
