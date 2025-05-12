@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(max(env(safe-area-inset-top, 10px), 15px));
+            transform: translateY(60px);
             pointer-events: auto;
-            min-height: calc(100% - max(env(safe-area-inset-top, 10px), 15px));
+            min-height: calc(100% - 60px);
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -324,6 +324,12 @@
             background: white;
             border-radius: 50%;
         }
+
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.08); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -477,8 +483,20 @@
                     appState.telegramInitialized = true;
                     appState.webApp = window.Telegram.WebApp;
                     
+                    // Предотвращаем сворачивание мини-приложения установкой параметров навигации
+                    window.Telegram.WebApp.MainButton.setParams({
+                        is_visible: false
+                    }).disable();
+                    
+                    // Отключаем жест возврата для iOS
+                    if (window.Telegram.WebApp.platform === 'ios') {
+                        window.Telegram.WebApp.BackButton.hide();
+                        window.Telegram.WebApp.enableSwipeBack(false);
+                    }
+                    
                     // Добавляем обработчик изменения viewport
                     window.Telegram.WebApp.onEvent('viewportChanged', () => {
+                        window.Telegram.WebApp.expand();
                         if (window.earth && !window.earth.disposed) {
                             window.earth.onWindowResize();
                         }
@@ -494,7 +512,7 @@
             }
         }
 
-        async function handleNavClick(section, button, isRestore = false) {
+        async function handleNavClick(section, clickedButton, isRestore = false) {
             if (appState.isLoading || section === appState.currentTab) return;
             
             appState.isLoading = true;
@@ -505,8 +523,8 @@
                     activeButton.classList.remove('active');
                 }
                 
-                if (button) {
-                    button.classList.add('active');
+                if (clickedButton) {
+                    clickedButton.classList.add('active');
                 }
                 appState.currentTab = section;
                 
@@ -532,8 +550,8 @@
             } catch (error) {
                 console.error('Tab loading error:', error);
                 errorHandler.show('Ошибка при загрузке вкладки');
-                if (button) {
-                    button.classList.remove('active');
+                if (clickedButton) {
+                    clickedButton.classList.remove('active');
                 }
                 if (activeButton) {
                     activeButton.classList.add('active');
@@ -671,72 +689,85 @@
             }
             
             return `
-                <div style="color: white; padding: 20px;">
-                    <div class="close-button"><i class="material-icons">close</i></div>
-                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Состояние планеты</h2>
-                    
-                    <div style="margin-top: 30px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="font-size: 16px; font-weight: 500;">Уровень загрязнения:</span>
-                            <span style="font-size: 16px; font-weight: 700; font-family: 'Courier New', monospace;">${pollution.toFixed(1)}%</span>
+                <h3>Планета</h3>
+                <button class="close-button" type="button">
+                    <i class="material-icons">close</i>
+                </button>
+                <div class="planet-container" style="display: flex; flex-direction: column; gap: 24px; padding: 0;">
+                    <!-- Статус планеты -->
+                    <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                            <i class="material-icons" style="font-size: 28px; color: #78AAFF; margin-right: 12px;">public</i>
+                            <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Состояние экосистемы</h4>
                         </div>
                         
-                        <div style="background: rgba(255, 255, 255, 0.1); height: 24px; border-radius: 12px; overflow: hidden; position: relative;">
-                            <div style="background: ${barColor}; width: ${pollution}%; height: 100%; transition: width 0.5s ease;"></div>
-                            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-family: 'Courier New', monospace; font-weight: bold; text-shadow: 0 0 2px rgba(0,0,0,0.8);">
-                                ${pollution < 30 ? 'ЗДОРОВАЯ' : pollution < 60 ? 'ТРЕБУЕТ ВНИМАНИЯ' : 'КРИТИЧЕСКОЕ СОСТОЯНИЕ'}
+                        <div class="pollution-info" style="margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">Уровень загрязнения</span>
+                                <span id="pollution-value" style="font-size: 14px; font-weight: 600; font-family: 'Courier New', monospace;"></span>
                             </div>
+                            <div style="height: 6px; width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
+                                <div id="pollution-bar" style="height: 100%; width: ${pollution}%; transition: width 0.5s ease, background-color 0.5s ease;"></div>
+                            </div>
+                            <p id="pollution-status" style="margin: 4px 0 0; font-size: 13px; color: rgba(255, 255, 255, 0.6);"></p>
                         </div>
                         
-                        <p style="margin: 20px 0 10px; font-size: 14px; color: #aaa;">Загрязнение увеличивается на 10% каждый день</p>
-                    </div>
-                    
-                    <div style="margin-top: 30px;">
-                        <h3 style="font-size: 18px; margin-bottom: 15px;">Меры по очистке планеты</h3>
-                        
-                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div>
-                                    <h4 style="margin: 0 0 5px; font-size: 16px;">Посадить дерево</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #aaa;">Снижает загрязнение на 5%</p>
-                                </div>
-                                <button id="plant-tree-btn" class="action-button" data-reward="10" data-reduction="5" style="background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer;">
-                                    <i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">nature</i>
-                                    <span>Действовать</span>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div>
-                                    <h4 style="margin: 0 0 5px; font-size: 16px;">Очистить океан</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #aaa;">Снижает загрязнение на 10%</p>
-                                </div>
-                                <button id="clean-ocean-btn" class="action-button" data-reward="25" data-reduction="10" style="background: linear-gradient(135deg, #2196F3, #0D47A1); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer;">
-                                    <i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">waves</i>
-                                    <span>Действовать</span>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <div>
-                                    <h4 style="margin: 0 0 5px; font-size: 16px;">Переработать отходы</h4>
-                                    <p style="margin: 0; font-size: 14px; color: #aaa;">Снижает загрязнение на 15%</p>
-                                </div>
-                                <button id="recycle-waste-btn" class="action-button" data-reward="40" data-reduction="15" style="background: linear-gradient(135deg, #FF9800, #E65100); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer;">
-                                    <i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">recycling</i>
-                                    <span>Действовать</span>
-                                </button>
-                            </div>
+                        <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; margin-top: 8px;">
+                            <i class="material-icons" style="font-size: 20px; color: #FFCC00; margin-right: 10px;">info_outline</i>
+                            <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.4;">Загрязнение автоматически увеличивается на 10% каждый день. Снижайте уровень загрязнения, чтобы получать больше EARTH токенов.</p>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 30px; font-size: 14px; color: #aaa; text-align: center;">
-                        <p>Чем ниже уровень загрязнения, тем больше токенов EARTH вы получаете каждый день.</p>
-                        <p>Следите за состоянием планеты и получайте вознаграждение!</p>
+                    <!-- Действия по очистке -->
+                    <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                            <i class="material-icons" style="font-size: 28px; color: #4CAF50; margin-right: 12px;">eco</i>
+                            <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Действия по защите планеты</h4>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <button class="action-button" data-reduction="5" data-reward="10" style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.2); padding: 16px; border-radius: 16px; display: flex; align-items: center; transition: all 0.2s ease; text-align: left;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(76, 175, 80, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                                    <i class="material-icons" style="font-size: 24px; color: #4CAF50;">nature</i>
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">Посадить дерево</div>
+                                    <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Снижает загрязнение на 5%</div>
+                                </div>
+                                <div style="background: rgba(76, 175, 80, 0.2); color: #4CAF50; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: 8px; display: flex; align-items: center;">
+                                    <i class="material-icons" style="font-size: 16px; margin-right: 4px;">toll</i>
+                                    <span>+10</span>
+                                </div>
+                            </button>
+                            
+                            <button class="action-button" data-reduction="10" data-reward="20" style="background: rgba(33, 150, 243, 0.1); border: 1px solid rgba(33, 150, 243, 0.2); padding: 16px; border-radius: 16px; display: flex; align-items: center; transition: all 0.2s ease; text-align: left;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(33, 150, 243, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                                    <i class="material-icons" style="font-size: 24px; color: #2196F3;">waves</i>
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">Очистить океан</div>
+                                    <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Снижает загрязнение на 10%</div>
+                                </div>
+                                <div style="background: rgba(33, 150, 243, 0.2); color: #2196F3; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: 8px; display: flex; align-items: center;">
+                                    <i class="material-icons" style="font-size: 16px; margin-right: 4px;">toll</i>
+                                    <span>+20</span>
+                                </div>
+                            </button>
+                            
+                            <button class="action-button" data-reduction="7.5" data-reward="15" style="background: rgba(255, 152, 0, 0.1); border: 1px solid rgba(255, 152, 0, 0.2); padding: 16px; border-radius: 16px; display: flex; align-items: center; transition: all 0.2s ease; text-align: left;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255, 152, 0, 0.2); display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                                    <i class="material-icons" style="font-size: 24px; color: #FF9800;">recycling</i>
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">Переработать отходы</div>
+                                    <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">Снижает загрязнение на 7.5%</div>
+                                </div>
+                                <div style="background: rgba(255, 152, 0, 0.2); color: #FF9800; padding: 6px 12px; border-radius: 12px; font-size: 14px; font-weight: 600; margin-left: 8px; display: flex; align-items: center;">
+                                    <i class="material-icons" style="font-size: 16px; margin-right: 4px;">toll</i>
+                                    <span>+15</span>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -763,8 +794,7 @@
             // Если свайп вниз и вкладка активна
             if (deltaY > 0 && tabContent.classList.contains('active')) {
                 e.preventDefault(); // Блокируем стандартное поведение
-                // Используем динамический отступ
-                tabContent.style.transform = `translateY(${deltaY + max(env(safe-area-inset-top, 10), 15)}px)`;
+                tabContent.style.transform = `translateY(${deltaY + 60}px)`;
             }
             e.stopPropagation(); // Предотвращаем всплытие события
         }, { passive: false });
@@ -784,17 +814,52 @@
             e.stopPropagation(); // Предотвращаем всплытие события
         }, { passive: false });
 
-        // Предотвращаем закрытие приложения при свайпе (всегда)
+        // Предотвращаем закрытие приложения при свайпе
         document.body.addEventListener('touchmove', (e) => {
-            // Проверяем, происходит ли событие внутри канваса Three.js
+            // Проверяем, происходит ли событие внутри канваса Three.js или активной вкладки
             if (!e.target.closest('#scene-container')) {
                 // Блокируем стандартное поведение свайпа только вне канваса
                 e.preventDefault();
+                e.stopPropagation();
             }
         }, { passive: false });
 
         // Добавляем функцию для обработки действий по очистке планеты и начисления токенов
         function setupPlanetActions() {
+            // Получаем текущий уровень загрязнения
+            let pollution = localStorage.getItem('earthPollution');
+            pollution = pollution ? parseFloat(pollution) : 50;
+            
+            // Обновляем отображение уровня загрязнения
+            const pollutionBar = document.getElementById('pollution-bar');
+            const pollutionValue = document.getElementById('pollution-value');
+            const pollutionStatus = document.getElementById('pollution-status');
+            
+            if (pollutionBar && pollutionValue && pollutionStatus) {
+                // Устанавливаем ширину полосы
+                pollutionBar.style.width = `${pollution}%`;
+                pollutionValue.textContent = `${pollution.toFixed(1)}%`;
+                
+                // Устанавливаем цвет и текст статуса в зависимости от уровня загрязнения
+                if (pollution < 20) {
+                    pollutionBar.style.background = '#4CAF50'; // зеленый
+                    pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
+                    pollutionStatus.style.color = '#4CAF50';
+                } else if (pollution < 50) {
+                    pollutionBar.style.background = '#FFC107'; // желтый
+                    pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
+                    pollutionStatus.style.color = '#FFC107';
+                } else if (pollution < 80) {
+                    pollutionBar.style.background = '#FF9800'; // оранжевый
+                    pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
+                    pollutionStatus.style.color = '#FF9800';
+                } else {
+                    pollutionBar.style.background = '#F44336'; // красный
+                    pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
+                    pollutionStatus.style.color = '#F44336';
+                }
+            }
+            
             // Обрабатываем нажатие на кнопки очистки
             const actionButtons = document.querySelectorAll('.action-button');
             if (!actionButtons.length) return;
@@ -823,24 +888,63 @@
                     // Обновляем отображение баланса
                     updateTokenBalance();
                     
-                    // Временно блокируем кнопку и показываем успех
+                    // Создаем эффект пульсации токена при начислении
+                    const tokenBalanceEl = document.getElementById('token-balance');
+                    if (tokenBalanceEl) {
+                        tokenBalanceEl.style.animation = 'pulse 0.5s ease';
+                        setTimeout(() => {
+                            tokenBalanceEl.style.animation = '';
+                        }, 500);
+                    }
+                    
+                    // Временно показываем сообщение об успехе
+                    const originalContent = this.innerHTML;
+                    const originalBackground = this.style.background;
+                    
+                    this.style.background = 'rgba(76, 175, 80, 0.2)';
+                    this.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
+                            <i class="material-icons" style="color: #4CAF50; margin-right: 8px;">check_circle</i>
+                            <span style="color: #4CAF50; font-weight: 500;">Успешно!</span>
+                        </div>
+                    `;
+                    
+                    // Обновляем отображение полосы загрязнения
+                    if (pollutionBar && pollutionValue && pollutionStatus) {
+                        // Плавно меняем ширину полосы
+                        pollutionBar.style.transition = 'width 0.5s ease, background-color 0.5s ease';
+                        pollutionBar.style.width = `${pollution}%`;
+                        pollutionValue.textContent = `${pollution.toFixed(1)}%`;
+                        
+                        // Обновляем цвет и текст статуса
+                        if (pollution < 20) {
+                            pollutionBar.style.background = '#4CAF50'; // зеленый
+                            pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
+                            pollutionStatus.style.color = '#4CAF50';
+                        } else if (pollution < 50) {
+                            pollutionBar.style.background = '#FFC107'; // желтый
+                            pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
+                            pollutionStatus.style.color = '#FFC107';
+                        } else if (pollution < 80) {
+                            pollutionBar.style.background = '#FF9800'; // оранжевый
+                            pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
+                            pollutionStatus.style.color = '#FF9800';
+                        } else {
+                            pollutionBar.style.background = '#F44336'; // красный
+                            pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
+                            pollutionStatus.style.color = '#F44336';
+                        }
+                    }
+                    
+                    // Блокируем кнопку на время
                     this.disabled = true;
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">check_circle</i><span>Успешно!</span>';
                     
                     // Через 2 секунды восстанавливаем кнопку
                     setTimeout(() => {
                         this.disabled = false;
-                        this.innerHTML = originalText;
+                        this.innerHTML = originalContent;
+                        this.style.background = originalBackground;
                     }, 2000);
-                    
-                    // Перезагружаем вкладку планеты
-                    const planetButton = document.querySelector('.nav-button[data-section="planet"]');
-                    if (planetButton) {
-                        setTimeout(() => {
-                            handleNavClick('planet', planetButton);
-                        }, 2100);
-                    }
                 });
             });
         }
@@ -860,14 +964,14 @@
                 tokenBalanceEl.id = 'token-balance';
                 tokenBalanceEl.style.cssText = `
                     position: fixed;
-                    top: max(env(safe-area-inset-top, 12px), 24px);
+                    top: 60px;
                     left: 50%;
                     transform: translateX(-50%);
                     background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
                     border: 1px solid rgba(255, 255, 255, 0.15);
                     border-radius: 16px;
                     padding: 10px 18px;
-                    color: #FFD700;
+                    color: #FFFFFF;
                     font-family: 'Courier New', monospace;
                     font-weight: bold;
                     font-size: 18px;
@@ -876,15 +980,15 @@
                     z-index: 997;
                     display: flex;
                     align-items: center;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 215, 0, 0.1);
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 255, 255, 0.1);
                 `;
                 document.body.appendChild(tokenBalanceEl);
             }
             
-            // Обновляем содержимое с премиальным стилем
+            // Обновляем содержимое с белым цветом
             tokenBalanceEl.innerHTML = `
-                <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">toll</i>
-                <span style="letter-spacing: 1.2px; background: linear-gradient(to bottom, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);">${tokens} EARTH</span>
+                <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFFFFF; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">toll</i>
+                <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
             `;
         }
         
@@ -978,8 +1082,8 @@
         
         // Обрабатываем переключение на вкладку планеты
         const originalHandleNavClick = handleNavClick;
-        handleNavClick = function(section, button, isRestore = false) {
-            originalHandleNavClick(section, button, isRestore);
+        handleNavClick = function(section, clickedButton, isRestore = false) {
+            originalHandleNavClick(section, clickedButton, isRestore);
             
             // Если перешли на вкладку планеты, настраиваем кнопки
             if (section === 'planet') {

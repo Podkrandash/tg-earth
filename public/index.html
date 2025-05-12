@@ -222,7 +222,7 @@
             will-change: transform, border-radius;
         }
         .tab-content.active {
-            transform: translateY(max(env(safe-area-inset-top, 10px), 15px));
+            transform: translateY(60px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
@@ -235,7 +235,7 @@
         }
         .tab-content-inner {
             width: 100%;
-            height: calc(100% - max(env(safe-area-inset-top, 10px), 15px));
+            height: calc(100% - 60px);
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -752,6 +752,11 @@
         .action-button i {
             font-size: 20px;
         }
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.08); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -801,12 +806,31 @@
             // Отключаем стандартное поведение свайпа в Telegram
             tg.setBackgroundColor('#000000');
             tg.expand();
-            tg.enableClosingConfirmation();
+            tg.disableClosingConfirmation();
             
-            // Запрещаем скрытие приложения
+            // Запрещаем скрытие приложения при свайпе
             tg.onEvent('viewportChanged', () => {
                 tg.expand();
             });
+            
+            // Предотвращаем сворачивание мини-приложения установкой параметров навигации
+            tg.MainButton.setParams({
+                is_visible: false
+            }).disable();
+            
+            // Отключаем жест возврата для iOS
+            if (tg.platform === 'ios') {
+                tg.BackButton.hide();
+                tg.enableSwipeBack(false);
+            }
+            
+            // Отключаем все стандартные жесты
+            document.addEventListener('touchmove', function(e) {
+                // Блокируем стандартное поведение только если это не взаимодействие с контентом
+                if (!e.target.closest('.tab-content-inner')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
             
             // Инициализация при готовности
             tg.ready(() => {
@@ -912,6 +936,15 @@
             let isDragging = false;
             const SWIPE_THRESHOLD = 100;
             
+            // Предотвращаем любое стандартное поведение свайпа в Telegram
+            document.body.addEventListener('touchmove', (e) => {
+                // Если открыта вкладка или происходит взаимодействие со сценой - блокируем стандартное поведение свайпа
+                if (tabContent.classList.contains('active') || sceneContainer.contains(e.target)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, { passive: false });
+            
             // Обработчик начала свайпа
             tabContent.addEventListener('touchstart', (e) => {
                 if (!tabContent.classList.contains('active')) return;
@@ -919,11 +952,19 @@
                 currentY = startY;
                 isDragging = true;
                 tabContent.classList.add('dragging');
-            }, { passive: true });
+                
+                // Предотвращаем стандартное поведение свайпа
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
             
             // Обработчик движения при свайпе
             tabContent.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
+                
+                // Предотвращаем стандартное поведение свайпа
+                e.preventDefault();
+                e.stopPropagation();
                 
                 currentY = e.touches[0].clientY;
                 const diff = currentY - startY;
@@ -936,9 +977,7 @@
                     
                     // Замедляем движение чем дальше свайпаем
                     const dampenedDiff = Math.pow(diff, 0.8);
-                    // Используем динамический отступ, согласованный с CSS
-                    const safeAreaTop = window.getComputedStyle(tabContent).getPropertyValue('transform').split(',')[5]?.trim()?.replace(')', '') || 15;
-                    const transform = parseInt(safeAreaTop) + dampenedDiff;
+                    const transform = 60 + dampenedDiff;
                     
                     tabContent.style.transform = `translateY(${transform}px)`;
                     
@@ -946,12 +985,16 @@
                     const opacity = Math.max(0, 1 - (diff / 400));
                     tabInner.style.opacity = opacity;
                 }
-            }, { passive: true });
+            }, { passive: false });
             
             // Обработчик окончания свайпа
-            tabContent.addEventListener('touchend', () => {
+            tabContent.addEventListener('touchend', (e) => {
                 if (!isDragging) return;
                 isDragging = false;
+                
+                // Предотвращаем стандартное поведение свайпа
+                e.preventDefault();
+                e.stopPropagation();
                 
                 const diff = currentY - startY;
                 tabContent.classList.remove('dragging');
@@ -962,8 +1005,7 @@
                 } else {
                     // Возвращаем на место
                     tabContent.classList.add('closing');
-                    // Используем значение из CSS для согласованности
-                    tabContent.style.transform = `translateY(max(env(safe-area-inset-top, 10px), 15px))`;
+                    tabContent.style.transform = 'translateY(60px)';
                     tabContent.style.borderTopLeftRadius = '24px';
                     tabContent.style.borderTopRightRadius = '24px';
                     tabInner.style.opacity = '1';
@@ -975,7 +1017,7 @@
                         tabContent.style.borderTopRightRadius = '';
                     }, 300);
                 }
-            }, { passive: true });
+            }, { passive: false });
             
             // Функция закрытия вкладки
             window.closeTab = function() {
@@ -1001,20 +1043,26 @@
                 }, 300);
             };
             
-            // Show navigation panel on first touch
-            sceneContainer.addEventListener('click', () => {
+            // Show navigation panel on first touch - используем preventDefault
+            sceneContainer.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (isFirstTouch && sceneContainer.style.opacity === '1') {
                     isFirstTouch = false;
                     navPanel.classList.add('visible');
                 }
-            });
+            }, { passive: false });
 
             sceneContainer.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (isFirstTouch && sceneContainer.style.opacity === '1') {
                     isFirstTouch = false;
                     navPanel.classList.add('visible');
                 }
-            }, { passive: true });
+            }, { passive: false });
             
             // Handle navigation button clicks
             const navButtons = document.querySelectorAll('.nav-button');
@@ -1044,192 +1092,29 @@
                 }, { passive: false });
             });
 
-            function handleNavClick(section, clickedButton) {
-                const buttons = document.querySelectorAll('.nav-button');
-                const tabContent = document.querySelector('.tab-content');
-                const tabInner = document.querySelector('.tab-content-inner');
-                
-                buttons.forEach(btn => btn.classList.remove('active'));
-                clickedButton.classList.add('active');
-                
-                let content = '';
-                
-                switch(section) {
-                    case 'wallet':
-                        content = `
-                            <h3>Wallet</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="wallet-container">
-                                <div class="wallet-header">
-                                    <i class="material-icons">account_balance_wallet</i>
-                                    <span>TON Wallet</span>
-                                </div>
-                                <div class="wallet-content">
-                                    <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Подключение кошелька будет доступно ближе к аирдропу.</p>
-                                    <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Следите за новостями!</p>
-                                </div>
-                            </div>
-                        `;
-                        break;
-                    case 'profile':
-                        showProfile();
-                        break;
-                    case 'planet':
-                        content = `
-                            <h3>Planet Info</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="planet-container">
-                                <div class="planet-header">
-                                    <h4>Состояние планеты</h4>
-                                </div>
-                                
-                                <div class="pollution-info">
-                                    <p>Уровень загрязнения:</p>
-                                    <div class="pollution-bar-container">
-                                        <div id="pollution-bar" class="pollution-bar"></div>
-                                    </div>
-                                    <p id="pollution-status" class="pollution-status"></p>
-                                </div>
-                                
-                                <div class="planet-actions">
-                                    <h4>Действия по очистке планеты</h4>
-                                    <p>Выполняйте действия, снижайте загрязнение и получайте EARTH токены!</p>
-                                    
-                                    <div class="action-grid">
-                                        <button class="action-button" data-reduction="5" data-reward="10">
-                                            <i class="material-icons">nature</i>
-                                            <span>Посадить дерево</span>
-                                            <small>-5% загрязнения, +10 EARTH</small>
-                                        </button>
-                                        
-                                        <button class="action-button" data-reduction="10" data-reward="20">
-                                            <i class="material-icons">waves</i>
-                                            <span>Очистить океан</span>
-                                            <small>-10% загрязнения, +20 EARTH</small>
-                                        </button>
-                                        
-                                        <button class="action-button" data-reduction="7.5" data-reward="15">
-                                            <i class="material-icons">delete</i>
-                                            <span>Переработать отходы</span>
-                                            <small>-7.5% загрязнения, +15 EARTH</small>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        break;
-                    case 'tasks':
-                        content = `
-                            <h3>Available Tasks</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="task-container">
-                                <div class="task-item">
-                                    <div class="task-header">
-                                        <i class="material-icons">group</i>
-                                        <span>Join Community</span>
-                                    </div>
-                                    <p class="task-description">Join our Earth Community to stay updated!</p>
-                                    <button class="task-button" id="join-community-btn">
-                                        <i class="material-icons">telegram</i>
-                                        Join Community
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        break;
+            // Предотвращение скролла на закрывающей кнопке
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.close-button')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.closeTab();
                 }
-                
-                tabInner.innerHTML = content;
-                
-                // Initialize TON Connect if wallet tab
-                if (section === 'wallet') {
-                    // Функционал подключения кошелька будет доступен позже
-                    console.log('Wallet functionality will be available later');
+            }, { passive: false });
+            
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.closest('.close-button')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.closeTab();
                 }
-                
-                // Fix rating scroll if profile tab
-                if (section === 'profile') {
-                    // Настройка элементов профиля
-                    console.log('Profile tab initialized');
-                    
-                    // Добавляем обработчики для контейнера рейтинга (если он существует)
-                    const ratingContainer = document.querySelector('.rating-list-container');
-                    if (ratingContainer) {
-                        ratingContainer.addEventListener('touchstart', (e) => {
-                            e.stopPropagation();
-                        }, { passive: true });
-                        
-                        ratingContainer.addEventListener('touchmove', (e) => {
-                            e.stopPropagation();
-                        }, { passive: true });
-                    }
-                    
-                    // Add telegram connect button handler (если он существует)
-                    const connectButton = document.querySelector('#telegram-connect');
-                    if (connectButton) {
-                        connectButton.addEventListener('click', () => {
-                            window.location.href = 'https://t.me/your_bot_username';
-                        });
-                    }
+            }, { passive: false });
+            
+            // Обработка повторных открытий вкладок
+            tabContent.addEventListener('transitionend', function(e) {
+                if (e.propertyName === 'transform' && !tabContent.classList.contains('active')) {
+                    tabInner.innerHTML = '';
                 }
-                
-                // Настройка вкладки планеты
-                if (section === 'planet') {
-                    // Инициализируем обработчики действий планеты
-                    setTimeout(() => {
-                        setupPlanetActions();
-                    }, 100);
-                }
-                
-                // Update close button handler
-                const closeButton = tabInner.querySelector('.close-button');
-                if (closeButton) {
-                    ['touchstart', 'click'].forEach(eventType => {
-                        closeButton.addEventListener(eventType, (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            tabContent.classList.remove('active');
-                            clickedButton.classList.remove('active');
-                            tabInner.style.opacity = '0';
-                        }, { passive: false });
-                    });
-                } else {
-                    console.warn('Close button not found in the current tab');
-                }
-                
-                // Show tab content
-                tabContent.classList.add('active');
-                setTimeout(() => {
-                    tabInner.style.opacity = '1';
-                }, 50);
-
-                // Update task button handler
-                if (section === 'tasks') {
-                    const joinButton = document.querySelector('#join-community-btn');
-                    if (joinButton) {
-                        ['touchstart', 'click'].forEach(eventType => {
-                            joinButton.addEventListener(eventType, (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                if (window.Telegram?.WebApp) {
-                                    window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
-                                        try_instant_view: false
-                                    });
-                                } else {
-                                    window.location.href = 'https://t.me/NotEarthCommunity';
-                                }
-                            }, { passive: false });
-                        });
-                    }
-                }
-            }
+            });
         });
     </script>
     <script type="module" src="/js/main.js"></script>
@@ -1250,6 +1135,15 @@
             let isDragging = false;
             const SWIPE_THRESHOLD = 100;
             
+            // Предотвращаем любое стандартное поведение свайпа в Telegram
+            document.body.addEventListener('touchmove', (e) => {
+                // Если открыта вкладка или происходит взаимодействие со сценой - блокируем стандартное поведение свайпа
+                if (tabContent.classList.contains('active') || sceneContainer.contains(e.target)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, { passive: false });
+            
             // Обработчик начала свайпа
             tabContent.addEventListener('touchstart', (e) => {
                 if (!tabContent.classList.contains('active')) return;
@@ -1257,11 +1151,19 @@
                 currentY = startY;
                 isDragging = true;
                 tabContent.classList.add('dragging');
-            }, { passive: true });
+                
+                // Предотвращаем стандартное поведение свайпа
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
             
             // Обработчик движения при свайпе
             tabContent.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
+                
+                // Предотвращаем стандартное поведение свайпа
+                e.preventDefault();
+                e.stopPropagation();
                 
                 currentY = e.touches[0].clientY;
                 const diff = currentY - startY;
@@ -1274,9 +1176,7 @@
                     
                     // Замедляем движение чем дальше свайпаем
                     const dampenedDiff = Math.pow(diff, 0.8);
-                    // Используем динамический отступ, согласованный с CSS
-                    const safeAreaTop = window.getComputedStyle(tabContent).getPropertyValue('transform').split(',')[5]?.trim()?.replace(')', '') || 15;
-                    const transform = parseInt(safeAreaTop) + dampenedDiff;
+                    const transform = 60 + dampenedDiff;
                     
                     tabContent.style.transform = `translateY(${transform}px)`;
                     
@@ -1284,12 +1184,16 @@
                     const opacity = Math.max(0, 1 - (diff / 400));
                     tabInner.style.opacity = opacity;
                 }
-            }, { passive: true });
+            }, { passive: false });
             
             // Обработчик окончания свайпа
-            tabContent.addEventListener('touchend', () => {
+            tabContent.addEventListener('touchend', (e) => {
                 if (!isDragging) return;
                 isDragging = false;
+                
+                // Предотвращаем стандартное поведение свайпа
+                e.preventDefault();
+                e.stopPropagation();
                 
                 const diff = currentY - startY;
                 tabContent.classList.remove('dragging');
@@ -1300,8 +1204,7 @@
                 } else {
                     // Возвращаем на место
                     tabContent.classList.add('closing');
-                    // Используем значение из CSS для согласованности
-                    tabContent.style.transform = `translateY(max(env(safe-area-inset-top, 10px), 15px))`;
+                    tabContent.style.transform = 'translateY(60px)';
                     tabContent.style.borderTopLeftRadius = '24px';
                     tabContent.style.borderTopRightRadius = '24px';
                     tabInner.style.opacity = '1';
@@ -1313,7 +1216,7 @@
                         tabContent.style.borderTopRightRadius = '';
                     }, 300);
                 }
-            }, { passive: true });
+            }, { passive: false });
             
             // Функция закрытия вкладки
             window.closeTab = function() {
@@ -1339,20 +1242,26 @@
                 }, 300);
             };
             
-            // Show navigation panel on first touch
-            sceneContainer.addEventListener('click', () => {
+            // Show navigation panel on first touch - используем preventDefault
+            sceneContainer.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (isFirstTouch && sceneContainer.style.opacity === '1') {
                     isFirstTouch = false;
                     navPanel.classList.add('visible');
                 }
-            });
+            }, { passive: false });
 
             sceneContainer.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (isFirstTouch && sceneContainer.style.opacity === '1') {
                     isFirstTouch = false;
                     navPanel.classList.add('visible');
                 }
-            }, { passive: true });
+            }, { passive: false });
             
             // Handle navigation button clicks
             const navButtons = document.querySelectorAll('.nav-button');
@@ -1382,192 +1291,29 @@
                 }, { passive: false });
             });
 
-            function handleNavClick(section, clickedButton) {
-                const buttons = document.querySelectorAll('.nav-button');
-                const tabContent = document.querySelector('.tab-content');
-                const tabInner = document.querySelector('.tab-content-inner');
-                
-                buttons.forEach(btn => btn.classList.remove('active'));
-                clickedButton.classList.add('active');
-                
-                let content = '';
-                
-                switch(section) {
-                    case 'wallet':
-                        content = `
-                            <h3>Wallet</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="wallet-container">
-                                <div class="wallet-header">
-                                    <i class="material-icons">account_balance_wallet</i>
-                                    <span>TON Wallet</span>
-                                </div>
-                                <div class="wallet-content">
-                                    <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Подключение кошелька будет доступно ближе к аирдропу.</p>
-                                    <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Следите за новостями!</p>
-                                </div>
-                            </div>
-                        `;
-                        break;
-                    case 'profile':
-                        showProfile();
-                        break;
-                    case 'planet':
-                        content = `
-                            <h3>Planet Info</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="planet-container">
-                                <div class="planet-header">
-                                    <h4>Состояние планеты</h4>
-                                </div>
-                                
-                                <div class="pollution-info">
-                                    <p>Уровень загрязнения:</p>
-                                    <div class="pollution-bar-container">
-                                        <div id="pollution-bar" class="pollution-bar"></div>
-                                    </div>
-                                    <p id="pollution-status" class="pollution-status"></p>
-                                </div>
-                                
-                                <div class="planet-actions">
-                                    <h4>Действия по очистке планеты</h4>
-                                    <p>Выполняйте действия, снижайте загрязнение и получайте EARTH токены!</p>
-                                    
-                                    <div class="action-grid">
-                                        <button class="action-button" data-reduction="5" data-reward="10">
-                                            <i class="material-icons">nature</i>
-                                            <span>Посадить дерево</span>
-                                            <small>-5% загрязнения, +10 EARTH</small>
-                                        </button>
-                                        
-                                        <button class="action-button" data-reduction="10" data-reward="20">
-                                            <i class="material-icons">waves</i>
-                                            <span>Очистить океан</span>
-                                            <small>-10% загрязнения, +20 EARTH</small>
-                                        </button>
-                                        
-                                        <button class="action-button" data-reduction="7.5" data-reward="15">
-                                            <i class="material-icons">delete</i>
-                                            <span>Переработать отходы</span>
-                                            <small>-7.5% загрязнения, +15 EARTH</small>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        break;
-                    case 'tasks':
-                        content = `
-                            <h3>Available Tasks</h3>
-                            <button class="close-button" type="button">
-                                <i class="material-icons">close</i>
-                            </button>
-                            <div class="task-container">
-                                <div class="task-item">
-                                    <div class="task-header">
-                                        <i class="material-icons">group</i>
-                                        <span>Join Community</span>
-                                    </div>
-                                    <p class="task-description">Join our Earth Community to stay updated!</p>
-                                    <button class="task-button" id="join-community-btn">
-                                        <i class="material-icons">telegram</i>
-                                        Join Community
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                        break;
+            // Предотвращение скролла на закрывающей кнопке
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.close-button')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.closeTab();
                 }
-                
-                tabInner.innerHTML = content;
-                
-                // Initialize TON Connect if wallet tab
-                if (section === 'wallet') {
-                    // Функционал подключения кошелька будет доступен позже
-                    console.log('Wallet functionality will be available later');
+            }, { passive: false });
+            
+            document.addEventListener('touchstart', function(e) {
+                if (e.target.closest('.close-button')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.closeTab();
                 }
-                
-                // Fix rating scroll if profile tab
-                if (section === 'profile') {
-                    // Настройка элементов профиля
-                    console.log('Profile tab initialized');
-                    
-                    // Добавляем обработчики для контейнера рейтинга (если он существует)
-                    const ratingContainer = document.querySelector('.rating-list-container');
-                    if (ratingContainer) {
-                        ratingContainer.addEventListener('touchstart', (e) => {
-                            e.stopPropagation();
-                        }, { passive: true });
-                        
-                        ratingContainer.addEventListener('touchmove', (e) => {
-                            e.stopPropagation();
-                        }, { passive: true });
-                    }
-                    
-                    // Add telegram connect button handler (если он существует)
-                    const connectButton = document.querySelector('#telegram-connect');
-                    if (connectButton) {
-                        connectButton.addEventListener('click', () => {
-                            window.location.href = 'https://t.me/your_bot_username';
-                        });
-                    }
+            }, { passive: false });
+            
+            // Обработка повторных открытий вкладок
+            tabContent.addEventListener('transitionend', function(e) {
+                if (e.propertyName === 'transform' && !tabContent.classList.contains('active')) {
+                    tabInner.innerHTML = '';
                 }
-                
-                // Настройка вкладки планеты
-                if (section === 'planet') {
-                    // Инициализируем обработчики действий планеты
-                    setTimeout(() => {
-                        setupPlanetActions();
-                    }, 100);
-                }
-                
-                // Update close button handler
-                const closeButton = tabInner.querySelector('.close-button');
-                if (closeButton) {
-                    ['touchstart', 'click'].forEach(eventType => {
-                        closeButton.addEventListener(eventType, (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            tabContent.classList.remove('active');
-                            clickedButton.classList.remove('active');
-                            tabInner.style.opacity = '0';
-                        }, { passive: false });
-                    });
-                } else {
-                    console.warn('Close button not found in the current tab');
-                }
-                
-                // Show tab content
-                tabContent.classList.add('active');
-                setTimeout(() => {
-                    tabInner.style.opacity = '1';
-                }, 50);
-
-                // Update task button handler
-                if (section === 'tasks') {
-                    const joinButton = document.querySelector('#join-community-btn');
-                    if (joinButton) {
-                        ['touchstart', 'click'].forEach(eventType => {
-                            joinButton.addEventListener(eventType, (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                if (window.Telegram?.WebApp) {
-                                    window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
-                                        try_instant_view: false
-                                    });
-                                } else {
-                                    window.location.href = 'https://t.me/NotEarthCommunity';
-                                }
-                            }, { passive: false });
-                        });
-                    }
-                }
-            }
+            });
         });
     </script>
     <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
@@ -1652,44 +1398,54 @@
     
     // Функция добавления обработчиков к кнопкам действий планеты
     function setupPlanetActions() {
+        // Получаем текущий уровень загрязнения
+        let pollution = localStorage.getItem('earthPollution');
+        pollution = pollution ? parseFloat(pollution) : 50;
+        
+        // Обновляем отображение уровня загрязнения
         const pollutionBar = document.getElementById('pollution-bar');
+        const pollutionValue = document.getElementById('pollution-value');
         const pollutionStatus = document.getElementById('pollution-status');
         
-        if (!pollutionBar || !pollutionStatus) return;
-        
-        // Обновляем значение загрязнения
-        const pollution = updatePlanetPollution();
-        
-        // Обновляем отображение полосы
-        pollutionBar.style.width = `${pollution}%`;
-        setPollutionBarColor(pollutionBar, pollution);
-        
-        // Устанавливаем текст статуса
-        if (pollution < 20) {
-            pollutionStatus.textContent = 'Отличное состояние! Планета чистая.';
-            pollutionStatus.style.color = '#4CAF50';
-        } else if (pollution < 50) {
-            pollutionStatus.textContent = 'Хорошее состояние, но нужны действия по очистке.';
-            pollutionStatus.style.color = '#FFC107';
-        } else if (pollution < 80) {
-            pollutionStatus.textContent = 'Высокий уровень загрязнения. Требуются срочные действия!';
-            pollutionStatus.style.color = '#FF9800';
-        } else {
-            pollutionStatus.textContent = 'Критический уровень загрязнения! Планета в опасности!';
-            pollutionStatus.style.color = '#F44336';
+        if (pollutionBar && pollutionValue && pollutionStatus) {
+            // Устанавливаем ширину полосы
+            pollutionBar.style.width = `${pollution}%`;
+            pollutionValue.textContent = `${pollution.toFixed(1)}%`;
+            
+            // Устанавливаем цвет и текст статуса в зависимости от уровня загрязнения
+            if (pollution < 20) {
+                pollutionBar.style.background = '#4CAF50'; // зеленый
+                pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
+                pollutionStatus.style.color = '#4CAF50';
+            } else if (pollution < 50) {
+                pollutionBar.style.background = '#FFC107'; // желтый
+                pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
+                pollutionStatus.style.color = '#FFC107';
+            } else if (pollution < 80) {
+                pollutionBar.style.background = '#FF9800'; // оранжевый
+                pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
+                pollutionStatus.style.color = '#FF9800';
+            } else {
+                pollutionBar.style.background = '#F44336'; // красный
+                pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
+                pollutionStatus.style.color = '#F44336';
+            }
         }
         
-        // Привязываем обработчики к кнопкам
+        // Обрабатываем нажатие на кнопки очистки
         const actionButtons = document.querySelectorAll('.action-button');
+        if (!actionButtons.length) return;
+        
         actionButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const reduction = parseFloat(this.getAttribute('data-reduction'));
                 const reward = parseInt(this.getAttribute('data-reward'));
                 
-                // Получаем текущие значения
+                // Получаем текущий уровень загрязнения
                 let pollution = localStorage.getItem('earthPollution');
                 pollution = pollution ? parseFloat(pollution) : 50;
                 
+                // Получаем текущий баланс токенов
                 let tokens = localStorage.getItem('earthTokens');
                 tokens = tokens ? parseInt(tokens) : 0;
                 
@@ -1697,41 +1453,69 @@
                 pollution = Math.max(0, pollution - reduction);
                 tokens += reward;
                 
-                // Сохраняем обновленные значения
-                localStorage.setItem('earthPollution', pollution);
-                localStorage.setItem('earthTokens', tokens);
-                
-                // Обновляем отображение полосы загрязнения
-                pollutionBar.style.width = `${pollution}%`;
-                setPollutionBarColor(pollutionBar, pollution);
-                
-                // Обновляем статус
-                if (pollution < 20) {
-                    pollutionStatus.textContent = 'Отличное состояние! Планета чистая.';
-                    pollutionStatus.style.color = '#4CAF50';
-                } else if (pollution < 50) {
-                    pollutionStatus.textContent = 'Хорошее состояние, но нужны действия по очистке.';
-                    pollutionStatus.style.color = '#FFC107';
-                } else if (pollution < 80) {
-                    pollutionStatus.textContent = 'Высокий уровень загрязнения. Требуются срочные действия!';
-                    pollutionStatus.style.color = '#FF9800';
-                } else {
-                    pollutionStatus.textContent = 'Критический уровень загрязнения! Планета в опасности!';
-                    pollutionStatus.style.color = '#F44336';
-                }
+                // Сохраняем новые значения
+                localStorage.setItem('earthPollution', pollution.toString());
+                localStorage.setItem('earthTokens', tokens.toString());
                 
                 // Обновляем отображение баланса токенов
                 updateTokenBalance();
                 
+                // Создаем эффект пульсации токена при начислении
+                const tokenBalanceEl = document.getElementById('token-balance');
+                if (tokenBalanceEl) {
+                    tokenBalanceEl.style.animation = 'pulse 0.5s ease';
+                    setTimeout(() => {
+                        tokenBalanceEl.style.animation = '';
+                    }, 500);
+                }
+                
+                // Временно показываем сообщение об успехе
+                const originalContent = this.innerHTML;
+                const originalBackground = this.style.background;
+                
+                this.style.background = 'rgba(76, 175, 80, 0.2)';
+                this.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
+                        <i class="material-icons" style="color: #4CAF50; margin-right: 8px;">check_circle</i>
+                        <span style="color: #4CAF50; font-weight: 500;">Успешно!</span>
+                    </div>
+                `;
+                
+                // Обновляем отображение полосы загрязнения
+                if (pollutionBar && pollutionValue && pollutionStatus) {
+                    // Плавно меняем ширину полосы
+                    pollutionBar.style.transition = 'width 0.5s ease, background-color 0.5s ease';
+                    pollutionBar.style.width = `${pollution}%`;
+                    pollutionValue.textContent = `${pollution.toFixed(1)}%`;
+                    
+                    // Обновляем цвет и текст статуса
+                    if (pollution < 20) {
+                        pollutionBar.style.background = '#4CAF50'; // зеленый
+                        pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
+                        pollutionStatus.style.color = '#4CAF50';
+                    } else if (pollution < 50) {
+                        pollutionBar.style.background = '#FFC107'; // желтый
+                        pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
+                        pollutionStatus.style.color = '#FFC107';
+                    } else if (pollution < 80) {
+                        pollutionBar.style.background = '#FF9800'; // оранжевый
+                        pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
+                        pollutionStatus.style.color = '#FF9800';
+                    } else {
+                        pollutionBar.style.background = '#F44336'; // красный
+                        pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
+                        pollutionStatus.style.color = '#F44336';
+                    }
+                }
+                
                 // Блокируем кнопку на время
                 this.disabled = true;
-                const originalText = this.innerHTML;
-                this.innerHTML = '<i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">check_circle</i><span>Успешно!</span>';
                 
                 // Через 2 секунды восстанавливаем кнопку
                 setTimeout(() => {
                     this.disabled = false;
-                    this.innerHTML = originalText;
+                    this.innerHTML = originalContent;
+                    this.style.background = originalBackground;
                 }, 2000);
             });
         });
@@ -1752,14 +1536,14 @@
             tokenBalanceEl.id = 'token-balance';
             tokenBalanceEl.style.cssText = `
                 position: fixed;
-                top: max(env(safe-area-inset-top, 12px), 24px);
+                top: 60px;
                 left: 50%;
                 transform: translateX(-50%);
                 background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
                 border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 16px;
                 padding: 10px 18px;
-                color: #FFD700;
+                color: #FFFFFF;
                 font-family: 'Courier New', monospace;
                 font-weight: bold;
                 font-size: 18px;
@@ -1768,15 +1552,15 @@
                 z-index: 997;
                 display: flex;
                 align-items: center;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 215, 0, 0.1);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 255, 255, 0.1);
             `;
             document.body.appendChild(tokenBalanceEl);
         }
         
-        // Обновляем содержимое с премиальным стилем
+        // Обновляем содержимое с белым цветом
         tokenBalanceEl.innerHTML = `
-            <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">toll</i>
-            <span style="letter-spacing: 1.2px; background: linear-gradient(to bottom, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);">${tokens} EARTH</span>
+            <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFFFFF; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">toll</i>
+            <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
         `;
     }
     </script>
