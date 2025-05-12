@@ -792,7 +792,102 @@
             }
         }, { passive: false });
 
-        // Инициализация
+        // Добавляем функцию для обработки действий по очистке планеты и начисления токенов
+        function setupPlanetActions() {
+            // Обрабатываем нажатие на кнопки очистки
+            const actionButtons = document.querySelectorAll('.action-button');
+            if (!actionButtons.length) return;
+            
+            actionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const reduction = parseFloat(this.getAttribute('data-reduction'));
+                    const reward = parseInt(this.getAttribute('data-reward'));
+                    
+                    // Получаем текущий уровень загрязнения
+                    let pollution = localStorage.getItem('earthPollution');
+                    pollution = pollution ? parseFloat(pollution) : 50;
+                    
+                    // Получаем текущий баланс токенов
+                    let tokens = localStorage.getItem('earthTokens');
+                    tokens = tokens ? parseInt(tokens) : 0;
+                    
+                    // Снижаем загрязнение и начисляем токены
+                    pollution = Math.max(0, pollution - reduction);
+                    tokens += reward;
+                    
+                    // Сохраняем новые значения
+                    localStorage.setItem('earthPollution', pollution.toString());
+                    localStorage.setItem('earthTokens', tokens.toString());
+                    
+                    // Обновляем отображение баланса
+                    updateTokenBalance();
+                    
+                    // Временно блокируем кнопку и показываем успех
+                    this.disabled = true;
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">check_circle</i><span>Успешно!</span>';
+                    
+                    // Через 2 секунды восстанавливаем кнопку
+                    setTimeout(() => {
+                        this.disabled = false;
+                        this.innerHTML = originalText;
+                    }, 2000);
+                    
+                    // Перезагружаем вкладку планеты
+                    const planetButton = document.querySelector('.nav-button[data-section="planet"]');
+                    if (planetButton) {
+                        setTimeout(() => {
+                            handleNavClick('planet', planetButton);
+                        }, 2100);
+                    }
+                });
+            });
+        }
+        
+        // Функция обновления отображения баланса токенов
+        function updateTokenBalance() {
+            // Получаем текущий баланс токенов
+            let tokens = localStorage.getItem('earthTokens');
+            tokens = tokens ? parseInt(tokens) : 0;
+            
+            // Проверяем, существует ли уже элемент баланса
+            let tokenBalanceEl = document.getElementById('token-balance');
+            
+            // Если элемент не существует, создаем его
+            if (!tokenBalanceEl) {
+                tokenBalanceEl = document.createElement('div');
+                tokenBalanceEl.id = 'token-balance';
+                tokenBalanceEl.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(18, 18, 23, 0.8);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 16px;
+                    padding: 8px 16px;
+                    color: #4CAF50;
+                    font-family: 'Courier New', monospace;
+                    font-weight: bold;
+                    font-size: 18px;
+                    backdrop-filter: blur(5px);
+                    -webkit-backdrop-filter: blur(5px);
+                    z-index: 997;
+                    display: flex;
+                    align-items: center;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                `;
+                document.body.appendChild(tokenBalanceEl);
+            }
+            
+            // Обновляем содержимое
+            tokenBalanceEl.innerHTML = `
+                <i class="material-icons" style="margin-right: 8px; font-size: 18px; color: #4CAF50;">toll</i>
+                <span style="letter-spacing: 1px;">${tokens} EARTH</span>
+            `;
+        }
+        
+        // Вызываем функцию обновления баланса при загрузке страницы
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await initTelegramWebApp();
@@ -845,13 +940,16 @@
                 });
 
                 await restoreState();
-
+                
+                // Обновляем отображение баланса токенов
+                updateTokenBalance();
+                
             } catch (error) {
                 console.error('Initialization error:', error);
                 errorHandler.show('Ошибка инициализации приложения');
             }
         });
-
+        
         window.addEventListener('unload', () => {
             // Если вы хранили ссылки на обработчики в appState.eventListeners, здесь их нужно корректно удалять
             // appState.eventListeners.forEach(({ element, event, handler }) => {
@@ -862,7 +960,7 @@
             // appState.eventListeners.clear();
             console.log('Page unloading, listeners should be cleared if managed via appState.eventListeners');
         });
-
+            
         // Обработка изменения размера окна (например, при повороте экрана)
         window.addEventListener('resize', () => {
             if (window.Telegram?.WebApp) {
@@ -876,6 +974,19 @@
                 }
             }
         });
+        
+        // Обрабатываем переключение на вкладку планеты
+        const originalHandleNavClick = handleNavClick;
+        handleNavClick = function(section, button, isRestore = false) {
+            originalHandleNavClick(section, button, isRestore);
+            
+            // Если перешли на вкладку планеты, настраиваем кнопки
+            if (section === 'planet') {
+                setTimeout(() => {
+                    setupPlanetActions();
+                }, 100);
+            }
+        };
     </script>
     <script type="module" src="/js/main.js"></script>
 </body>
