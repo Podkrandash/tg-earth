@@ -495,6 +495,112 @@
             }
         }
 
+        // ПОМЕЩАЕМ ОПРЕДЕЛЕНИЯ РАНЬШЕ
+        async function initTonConnect() {
+            try {
+                // Убедимся, что скрипт TonConnectUI загружен
+                if (typeof TonConnectUI === 'undefined') {
+                    console.error('TonConnectUI is not loaded yet.');
+                    errorHandler.show('Ошибка: TonConnectUI не загружен.');
+                    return;
+                }
+
+                const walletContent = document.getElementById('wallet-content');
+                const connectWalletContainer = document.getElementById('connect-wallet-container');
+                const connectButtonRoot = document.getElementById('connect-wallet-btn');
+                
+                if (!walletContent || !connectWalletContainer || !connectButtonRoot) {
+                    console.error('Wallet tab elements not found in initTonConnect');
+                    // errorHandler.show('Ошибка: Не найдены элементы вкладки кошелька.'); // Можно временно убрать, чтобы не мешало другим ошибкам
+                    return;
+                }
+
+                // Очищаем кнопку перед инициализацией, если она уже была создана
+                connectButtonRoot.innerHTML = '';
+
+                if (!appState.tonConnectUI) {
+                    appState.tonConnectUI = new TonConnectUI({
+                        manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json',
+                        buttonRootId: 'connect-wallet-btn',
+                        uiPreferences: {
+                            theme: 'DARK'
+                        },
+                        walletsListConfiguration: {
+                            includeWallets: ['Tonkeeper', 'MyTonWallet', 'OpenMask']
+                        }
+                    });
+                } else {
+                    appState.tonConnectUI.options.buttonRootId = 'connect-wallet-btn';
+                    if (document.getElementById('connect-wallet-btn')) { // Доп. проверка
+                        appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
+                    }
+                }
+                
+                const tonConnectUI = appState.tonConnectUI;
+
+                tonConnectUI.onStatusChange((wallet) => {
+                    updateWalletUI(wallet);
+                });
+                updateWalletUI(tonConnectUI.wallet);
+
+            } catch (error) {
+                console.error('Error initializing TON Connect:', error);
+                errorHandler.show('Ошибка инициализации Ton Connect');
+                const walletContent = document.getElementById('wallet-content');
+                if (walletContent) {
+                    walletContent.innerHTML = '<p style="color: red;">Не удалось инициализировать Ton Connect.</p>';
+                }
+            }
+        }
+
+        function updateWalletUI(wallet) {
+            if (typeof TonConnectSDK === 'undefined') {
+                console.error('TonConnectSDK is not loaded yet.');
+                // errorHandler.show('Ошибка: TonConnectSDK не загружен.'); // Можно временно убрать
+                return;
+            }
+
+            const walletContent = document.getElementById('wallet-content');
+            const connectWalletContainer = document.getElementById('connect-wallet-container');
+
+            if (!walletContent || !connectWalletContainer) {
+                console.error('Wallet tab UI elements not found in updateWalletUI');
+                return;
+            }
+
+            if (wallet) {
+                console.log('Wallet connected:', wallet);
+                const address = wallet.account.address;
+                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+                const network = wallet.account.chain === TonConnectSDK.CHAIN.MAINNET ? 'Mainnet' : 'Testnet';
+
+                walletContent.innerHTML = `
+                    <p style="margin: 12px 0; font-size: 16px;">Статус: <span style="color: #34C759;">Подключен</span></p>
+                    <p style="margin: 12px 0; font-size: 16px;">Адрес: ${shortAddress}</p>
+                    <p style="margin: 12px 0; font-size: 16px;">Сеть: ${network}</p>
+                    <button id="disconnect-btn" style="margin-top: 20px; padding: 10px 15px; background-color: #FF3B30; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">Отключить</button>
+                `;
+                
+                connectWalletContainer.style.display = 'none'; 
+
+                const disconnectBtn = document.getElementById('disconnect-btn');
+                if (disconnectBtn && appState.tonConnectUI) {
+                    disconnectBtn.onclick = () => {
+                        appState.tonConnectUI.disconnect();
+                    };
+                }
+            } else {
+                console.log('Wallet disconnected');
+                walletContent.innerHTML = '<p style="margin: 12px 0; font-size: 16px;">Статус: Не подключен</p>';
+                connectWalletContainer.style.display = 'block'; 
+                
+                if (appState.tonConnectUI && document.getElementById('connect-wallet-btn')) { // Доп. проверка
+                     appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
+                }
+            }
+        }
+        // КОНЕЦ ПЕРЕМЕЩЕННЫХ ФУНКЦИЙ
+
         async function handleNavClick(section, button, isRestore = false) {
             if (appState.isLoading || section === appState.currentTab) return;
             
@@ -545,27 +651,29 @@
             try {
                 console.log(`[initTabContent] Initializing content for ${section} tab`);
                 
-                // Убедимся, что кнопки закрытия работают
                 const closeButtons = document.querySelectorAll('.close-button');
-                closeButtons.forEach(button => {
-                    button.onclick = function() {
-                        window.closeTab();
-                    };
+                closeButtons.forEach(btn => { // Используем btn вместо button, чтобы не пересекалось с аргументом handleNavClick
+                    if (btn) { // Проверка, что кнопка найдена
+                        btn.onclick = function() {
+                            window.closeTab();
+                        };
+                    }
                 });
                 
-                // Специфичная инициализация для разных вкладок
                 if (section === 'wallet') {
                     const connectWalletBtn = document.getElementById('connect-wallet-btn');
                     if (connectWalletBtn) {
-                        initTonConnect();
+                        initTonConnect(); // Теперь должно найтись
+                    } else {
+                        console.warn('connect-wallet-btn not found in initTabContent for wallet section');
                     }
                 } else if (section === 'profile') {
-                    // Добавим специфичную инициализацию для профиля, если будет нужна
                     console.log('[initTabContent] Profile tab initialized');
                 }
+                // УДАЛЯЕМ ВЫЗОВ fixRatingScroll, ЕСЛИ ОН НЕ НУЖЕН
+                // if (section === 'rating') { fixRatingScroll(); } 
             } catch (error) {
                 console.error('Error initializing tab content:', error);
-                // Не выбрасываем ошибку, чтобы не ломать интерфейс
             }
         }
 
@@ -668,126 +776,15 @@
                 if (tabInner) {
                     tabInner.innerHTML = content;
                 }
-                await initTonConnect(); // Инициализация TonConnect после добавления контента
+                // initTonConnect теперь вызывается из initTabContent, которая вызывается после установки innerHTML
+                // или при первой загрузке через loadTabContent -> loadWallet -> initTabContent (косвенно, после того как HTML вставлен)
+                // await initTonConnect(); // Этот прямой вызов здесь может быть избыточным или даже вредным, если HTML еще не вставлен
             } catch (error) {
                 console.error('Wallet loading error:', error);
                 errorHandler.show('Ошибка загрузки кошелька');
                 // Не выбрасываем ошибку, чтобы не ломать интерфейс
                 if (tabInner) {
                      tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить кошелек.</p>';
-                }
-            }
-        }
-
-        async function initTonConnect() {
-            try {
-                // Убедимся, что скрипт TonConnectUI загружен
-                if (typeof TonConnectUI === 'undefined') {
-                    console.error('TonConnectUI is not loaded yet.');
-                    errorHandler.show('Ошибка: TonConnectUI не загружен.');
-                    return;
-                }
-
-                const walletContent = document.getElementById('wallet-content');
-                const connectWalletContainer = document.getElementById('connect-wallet-container');
-                const connectButtonRoot = document.getElementById('connect-wallet-btn');
-                
-                if (!walletContent || !connectWalletContainer || !connectButtonRoot) {
-                    console.error('Wallet tab elements not found');
-                    errorHandler.show('Ошибка: Не найдены элементы вкладки кошелька.');
-                    return;
-                }
-
-                // Очищаем кнопку перед инициализацией, если она уже была создана
-                connectButtonRoot.innerHTML = '';
-
-                // Создаем и сохраняем экземпляр TonConnectUI, если его еще нет
-                if (!appState.tonConnectUI) {
-                    appState.tonConnectUI = new TonConnectUI({
-                        manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json', // Убедитесь, что манифест доступен
-                        buttonRootId: 'connect-wallet-btn',
-                        uiPreferences: {
-                            theme: 'DARK'
-                        },
-                        walletsListConfiguration: {
-                            includeWallets: ['Tonkeeper', 'MyTonWallet', 'OpenMask'] // Добавим больше кошельков
-                        }
-                    });
-                } else {
-                     // Если экземпляр уже есть, просто обновляем buttonRootId, 
-                     // так как элемент мог быть пересоздан при перезагрузке вкладки
-                    appState.tonConnectUI.options.buttonRootId = 'connect-wallet-btn';
-                    // Перерисовываем кнопку в новом контейнере
-                     appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
-                }
-                
-                const tonConnectUI = appState.tonConnectUI;
-
-                // Подписываемся на изменение статуса кошелька
-                tonConnectUI.onStatusChange((wallet) => {
-                    updateWalletUI(wallet);
-                });
-
-                // Обновляем UI при инициализации
-                updateWalletUI(tonConnectUI.wallet);
-
-            } catch (error) {
-                console.error('Error initializing TON Connect:', error);
-                errorHandler.show('Ошибка инициализации Ton Connect');
-                const walletContent = document.getElementById('wallet-content');
-                if (walletContent) {
-                    walletContent.innerHTML = '<p style="color: red;">Не удалось инициализировать Ton Connect.</p>';
-                }
-            }
-        }
-
-        // Функция для обновления UI кошелька
-        function updateWalletUI(wallet) {
-            // Убедимся, что скрипт TonConnectSDK загружен
-            if (typeof TonConnectSDK === 'undefined') {
-                console.error('TonConnectSDK is not loaded yet.');
-                errorHandler.show('Ошибка: TonConnectSDK не загружен.');
-                return;
-            }
-
-            const walletContent = document.getElementById('wallet-content');
-            const connectWalletContainer = document.getElementById('connect-wallet-container');
-
-            if (!walletContent || !connectWalletContainer) return;
-
-            if (wallet) {
-                // Кошелек подключен
-                console.log('Wallet connected:', wallet);
-                const address = wallet.account.address;
-                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-                const network = wallet.account.chain === TonConnectSDK.CHAIN.MAINNET ? 'Mainnet' : 'Testnet';
-
-                walletContent.innerHTML = `
-                    <p style="margin: 12px 0; font-size: 16px;">Статус: <span style="color: #34C759;">Подключен</span></p>
-                    <p style="margin: 12px 0; font-size: 16px;">Адрес: ${shortAddress}</p>
-                    <p style="margin: 12px 0; font-size: 16px;">Сеть: ${network}</p>
-                    <button id="disconnect-btn" style="margin-top: 20px; padding: 10px 15px; background-color: #FF3B30; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">Отключить</button>
-                `;
-                
-                connectWalletContainer.style.display = 'none'; // Скрываем контейнер кнопки подключения
-
-                // Добавляем обработчик для кнопки отключения
-                const disconnectBtn = document.getElementById('disconnect-btn');
-                if (disconnectBtn && appState.tonConnectUI) {
-                    disconnectBtn.onclick = () => {
-                        appState.tonConnectUI.disconnect();
-                    };
-                }
-
-            } else {
-                // Кошелек не подключен
-                console.log('Wallet disconnected');
-                walletContent.innerHTML = '<p style="margin: 12px 0; font-size: 16px;">Статус: Не подключен</p>';
-                connectWalletContainer.style.display = 'block'; // Показываем контейнер кнопки подключения
-                
-                // Убедимся, что кнопка TonConnect перерисована, если она была скрыта
-                if (appState.tonConnectUI && document.getElementById('connect-wallet-btn')) {
-                     appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
                 }
             }
         }
@@ -891,72 +888,67 @@
         // Инициализация
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Инициализируем Telegram WebApp
                 await initTelegramWebApp();
 
-                // Очистка кэша при долгом бездействии
                 let inactivityTimer;
                 function resetInactivityTimer() {
                     clearTimeout(inactivityTimer);
                     inactivityTimer = setTimeout(() => {
                         tabCache.clear();
-                    }, 5 * 60 * 1000); // 5 минут
+                    }, 5 * 60 * 1000); 
                 }
                 
                 document.addEventListener('touchstart', resetInactivityTimer);
                 document.addEventListener('mousemove', resetInactivityTimer);
                 resetInactivityTimer();
 
-                // Инициализация навигации
                 const navButtons = document.querySelectorAll('.nav-button');
                 navButtons.forEach(button => {
-                    const handler = (e) => {
+                    if (!button) return; // Пропускаем, если кнопка не найдена
+
+                    const clickHandler = (e) => {
                         e.preventDefault();
                         const section = button.getAttribute('data-section');
                         console.log(`[Navigation] Clicked on ${section} button`);
                         handleNavClick(section, button);
                     };
                     
-                    // Удаляем предыдущий обработчик события, если он был
-                    button.removeEventListener('click', handler);
-                    
-                    // Добавляем новый обработчик с улучшенным событием
-                    button.addEventListener('click', handler);
-                    appState.eventListeners.add({ element: button, event: 'click', handler });
-                    
-                    // Добавляем также обработчик на touchend для лучшей мобильной совместимости
-                    const touchHandler = (e) => {
+                    // Удаляем старые обработчики, если есть (по ссылке на функцию)
+                    // Это сложно сделать надежно без хранения ссылок, но для click обычно не так критично
+                    button.removeEventListener('click', clickHandler); // Попытка удалить, если такая же функция была уже назначена
+                    button.addEventListener('click', clickHandler);
+                    // appState.eventListeners.add({ element: button, event: 'click', handler: clickHandler }); // Сохраняем ссылку, если нужна точная очистка
+
+                    const touchEndHandler = (e) => {
                         e.preventDefault();
-                        e.stopPropagation();
+                        e.stopPropagation(); // Важно для touchend, чтобы не было двойного срабатывания с click
                         const section = button.getAttribute('data-section');
                         console.log(`[Navigation] Touch ended on ${section} button`);
                         handleNavClick(section, button);
                     };
                     
-                    button.removeEventListener('touchend', touchHandler);
-                    button.addEventListener('touchend', touchHandler, { passive: false });
-                    appState.eventListeners.add({ element: button, event: 'touchend', handler: touchHandler });
+                    button.removeEventListener('touchend', touchEndHandler);
+                    button.addEventListener('touchend', touchEndHandler, { passive: false });
+                    // appState.eventListeners.add({ element: button, event: 'touchend', handler: touchEndHandler });
                 });
 
-                // Восстанавливаем состояние
                 await restoreState();
 
-                // Показываем панель навигации - УБРАНО, теперь это делается в main.js после загрузки сцены
-                /*if (navPanel) {
-                    navPanel.classList.add('visible');
-                }*/
             } catch (error) {
                 console.error('Initialization error:', error);
                 errorHandler.show('Ошибка инициализации приложения');
             }
         });
 
-        // Очистка при выгрузке страницы
         window.addEventListener('unload', () => {
-            appState.eventListeners.forEach(({ element, event, handler }) => {
-                element.removeEventListener(event, handler);
-            });
-            appState.eventListeners.clear();
+            // Если вы хранили ссылки на обработчики в appState.eventListeners, здесь их нужно корректно удалять
+            // appState.eventListeners.forEach(({ element, event, handler }) => {
+            //     if (element && typeof element.removeEventListener === 'function') {
+            //         element.removeEventListener(event, handler);
+            //     }
+            // });
+            // appState.eventListeners.clear();
+            console.log('Page unloading, listeners should be cleared if managed via appState.eventListeners');
         });
 
         // Обработка изменения размера окна (например, при повороте экрана)
