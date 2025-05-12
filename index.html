@@ -367,7 +367,6 @@
             eventListeners: new Set(),
             telegramInitialized: false,
             webApp: null,
-            tonConnectUI: null,
             isDragging: false,
             startY: 0,
             currentY: 0
@@ -495,112 +494,6 @@
             }
         }
 
-        // ПОМЕЩАЕМ ОПРЕДЕЛЕНИЯ РАНЬШЕ
-        async function initTonConnect() {
-            try {
-                // Убедимся, что скрипт TonConnectUI загружен
-                if (typeof TonConnectUI === 'undefined') {
-                    console.error('TonConnectUI is not loaded yet.');
-                    errorHandler.show('Ошибка: TonConnectUI не загружен.');
-                    return;
-                }
-
-                const walletContent = document.getElementById('wallet-content');
-                const connectWalletContainer = document.getElementById('connect-wallet-container');
-                const connectButtonRoot = document.getElementById('connect-wallet-btn');
-                
-                if (!walletContent || !connectWalletContainer || !connectButtonRoot) {
-                    console.error('Wallet tab elements not found in initTonConnect');
-                    // errorHandler.show('Ошибка: Не найдены элементы вкладки кошелька.'); // Можно временно убрать, чтобы не мешало другим ошибкам
-                    return;
-                }
-
-                // Очищаем кнопку перед инициализацией, если она уже была создана
-                connectButtonRoot.innerHTML = '';
-
-                if (!appState.tonConnectUI) {
-                    appState.tonConnectUI = new TonConnectUI({
-                        manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json',
-                        buttonRootId: 'connect-wallet-btn',
-                        uiPreferences: {
-                            theme: 'DARK'
-                        },
-                        walletsListConfiguration: {
-                            includeWallets: ['Tonkeeper', 'MyTonWallet', 'OpenMask']
-                        }
-                    });
-                } else {
-                    appState.tonConnectUI.options.buttonRootId = 'connect-wallet-btn';
-                    if (document.getElementById('connect-wallet-btn')) { // Доп. проверка
-                        appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
-                    }
-                }
-                
-                const tonConnectUI = appState.tonConnectUI;
-
-                tonConnectUI.onStatusChange((wallet) => {
-                    updateWalletUI(wallet);
-                });
-                updateWalletUI(tonConnectUI.wallet);
-
-            } catch (error) {
-                console.error('Error initializing TON Connect:', error);
-                errorHandler.show('Ошибка инициализации Ton Connect');
-                const walletContent = document.getElementById('wallet-content');
-                if (walletContent) {
-                    walletContent.innerHTML = '<p style="color: red;">Не удалось инициализировать Ton Connect.</p>';
-                }
-            }
-        }
-
-        function updateWalletUI(wallet) {
-            if (typeof TonConnectSDK === 'undefined') {
-                console.error('TonConnectSDK is not loaded yet.');
-                // errorHandler.show('Ошибка: TonConnectSDK не загружен.'); // Можно временно убрать
-                return;
-            }
-
-            const walletContent = document.getElementById('wallet-content');
-            const connectWalletContainer = document.getElementById('connect-wallet-container');
-
-            if (!walletContent || !connectWalletContainer) {
-                console.error('Wallet tab UI elements not found in updateWalletUI');
-                return;
-            }
-
-            if (wallet) {
-                console.log('Wallet connected:', wallet);
-                const address = wallet.account.address;
-                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-                const network = wallet.account.chain === TonConnectSDK.CHAIN.MAINNET ? 'Mainnet' : 'Testnet';
-
-                walletContent.innerHTML = `
-                    <p style="margin: 12px 0; font-size: 16px;">Статус: <span style="color: #34C759;">Подключен</span></p>
-                    <p style="margin: 12px 0; font-size: 16px;">Адрес: ${shortAddress}</p>
-                    <p style="margin: 12px 0; font-size: 16px;">Сеть: ${network}</p>
-                    <button id="disconnect-btn" style="margin-top: 20px; padding: 10px 15px; background-color: #FF3B30; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">Отключить</button>
-                `;
-                
-                connectWalletContainer.style.display = 'none'; 
-
-                const disconnectBtn = document.getElementById('disconnect-btn');
-                if (disconnectBtn && appState.tonConnectUI) {
-                    disconnectBtn.onclick = () => {
-                        appState.tonConnectUI.disconnect();
-                    };
-                }
-            } else {
-                console.log('Wallet disconnected');
-                walletContent.innerHTML = '<p style="margin: 12px 0; font-size: 16px;">Статус: Не подключен</p>';
-                connectWalletContainer.style.display = 'block'; 
-                
-                if (appState.tonConnectUI && document.getElementById('connect-wallet-btn')) { // Доп. проверка
-                     appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
-                }
-            }
-        }
-        // КОНЕЦ ПЕРЕМЕЩЕННЫХ ФУНКЦИЙ
-
         async function handleNavClick(section, button, isRestore = false) {
             if (appState.isLoading || section === appState.currentTab) return;
             
@@ -652,22 +545,15 @@
                 console.log(`[initTabContent] Initializing content for ${section} tab`);
                 
                 const closeButtons = document.querySelectorAll('.close-button');
-                closeButtons.forEach(btn => { // Используем btn вместо button, чтобы не пересекалось с аргументом handleNavClick
-                    if (btn) { // Проверка, что кнопка найдена
+                closeButtons.forEach(btn => {
+                    if (btn) { 
                         btn.onclick = function() {
                             window.closeTab();
                         };
                     }
                 });
                 
-                if (section === 'wallet') {
-                    const connectWalletBtn = document.getElementById('connect-wallet-btn');
-                    if (connectWalletBtn) {
-                        initTonConnect(); // Теперь должно найтись
-                    } else {
-                        console.warn('connect-wallet-btn not found in initTabContent for wallet section');
-                    }
-                } else if (section === 'profile') {
+                if (section === 'profile') {
                     console.log('[initTabContent] Profile tab initialized');
                 }
                 // УДАЛЯЕМ ВЫЗОВ fixRatingScroll, ЕСЛИ ОН НЕ НУЖЕН
@@ -703,30 +589,15 @@
 
         async function loadProfile() {
             try {
-                console.log("[loadProfile] Loading profile tab...");
+                console.log("[loadProfile] Loading profile tab with static/demo data...");
                 
-                // Получаем данные пользователя
-                let userData = {
-                    id: 'Демо режим',
-                    username: 'Демо пользователь',
-                    first_name: 'Демо',
-                    last_name: 'Пользователь'
+                // Используем статические/демо-данные для профиля
+                const userData = {
+                    id: 'N/A',
+                    username: 'Пользователь Earth 3D',
+                    first_name: ' ',
+                    last_name: ' '
                 };
-                
-                // Пытаемся получить реальные данные из Telegram WebApp
-                if (window.Telegram?.WebApp) {
-                    const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-                    console.log("[loadProfile] initDataUnsafe:", initDataUnsafe);
-                    
-                    if (initDataUnsafe && initDataUnsafe.user) {
-                        userData = initDataUnsafe.user;
-                        console.log("[loadProfile] Using real user data:", userData);
-                    } else {
-                        console.log("[loadProfile] No user data in initDataUnsafe, using demo data.");
-                    }
-                } else {
-                    console.log("[loadProfile] Telegram WebApp not available, using demo data.");
-                }
 
                 const content = `
                     <div style="color: white; padding: 20px;">
@@ -735,10 +606,9 @@
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
                         <div style="margin-top: 20px;">
-                            <p style="margin: 12px 0; font-size: 16px;">ID: ${userData.id}</p>
-                            <p style="margin: 12px 0; font-size: 16px;">Имя: ${userData.first_name || 'Не указано'}</p>
-                            <p style="margin: 12px 0; font-size: 16px;">Фамилия: ${userData.last_name || 'Не указана'}</p>
-                            <p style="margin: 12px 0; font-size: 16px;">Username: ${userData.username || 'Не указан'}</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Добро пожаловать, ${userData.username}!</p>
+                            <p style="margin: 12px 0; font-size: 14px; color: #aaa;">Подробная информация профиля будет доступна позже.</p>
+                            <!-- Можно добавить сюда другую статичную информацию или ссылки -->
                         </div>
                     </div>
                 `;
@@ -746,45 +616,43 @@
                 tabCache.set('profile', content);
                 if (tabInner) {
                     tabInner.innerHTML = content;
-                    console.log("[loadProfile] Profile content set to tabInner.");
+                    console.log("[loadProfile] Static profile content set to tabInner.");
                 }
             } catch (error) {
-                console.error('Profile loading error:', error);
+                console.error('Profile loading error (static):', error);
                 errorHandler.show('Ошибка загрузки профиля');
-                throw error;
+                // Не выбрасываем ошибку, чтобы не ломать интерфейс
+                if (tabInner) {
+                     tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить вкладку Профиль.</p>';
+                }
             }
         }
 
         async function loadWallet() {
             try {
+                console.log("[loadWallet] Loading wallet tab placeholder...");
                 const content = `
                     <div style="color: white; padding: 20px;">
                         <div class="close-button" onclick="window.closeTab()">
                             <i class="material-icons">close</i>
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
-                        <div id="wallet-content" style="margin-top: 20px;">
-                            <!-- Статус будет загружен сюда -->
-                        </div>
-                        <div id="connect-wallet-container" style="margin-top: 30px;">
-                             <!-- Кнопка подключения будет инициализирована здесь -->
-                            <div id="connect-wallet-btn"></div> 
+                        <div style="margin-top: 20px;">
+                            <p style="margin: 12px 0; font-size: 16px;">Подключение кошелька будет доступно ближе к аирдропу.</p>
+                            <p style="margin: 12px 0; font-size: 16px;">Следите за новостями!</p>
                         </div>
                     </div>
                 `;
                 tabCache.set('wallet', content);
                 if (tabInner) {
                     tabInner.innerHTML = content;
+                    console.log("[loadWallet] Wallet placeholder content set.");
                 }
-                // initTonConnect теперь вызывается из initTabContent, которая вызывается после установки innerHTML
-                // или при первой загрузке через loadTabContent -> loadWallet -> initTabContent (косвенно, после того как HTML вставлен)
-                // await initTonConnect(); // Этот прямой вызов здесь может быть избыточным или даже вредным, если HTML еще не вставлен
             } catch (error) {
-                console.error('Wallet loading error:', error);
-                errorHandler.show('Ошибка загрузки кошелька');
-                // Не выбрасываем ошибку, чтобы не ломать интерфейс
+                console.error('Wallet placeholder loading error:', error);
+                errorHandler.show('Ошибка загрузки вкладки Кошелек');
                 if (tabInner) {
-                     tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить кошелек.</p>';
+                     tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить вкладку Кошелек.</p>';
                 }
             }
         }
