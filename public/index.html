@@ -222,7 +222,7 @@
             will-change: transform, border-radius;
         }
         .tab-content.active {
-            transform: translateY(10px);
+            transform: translateY(30px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
@@ -235,7 +235,7 @@
         }
         .tab-content-inner {
             width: 100%;
-            height: calc(100% - 10px);
+            height: calc(100% - 30px);
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -857,7 +857,7 @@
                     
                     // Замедляем движение чем дальше свайпаем
                     const dampenedDiff = Math.pow(diff, 0.8);
-                    const transform = 10 + dampenedDiff;
+                    const transform = 30 + dampenedDiff;
                     
                     tabContent.style.transform = `translateY(${transform}px)`;
                     
@@ -881,7 +881,7 @@
                 } else {
                     // Возвращаем на место
                     tabContent.classList.add('closing');
-                    tabContent.style.transform = 'translateY(10px)';
+                    tabContent.style.transform = 'translateY(30px)';
                     tabContent.style.borderTopLeftRadius = '24px';
                     tabContent.style.borderTopRightRadius = '24px';
                     tabInner.style.opacity = '1';
@@ -1073,15 +1073,19 @@
                 
                 // Update close button handler
                 const closeButton = tabInner.querySelector('.close-button');
-                ['touchstart', 'click'].forEach(eventType => {
-                    closeButton.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        tabContent.classList.remove('active');
-                        clickedButton.classList.remove('active');
-                        tabInner.style.opacity = '0';
-                    }, { passive: false });
-                });
+                if (closeButton) {
+                    ['touchstart', 'click'].forEach(eventType => {
+                        closeButton.addEventListener(eventType, (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            tabContent.classList.remove('active');
+                            clickedButton.classList.remove('active');
+                            tabInner.style.opacity = '0';
+                        }, { passive: false });
+                    });
+                } else {
+                    console.warn('Close button not found in the current tab');
+                }
                 
                 // Show tab content
                 tabContent.classList.add('active');

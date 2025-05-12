@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(5px);
+            transform: translateY(30px);
             pointer-events: auto;
-            min-height: calc(100% - 5x);
+            min-height: calc(100% - 30px);
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -647,13 +647,96 @@
         }
 
         async function loadPlanet() {
-            console.log("[loadPlanet] Generating planet tab placeholder...");
+            console.log("[loadPlanet] Generating planet tab with pollution mechanics...");
+            // Загружаем данные о загрязнении из localStorage (или используем значения по умолчанию)
+            const savedPollution = localStorage.getItem('earthPollution');
+            const lastUpdate = localStorage.getItem('pollutionLastUpdate');
+            
+            let pollution = savedPollution ? parseFloat(savedPollution) : 50; // По умолчанию 50%
+            const currentDate = new Date().toDateString();
+            
+            // Если новый день, увеличиваем загрязнение на 10%
+            if (lastUpdate !== currentDate) {
+                pollution = Math.min(100, pollution + 10);
+                localStorage.setItem('earthPollution', pollution.toString());
+                localStorage.setItem('pollutionLastUpdate', currentDate);
+            }
+            
+            // Определяем цвет полосы в зависимости от уровня загрязнения
+            let barColor = '#4CAF50'; // зеленый
+            if (pollution > 30 && pollution <= 60) {
+                barColor = '#FFC107'; // желтый
+            } else if (pollution > 60) {
+                barColor = '#F44336'; // красный
+            }
+            
             return `
                 <div style="color: white; padding: 20px;">
                     <div class="close-button"><i class="material-icons">close</i></div>
-                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Планета</h2>
-                    <div style="margin-top: 20px;">
-                        <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
+                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Состояние планеты</h2>
+                    
+                    <div style="margin-top: 30px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 16px; font-weight: 500;">Уровень загрязнения:</span>
+                            <span style="font-size: 16px; font-weight: 700; font-family: 'Courier New', monospace;">${pollution.toFixed(1)}%</span>
+                        </div>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.1); height: 24px; border-radius: 12px; overflow: hidden; position: relative;">
+                            <div style="background: ${barColor}; width: ${pollution}%; height: 100%; transition: width 0.5s ease;"></div>
+                            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-family: 'Courier New', monospace; font-weight: bold; text-shadow: 0 0 2px rgba(0,0,0,0.8);">
+                                ${pollution < 30 ? 'ЗДОРОВАЯ' : pollution < 60 ? 'ТРЕБУЕТ ВНИМАНИЯ' : 'КРИТИЧЕСКОЕ СОСТОЯНИЕ'}
+                            </div>
+                        </div>
+                        
+                        <p style="margin: 20px 0 10px; font-size: 14px; color: #aaa;">Загрязнение увеличивается на 10% каждый день</p>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <h3 style="font-size: 18px; margin-bottom: 15px;">Меры по очистке планеты</h3>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px; font-size: 16px;">Посадить дерево</h4>
+                                    <p style="margin: 0; font-size: 14px; color: #aaa;">Снижает загрязнение на 5%</p>
+                                </div>
+                                <button id="plant-tree-btn" class="action-button" data-reward="10" data-reduction="5" style="background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer;">
+                                    <i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">nature</i>
+                                    <span>Действовать</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px; font-size: 16px;">Очистить океан</h4>
+                                    <p style="margin: 0; font-size: 14px; color: #aaa;">Снижает загрязнение на 10%</p>
+                                </div>
+                                <button id="clean-ocean-btn" class="action-button" data-reward="25" data-reduction="10" style="background: linear-gradient(135deg, #2196F3, #0D47A1); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer;">
+                                    <i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">waves</i>
+                                    <span>Действовать</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px; font-size: 16px;">Переработать отходы</h4>
+                                    <p style="margin: 0; font-size: 14px; color: #aaa;">Снижает загрязнение на 15%</p>
+                                </div>
+                                <button id="recycle-waste-btn" class="action-button" data-reward="40" data-reduction="15" style="background: linear-gradient(135deg, #FF9800, #E65100); color: white; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 500; cursor: pointer;">
+                                    <i class="material-icons" style="margin-right: 6px; font-size: 18px; vertical-align: middle;">recycling</i>
+                                    <span>Действовать</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px; font-size: 14px; color: #aaa; text-align: center;">
+                        <p>Чем ниже уровень загрязнения, тем больше токенов EARTH вы получаете каждый день.</p>
+                        <p>Следите за состоянием планеты и получайте вознаграждение!</p>
                     </div>
                 </div>
             `;
@@ -680,7 +763,7 @@
             // Если свайп вниз и вкладка активна
             if (deltaY > 0 && tabContent.classList.contains('active')) {
                 e.preventDefault(); // Блокируем стандартное поведение
-                tabContent.style.transform = `translateY(${deltaY + 10}px)`;
+                tabContent.style.transform = `translateY(${deltaY + 30}px)`;
             }
             e.stopPropagation(); // Предотвращаем всплытие события
         }, { passive: false });
