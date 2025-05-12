@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(100px);
+            transform: translateY(10px);
             pointer-events: auto;
-            min-height: calc(100% - 100px);
+            min-height: calc(100% - 10px);
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -505,7 +505,9 @@
                     activeButton.classList.remove('active');
                 }
                 
-                button.classList.add('active');
+                if (button) {
+                    button.classList.add('active');
+                }
                 appState.currentTab = section;
                 
                 if (!isRestore) {
@@ -516,7 +518,7 @@
                 if (tabCache.has(section)) {
                     if (tabInner) {
                         tabInner.innerHTML = tabCache.get(section);
-                        initTabContent(section);
+                        setupCloseButtonForTab(tabInner);
                     }
                 } else {
                     await loadTabContent(section);
@@ -530,7 +532,9 @@
             } catch (error) {
                 console.error('Tab loading error:', error);
                 errorHandler.show('Ошибка при загрузке вкладки');
-                button.classList.remove('active');
+                if (button) {
+                    button.classList.remove('active');
+                }
                 if (activeButton) {
                     activeButton.classList.add('active');
                 }
@@ -539,168 +543,112 @@
             }
         }
 
-        // Инициализация содержимого вкладки
-        function initTabContent(section) {
-            try {
-                console.log(`[initTabContent] Initializing content for ${section} tab`);
-                
-                const closeButtons = document.querySelectorAll('.close-button');
-                closeButtons.forEach(btn => {
-                    if (btn) { 
-                        btn.onclick = function() {
-                            window.closeTab();
-                        };
-                    }
-                });
-                
-                if (section === 'profile') {
-                    console.log('[initTabContent] Profile tab initialized');
-                }
-                // УДАЛЯЕМ ВЫЗОВ fixRatingScroll, ЕСЛИ ОН НЕ НУЖЕН
-                // if (section === 'rating') { fixRatingScroll(); } 
-            } catch (error) {
-                console.error('Error initializing tab content:', error);
+        // Новая функция для настройки кнопки закрытия в переданном контейнере вкладки
+        function setupCloseButtonForTab(tabElementContainer) {
+            if (!tabElementContainer) return;
+            const closeButton = tabElementContainer.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.onclick = function() {
+                    window.closeTab();
+                };
+            } else {
+                // Это может случиться, если в HTML какой-то вкладки нет .close-button
+                // console.warn('Close button not found in current tab content for setup');
             }
         }
 
         async function loadTabContent(section) {
             try {
+                let content = '';
                 switch (section) {
                     case 'profile':
-                        await loadProfile();
+                        content = await loadProfile();
                         break;
                     case 'wallet':
-                        await loadWallet();
+                        content = await loadWallet();
                         break;
                     case 'tasks':
-                        await loadTasks();
+                        content = await loadTasks();
                         break;
                     case 'planet':
-                        await loadPlanet();
+                        content = await loadPlanet();
                         break;
                     default:
                         throw new Error('Неизвестная вкладка');
                 }
+                tabCache.set(section, content);
+                if (tabInner) {
+                    tabInner.innerHTML = content;
+                    setupCloseButtonForTab(tabInner);
+                    console.log(`[loadTabContent] Content for ${section} loaded and close button set.`);
+                }
             } catch (error) {
                 console.error(`Error loading tab ${section}:`, error);
-                throw error;
+                errorHandler.show(`Ошибка загрузки: ${section}`);
+                if (tabInner) {
+                    tabInner.innerHTML = `<p style="color: red; padding: 20px;">Не удалось загрузить вкладку ${section}.</p>`;
+                }
+                // throw error; // Можно не выбрасывать ошибку дальше, чтобы не ломать UI полностью
             }
         }
 
+        // Функции загрузки контента теперь должны возвращать HTML-строку
         async function loadProfile() {
-            try {
-                console.log("[loadProfile] Loading profile tab with static/demo data...");
-                
-                // Используем статические/демо-данные для профиля
-                const userData = {
-                    id: 'N/A',
-                    username: 'Пользователь Earth 3D',
-                    first_name: ' ',
-                    last_name: ' '
-                };
-
-                const content = `
-                    <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="window.closeTab()">
-                            <i class="material-icons">close</i>
-                        </div>
-                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
-                        <div style="margin-top: 20px;">
-                            <p style="margin: 12px 0; font-size: 16px;">Добро пожаловать, ${userData.username}!</p>
-                            <p style="margin: 12px 0; font-size: 14px; color: #aaa;">Подробная информация профиля будет доступна позже.</p>
-                            <!-- Можно добавить сюда другую статичную информацию или ссылки -->
-                        </div>
+            console.log("[loadProfile] Generating profile tab content...");
+            const userData = {
+                id: 'N/A',
+                username: 'Пользователь Earth 3D',
+            };
+            return `
+                <div style="color: white; padding: 20px;">
+                    <div class="close-button"><i class="material-icons">close</i></div>
+                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
+                    <div style="margin-top: 20px;">
+                        <p style="margin: 12px 0; font-size: 16px;">Добро пожаловать, ${userData.username}!</p>
+                        <p style="margin: 12px 0; font-size: 14px; color: #aaa;">Подробная информация профиля будет доступна позже.</p>
                     </div>
-                `;
-
-                tabCache.set('profile', content);
-                if (tabInner) {
-                    tabInner.innerHTML = content;
-                    console.log("[loadProfile] Static profile content set to tabInner.");
-                }
-            } catch (error) {
-                console.error('Profile loading error (static):', error);
-                errorHandler.show('Ошибка загрузки профиля');
-                // Не выбрасываем ошибку, чтобы не ломать интерфейс
-                if (tabInner) {
-                     tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить вкладку Профиль.</p>';
-                }
-            }
+                </div>
+            `;
         }
 
         async function loadWallet() {
-            try {
-                console.log("[loadWallet] Loading wallet tab placeholder...");
-                const content = `
-                    <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="window.closeTab()">
-                            <i class="material-icons">close</i>
-                        </div>
-                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
-                        <div style="margin-top: 20px;">
-                            <p style="margin: 12px 0; font-size: 16px;">Подключение кошелька будет доступно ближе к аирдропу.</p>
-                            <p style="margin: 12px 0; font-size: 16px;">Следите за новостями!</p>
-                        </div>
+            console.log("[loadWallet] Generating wallet tab placeholder...");
+            return `
+                <div style="color: white; padding: 20px;">
+                    <div class="close-button"><i class="material-icons">close</i></div>
+                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
+                    <div style="margin-top: 20px;">
+                        <p style="margin: 12px 0; font-size: 16px;">Подключение кошелька будет доступно ближе к аирдропу.</p>
+                        <p style="margin: 12px 0; font-size: 16px;">Следите за новостями!</p>
                     </div>
-                `;
-                tabCache.set('wallet', content);
-                if (tabInner) {
-                    tabInner.innerHTML = content;
-                    console.log("[loadWallet] Wallet placeholder content set.");
-                }
-            } catch (error) {
-                console.error('Wallet placeholder loading error:', error);
-                errorHandler.show('Ошибка загрузки вкладки Кошелек');
-                if (tabInner) {
-                     tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить вкладку Кошелек.</p>';
-                }
-            }
+                </div>
+            `;
         }
 
         async function loadTasks() {
-            try {
-                const content = `
-                    <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="window.closeTab()">
-                            <i class="material-icons">close</i>
-                        </div>
-                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Задания</h2>
-                        <div style="margin-top: 20px;">
-                            <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
-                        </div>
+            console.log("[loadTasks] Generating tasks tab placeholder...");
+            return `
+                <div style="color: white; padding: 20px;">
+                    <div class="close-button"><i class="material-icons">close</i></div>
+                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Задания</h2>
+                    <div style="margin-top: 20px;">
+                        <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
                     </div>
-                `;
-                tabCache.set('tasks', content);
-                if (tabInner) {
-                    tabInner.innerHTML = content;
-                }
-            } catch (error) {
-                console.error('Tasks loading error:', error);
-                throw new Error('Ошибка загрузки заданий');
-            }
+                </div>
+            `;
         }
 
         async function loadPlanet() {
-            try {
-                const content = `
-                    <div style="color: white; padding: 20px;">
-                        <div class="close-button" onclick="window.closeTab()">
-                            <i class="material-icons">close</i>
-                        </div>
-                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Планета</h2>
-                        <div style="margin-top: 20px;">
-                            <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
-                        </div>
+            console.log("[loadPlanet] Generating planet tab placeholder...");
+            return `
+                <div style="color: white; padding: 20px;">
+                    <div class="close-button"><i class="material-icons">close</i></div>
+                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Планета</h2>
+                    <div style="margin-top: 20px;">
+                        <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
                     </div>
-                `;
-                tabCache.set('planet', content);
-                if (tabInner) {
-                    tabInner.innerHTML = content;
-                }
-            } catch (error) {
-                console.error('Planet loading error:', error);
-                throw new Error('Ошибка загрузки планеты');
-            }
+                </div>
+            `;
         }
 
         // Добавляем обработчики свайпов
@@ -763,7 +711,7 @@
                     clearTimeout(inactivityTimer);
                     inactivityTimer = setTimeout(() => {
                         tabCache.clear();
-                    }, 5 * 60 * 1000); 
+                    }, 5 * 60 * 1000);
                 }
                 
                 document.addEventListener('touchstart', resetInactivityTimer);
@@ -772,32 +720,37 @@
 
                 const navButtons = document.querySelectorAll('.nav-button');
                 navButtons.forEach(button => {
-                    if (!button) return; // Пропускаем, если кнопка не найдена
+                    if (!button) {
+                        console.warn('Found a null nav-button during DOMContentLoaded setup.');
+                        return;
+                    }
 
                     const clickHandler = (e) => {
                         e.preventDefault();
                         const section = button.getAttribute('data-section');
+                        if (!section) {
+                            console.warn('Nav-button without data-section attribute clicked.', button);
+                            return;
+                        }
                         console.log(`[Navigation] Clicked on ${section} button`);
                         handleNavClick(section, button);
                     };
                     
-                    // Удаляем старые обработчики, если есть (по ссылке на функцию)
-                    // Это сложно сделать надежно без хранения ссылок, но для click обычно не так критично
-                    button.removeEventListener('click', clickHandler); // Попытка удалить, если такая же функция была уже назначена
                     button.addEventListener('click', clickHandler);
-                    // appState.eventListeners.add({ element: button, event: 'click', handler: clickHandler }); // Сохраняем ссылку, если нужна точная очистка
 
                     const touchEndHandler = (e) => {
                         e.preventDefault();
-                        e.stopPropagation(); // Важно для touchend, чтобы не было двойного срабатывания с click
+                        e.stopPropagation();
                         const section = button.getAttribute('data-section');
+                        if (!section) {
+                            console.warn('Nav-button without data-section attribute touched.', button);
+                            return;
+                        }
                         console.log(`[Navigation] Touch ended on ${section} button`);
                         handleNavClick(section, button);
                     };
                     
-                    button.removeEventListener('touchend', touchEndHandler);
                     button.addEventListener('touchend', touchEndHandler, { passive: false });
-                    // appState.eventListeners.add({ element: button, event: 'touchend', handler: touchEndHandler });
                 });
 
                 await restoreState();
