@@ -222,7 +222,7 @@
             will-change: transform, border-radius;
         }
         .tab-content.active {
-            transform: translateY(80px);
+            transform: translateY(10px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
@@ -235,7 +235,7 @@
         }
         .tab-content-inner {
             width: 100%;
-            height: calc(100% - 80px);
+            height: calc(100% - 10px);
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -857,7 +857,7 @@
                     
                     // Замедляем движение чем дальше свайпаем
                     const dampenedDiff = Math.pow(diff, 0.8);
-                    const transform = 80 + dampenedDiff;
+                    const transform = 10 + dampenedDiff;
                     
                     tabContent.style.transform = `translateY(${transform}px)`;
                     
@@ -881,12 +881,12 @@
                 } else {
                     // Возвращаем на место
                     tabContent.classList.add('closing');
-                    tabContent.style.transform = 'translateY(80px)';
+                    tabContent.style.transform = 'translateY(10px)';
                     tabContent.style.borderTopLeftRadius = '24px';
                     tabContent.style.borderTopRightRadius = '24px';
                     tabInner.style.opacity = '1';
                     
-                                    setTimeout(() => {
+                    setTimeout(() => {
                         tabContent.classList.remove('closing');
                         tabContent.style.transform = '';
                         tabContent.style.borderTopLeftRadius = '';
@@ -997,14 +997,8 @@
                                     <span>TON Wallet</span>
                                 </div>
                                 <div class="wallet-content">
-                                    <div class="wallet-balance" style="display: none;">
-                                        <div class="balance-amount">0.00</div>
-                                        <div class="balance-currency">TON</div>
-                                    </div>
-                                    <button class="connect-wallet-btn" id="connect-wallet-btn">
-                                        <i class="material-icons">link</i>
-                                        Connect Wallet
-                                    </button>
+                                    <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Подключение кошелька будет доступно ближе к аирдропу.</p>
+                                    <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Следите за новостями!</p>
                                 </div>
                             </div>
                         `;
@@ -1047,28 +1041,26 @@
                 
                 // Initialize TON Connect if wallet tab
                 if (section === 'wallet') {
-                    setTimeout(() => {
-                        initTonConnect();
-                    }, 100);
+                    // Функционал подключения кошелька будет доступен позже
+                    console.log('Wallet functionality will be available later');
                 }
                 
                 // Fix rating scroll if profile tab
                 if (section === 'profile') {
-                    setTimeout(() => {
-                        fixRatingScroll();
+                    // Настройка элементов профиля
+                    console.log('Profile tab initialized');
+                    
+                    // Добавляем обработчики для контейнера рейтинга
+                    const ratingContainer = document.querySelector('.rating-list-container');
+                    if (ratingContainer) {
+                        ratingContainer.addEventListener('touchstart', (e) => {
+                            e.stopPropagation();
+                        }, { passive: true });
                         
-                        // Добавляем обработчики для контейнера рейтинга
-                        const ratingContainer = document.querySelector('.rating-list-container');
-                        if (ratingContainer) {
-                            ratingContainer.addEventListener('touchstart', (e) => {
-                                e.stopPropagation();
-                            }, { passive: true });
-                            
-                            ratingContainer.addEventListener('touchmove', (e) => {
-                                e.stopPropagation();
-                            }, { passive: true });
-                        }
-                    }, 100);
+                        ratingContainer.addEventListener('touchmove', (e) => {
+                            e.stopPropagation();
+                        }, { passive: true });
+                    }
                     
                     // Add telegram connect button handler
                     const connectButton = document.querySelector('#telegram-connect');
@@ -1134,59 +1126,28 @@
 
     // Функция показа профиля
     function showProfile() {
-        const isInTelegram = isRunningInTelegram();
         const tabInner = document.querySelector('.tab-content-inner');
+        const defaultAvatar = 'https://via.placeholder.com/80/666666/FFFFFF?text=P';
         
-        if (!isInTelegram) {
-            tabInner.innerHTML = `
-                <h3>Profile</h3>
-                <button class="close-button" type="button" onclick="window.closeTab()">
-                    <i class="material-icons">close</i>
-                </button>
-                <div class="profile-connecting">
-                    <i class="material-icons">telegram</i>
-                    <h4>Open in Telegram</h4>
-                    <p>This app can only be used in Telegram</p>
-                    <button class="connect-button" id="telegram-connect">
-                        <i class="material-icons">telegram</i>
-                        Open in Telegram
-                    </button>
+        tabInner.innerHTML = `
+            <h3>Profile</h3>
+            <button class="close-button" type="button" onclick="window.closeTab()">
+                <i class="material-icons">close</i>
+            </button>
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <img src="${defaultAvatar}" alt="Profile Avatar">
                 </div>
-            `;
-            
-            // Добавляем обработчик для кнопки
-            const connectButton = document.getElementById('telegram-connect');
-            if (connectButton) {
-                connectButton.addEventListener('click', () => {
-                    window.location.href = 'https://t.me/your_bot_username';
-                });
-            }
-        } else {
-            const user = window.Telegram?.WebApp?.initDataUnsafe?.user || {};
-            const defaultAvatar = 'https://via.placeholder.com/80/666666/FFFFFF?text=P';
-            const realUsers = getRealUsers();
-            const currentUserRating = realUsers.find(u => u.id === user?.id)?.position || '-';
-            
-            tabInner.innerHTML = `
-                <h3>Profile</h3>
-                <button class="close-button" type="button" onclick="window.closeTab()">
-                    <i class="material-icons">close</i>
-                </button>
-                <div class="profile-header">
-                    <div class="profile-avatar">
-                        <img src="${user?.photo_url || defaultAvatar}" alt="Profile Avatar">
-                    </div>
-                    <div class="profile-info">
-                        <h4 class="profile-name">${user.first_name || ''} ${user.last_name || ''}</h4>
-                        <p class="profile-bio">${user.username ? '@' + user.username : ''}</p>
-                    </div>
-                    <div class="profile-rating">
-                        <p class="rating-number">#${currentUserRating}</p>
-                        <p class="rating-label">Rating</p>
-                    </div>
+                <div class="profile-info">
+                    <h4 class="profile-name">Пользователь Earth 3D</h4>
+                    <p class="profile-bio">Подробная информация профиля будет доступна позже</p>
                 </div>
-            `;
-        }
+                <div class="profile-rating">
+                    <p class="rating-number">#-</p>
+                    <p class="rating-label">Rating</p>
+                </div>
+            </div>
+        `;
     }
     </script>
 </body>

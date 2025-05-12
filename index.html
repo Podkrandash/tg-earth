@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(10px);
+            transform: translateY(50px);
             pointer-events: auto;
-            min-height: calc(100% - 10px);
+            min-height: calc(100% - 50x);
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -672,7 +672,7 @@
             // Если свайп вниз и вкладка активна
             if (deltaY > 0 && tabContent.classList.contains('active')) {
                 e.preventDefault(); // Блокируем стандартное поведение
-                tabContent.style.transform = `translateY(${deltaY + 90}px)`;
+                tabContent.style.transform = `translateY(${deltaY + 10}px)`;
             }
             e.stopPropagation(); // Предотвращаем всплытие события
         }, { passive: false });
