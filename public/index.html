@@ -222,7 +222,7 @@
             will-change: transform, border-radius;
         }
         .tab-content.active {
-            transform: translateY(30px);
+            transform: translateY(max(env(safe-area-inset-top, 10px), 15px));
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
@@ -235,7 +235,7 @@
         }
         .tab-content-inner {
             width: 100%;
-            height: calc(100% - 30px);
+            height: calc(100% - max(env(safe-area-inset-top, 10px), 15px));
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -936,7 +936,9 @@
                     
                     // Замедляем движение чем дальше свайпаем
                     const dampenedDiff = Math.pow(diff, 0.8);
-                    const transform = 30 + dampenedDiff;
+                    // Используем динамический отступ, согласованный с CSS
+                    const safeAreaTop = window.getComputedStyle(tabContent).getPropertyValue('transform').split(',')[5]?.trim()?.replace(')', '') || 15;
+                    const transform = parseInt(safeAreaTop) + dampenedDiff;
                     
                     tabContent.style.transform = `translateY(${transform}px)`;
                     
@@ -960,7 +962,8 @@
                 } else {
                     // Возвращаем на место
                     tabContent.classList.add('closing');
-                    tabContent.style.transform = 'translateY(30px)';
+                    // Используем значение из CSS для согласованности
+                    tabContent.style.transform = `translateY(max(env(safe-area-inset-top, 10px), 15px))`;
                     tabContent.style.borderTopLeftRadius = '24px';
                     tabContent.style.borderTopRightRadius = '24px';
                     tabInner.style.opacity = '1';
@@ -1271,7 +1274,9 @@
                     
                     // Замедляем движение чем дальше свайпаем
                     const dampenedDiff = Math.pow(diff, 0.8);
-                    const transform = 30 + dampenedDiff;
+                    // Используем динамический отступ, согласованный с CSS
+                    const safeAreaTop = window.getComputedStyle(tabContent).getPropertyValue('transform').split(',')[5]?.trim()?.replace(')', '') || 15;
+                    const transform = parseInt(safeAreaTop) + dampenedDiff;
                     
                     tabContent.style.transform = `translateY(${transform}px)`;
                     
@@ -1295,7 +1300,8 @@
                 } else {
                     // Возвращаем на место
                     tabContent.classList.add('closing');
-                    tabContent.style.transform = 'translateY(30px)';
+                    // Используем значение из CSS для согласованности
+                    tabContent.style.transform = `translateY(max(env(safe-area-inset-top, 10px), 15px))`;
                     tabContent.style.borderTopLeftRadius = '24px';
                     tabContent.style.borderTopRightRadius = '24px';
                     tabInner.style.opacity = '1';
@@ -1746,31 +1752,31 @@
             tokenBalanceEl.id = 'token-balance';
             tokenBalanceEl.style.cssText = `
                 position: fixed;
-                top: 20px;
+                top: max(env(safe-area-inset-top, 12px), 24px);
                 left: 50%;
                 transform: translateX(-50%);
-                background: rgba(18, 18, 23, 0.8);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
+                border: 1px solid rgba(255, 255, 255, 0.15);
                 border-radius: 16px;
-                padding: 8px 16px;
-                color: #4CAF50;
+                padding: 10px 18px;
+                color: #FFD700;
                 font-family: 'Courier New', monospace;
                 font-weight: bold;
                 font-size: 18px;
-                backdrop-filter: blur(5px);
-                -webkit-backdrop-filter: blur(5px);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
                 z-index: 997;
                 display: flex;
                 align-items: center;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 215, 0, 0.1);
             `;
             document.body.appendChild(tokenBalanceEl);
         }
         
-        // Обновляем содержимое
+        // Обновляем содержимое с премиальным стилем
         tokenBalanceEl.innerHTML = `
-            <i class="material-icons" style="margin-right: 8px; font-size: 18px; color: #4CAF50;">toll</i>
-            <span style="letter-spacing: 1px;">${tokens} EARTH</span>
+            <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">toll</i>
+            <span style="letter-spacing: 1.2px; background: linear-gradient(to bottom, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);">${tokens} EARTH</span>
         `;
     }
     </script>

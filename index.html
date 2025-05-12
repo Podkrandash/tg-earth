@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(30px);
+            transform: translateY(max(env(safe-area-inset-top, 10px), 15px));
             pointer-events: auto;
-            min-height: calc(100% - 30px);
+            min-height: calc(100% - max(env(safe-area-inset-top, 10px), 15px));
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -763,7 +763,8 @@
             // Если свайп вниз и вкладка активна
             if (deltaY > 0 && tabContent.classList.contains('active')) {
                 e.preventDefault(); // Блокируем стандартное поведение
-                tabContent.style.transform = `translateY(${deltaY + 30}px)`;
+                // Используем динамический отступ
+                tabContent.style.transform = `translateY(${deltaY + max(env(safe-area-inset-top, 10), 15)}px)`;
             }
             e.stopPropagation(); // Предотвращаем всплытие события
         }, { passive: false });
@@ -859,31 +860,31 @@
                 tokenBalanceEl.id = 'token-balance';
                 tokenBalanceEl.style.cssText = `
                     position: fixed;
-                    top: 20px;
+                    top: max(env(safe-area-inset-top, 12px), 24px);
                     left: 50%;
                     transform: translateX(-50%);
-                    background: rgba(18, 18, 23, 0.8);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
+                    border: 1px solid rgba(255, 255, 255, 0.15);
                     border-radius: 16px;
-                    padding: 8px 16px;
-                    color: #4CAF50;
+                    padding: 10px 18px;
+                    color: #FFD700;
                     font-family: 'Courier New', monospace;
                     font-weight: bold;
                     font-size: 18px;
-                    backdrop-filter: blur(5px);
-                    -webkit-backdrop-filter: blur(5px);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
                     z-index: 997;
                     display: flex;
                     align-items: center;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 215, 0, 0.1);
                 `;
                 document.body.appendChild(tokenBalanceEl);
             }
             
-            // Обновляем содержимое
+            // Обновляем содержимое с премиальным стилем
             tokenBalanceEl.innerHTML = `
-                <i class="material-icons" style="margin-right: 8px; font-size: 18px; color: #4CAF50;">toll</i>
-                <span style="letter-spacing: 1px;">${tokens} EARTH</span>
+                <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFD700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);">toll</i>
+                <span style="letter-spacing: 1.2px; background: linear-gradient(to bottom, #FFD700, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);">${tokens} EARTH</span>
             `;
         }
         
