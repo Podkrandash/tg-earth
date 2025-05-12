@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(50px);
+            transform: translateY(5px);
             pointer-events: auto;
-            min-height: calc(100% - 50x);
+            min-height: calc(100% - 5x);
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -599,13 +599,21 @@
                 id: 'N/A',
                 username: 'Пользователь Earth 3D',
             };
+            // Используем встроенный SVG вместо внешнего ресурса
+            const avatarSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23666"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="35" fill="%23fff">P</text></svg>';
+            
             return `
                 <div style="color: white; padding: 20px;">
                     <div class="close-button"><i class="material-icons">close</i></div>
                     <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
-                    <div style="margin-top: 20px;">
-                        <p style="margin: 12px 0; font-size: 16px;">Добро пожаловать, ${userData.username}!</p>
-                        <p style="margin: 12px 0; font-size: 14px; color: #aaa;">Подробная информация профиля будет доступна позже.</p>
+                    <div style="margin-top: 20px; display: flex; align-items: center; gap: 16px;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.1);">
+                            <img src="${avatarSvg}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <div>
+                            <p style="margin: 0 0 4px 0; font-size: 18px; font-weight: 600;">${userData.username}</p>
+                            <p style="margin: 0; font-size: 14px; color: #aaa;">Подробная информация профиля будет доступна позже.</p>
+                        </div>
                     </div>
                 </div>
             `;
