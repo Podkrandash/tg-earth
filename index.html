@@ -47,9 +47,9 @@
         }
 
         .tab-content.active {
-            transform: translateY(90px);
+            transform: translateY(100px);
             pointer-events: auto;
-            min-height: calc(100% - 90px);
+            min-height: calc(100% - 100px);
             transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
         }
 
@@ -367,6 +367,7 @@
             eventListeners: new Set(),
             telegramInitialized: false,
             webApp: null,
+            tonConnectUI: null,
             isDragging: false,
             startY: 0,
             currentY: 0
@@ -654,40 +655,140 @@
                             <i class="material-icons">close</i>
                         </div>
                         <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
-                        <div id="wallet-container">
-                            <div id="connect-wallet-btn"></div>
+                        <div id="wallet-content" style="margin-top: 20px;">
+                            <!-- Статус будет загружен сюда -->
+                        </div>
+                        <div id="connect-wallet-container" style="margin-top: 30px;">
+                             <!-- Кнопка подключения будет инициализирована здесь -->
+                            <div id="connect-wallet-btn"></div> 
                         </div>
                     </div>
                 `;
                 tabCache.set('wallet', content);
-                tabInner.innerHTML = content;
-                await initTonConnect();
+                if (tabInner) {
+                    tabInner.innerHTML = content;
+                }
+                await initTonConnect(); // Инициализация TonConnect после добавления контента
             } catch (error) {
-                throw new Error('Ошибка загрузки кошелька');
+                console.error('Wallet loading error:', error);
+                errorHandler.show('Ошибка загрузки кошелька');
+                // Не выбрасываем ошибку, чтобы не ломать интерфейс
+                if (tabInner) {
+                     tabInner.innerHTML = '<p style="color: red; padding: 20px;">Не удалось загрузить кошелек.</p>';
+                }
             }
         }
 
         async function initTonConnect() {
             try {
-                const tonConnectUI = new TonConnectUI({
-                    manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json',
-                    buttonRootId: 'connect-wallet-btn',
-                    uiPreferences: {
-                        theme: 'DARK'
-                    },
-                    walletsListConfiguration: {
-                        includeWallets: ['Tonkeeper']
-                    }
+                // Убедимся, что скрипт TonConnectUI загружен
+                if (typeof TonConnectUI === 'undefined') {
+                    console.error('TonConnectUI is not loaded yet.');
+                    errorHandler.show('Ошибка: TonConnectUI не загружен.');
+                    return;
+                }
+
+                const walletContent = document.getElementById('wallet-content');
+                const connectWalletContainer = document.getElementById('connect-wallet-container');
+                const connectButtonRoot = document.getElementById('connect-wallet-btn');
+                
+                if (!walletContent || !connectWalletContainer || !connectButtonRoot) {
+                    console.error('Wallet tab elements not found');
+                    errorHandler.show('Ошибка: Не найдены элементы вкладки кошелька.');
+                    return;
+                }
+
+                // Очищаем кнопку перед инициализацией, если она уже была создана
+                connectButtonRoot.innerHTML = '';
+
+                // Создаем и сохраняем экземпляр TonConnectUI, если его еще нет
+                if (!appState.tonConnectUI) {
+                    appState.tonConnectUI = new TonConnectUI({
+                        manifestUrl: 'https://tg-earth-4dzw.vercel.app/tonconnect-manifest.json', // Убедитесь, что манифест доступен
+                        buttonRootId: 'connect-wallet-btn',
+                        uiPreferences: {
+                            theme: 'DARK'
+                        },
+                        walletsListConfiguration: {
+                            includeWallets: ['Tonkeeper', 'MyTonWallet', 'OpenMask'] // Добавим больше кошельков
+                        }
+                    });
+                } else {
+                     // Если экземпляр уже есть, просто обновляем buttonRootId, 
+                     // так как элемент мог быть пересоздан при перезагрузке вкладки
+                    appState.tonConnectUI.options.buttonRootId = 'connect-wallet-btn';
+                    // Перерисовываем кнопку в новом контейнере
+                     appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
+                }
+                
+                const tonConnectUI = appState.tonConnectUI;
+
+                // Подписываемся на изменение статуса кошелька
+                tonConnectUI.onStatusChange((wallet) => {
+                    updateWalletUI(wallet);
                 });
 
-                tonConnectUI.onStatusChange((wallet) => {
-                    if (wallet) {
-                        console.log('Connected wallet:', wallet);
-                        // Здесь можно добавить логику после подключения
-                    }
-                });
+                // Обновляем UI при инициализации
+                updateWalletUI(tonConnectUI.wallet);
+
             } catch (error) {
                 console.error('Error initializing TON Connect:', error);
+                errorHandler.show('Ошибка инициализации Ton Connect');
+                const walletContent = document.getElementById('wallet-content');
+                if (walletContent) {
+                    walletContent.innerHTML = '<p style="color: red;">Не удалось инициализировать Ton Connect.</p>';
+                }
+            }
+        }
+
+        // Функция для обновления UI кошелька
+        function updateWalletUI(wallet) {
+            // Убедимся, что скрипт TonConnectSDK загружен
+            if (typeof TonConnectSDK === 'undefined') {
+                console.error('TonConnectSDK is not loaded yet.');
+                errorHandler.show('Ошибка: TonConnectSDK не загружен.');
+                return;
+            }
+
+            const walletContent = document.getElementById('wallet-content');
+            const connectWalletContainer = document.getElementById('connect-wallet-container');
+
+            if (!walletContent || !connectWalletContainer) return;
+
+            if (wallet) {
+                // Кошелек подключен
+                console.log('Wallet connected:', wallet);
+                const address = wallet.account.address;
+                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+                const network = wallet.account.chain === TonConnectSDK.CHAIN.MAINNET ? 'Mainnet' : 'Testnet';
+
+                walletContent.innerHTML = `
+                    <p style="margin: 12px 0; font-size: 16px;">Статус: <span style="color: #34C759;">Подключен</span></p>
+                    <p style="margin: 12px 0; font-size: 16px;">Адрес: ${shortAddress}</p>
+                    <p style="margin: 12px 0; font-size: 16px;">Сеть: ${network}</p>
+                    <button id="disconnect-btn" style="margin-top: 20px; padding: 10px 15px; background-color: #FF3B30; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">Отключить</button>
+                `;
+                
+                connectWalletContainer.style.display = 'none'; // Скрываем контейнер кнопки подключения
+
+                // Добавляем обработчик для кнопки отключения
+                const disconnectBtn = document.getElementById('disconnect-btn');
+                if (disconnectBtn && appState.tonConnectUI) {
+                    disconnectBtn.onclick = () => {
+                        appState.tonConnectUI.disconnect();
+                    };
+                }
+
+            } else {
+                // Кошелек не подключен
+                console.log('Wallet disconnected');
+                walletContent.innerHTML = '<p style="margin: 12px 0; font-size: 16px;">Статус: Не подключен</p>';
+                connectWalletContainer.style.display = 'block'; // Показываем контейнер кнопки подключения
+                
+                // Убедимся, что кнопка TonConnect перерисована, если она была скрыта
+                if (appState.tonConnectUI && document.getElementById('connect-wallet-btn')) {
+                     appState.tonConnectUI.ui?.component?.render(document.getElementById('connect-wallet-btn'));
+                }
             }
         }
 
