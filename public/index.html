@@ -789,6 +789,19 @@
         }
     }
     </script>
+    <script>
+        // Раннняя инициализация Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            try {
+                console.log('Ранняя инициализация Telegram WebApp');
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+                window.Telegram.WebApp.setBackgroundColor('#000000');
+            } catch (error) {
+                console.error('Ошибка ранней инициализации Telegram WebApp:', error);
+            }
+        }
+    </script>
 </head>
 <body>
     <div id="loading-screen">
@@ -820,28 +833,39 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM полностью загружен - начинаем инициализацию');
             
-            // Инициализация для Telegram WebApp (если доступно)
-            if (window.Telegram && window.Telegram.WebApp) {
-                console.log('Инициализация для Telegram WebApp');
+            // Убеждаемся, что Telegram WebApp API доступен
+            let telegramWebAppLoaded = !!window.Telegram?.WebApp;
+            
+            if (telegramWebAppLoaded) {
+                console.log('Telegram WebApp API обнаружен');
                 
-                // Устанавливаем фон и расширяем приложение
-                window.Telegram.WebApp.setBackgroundColor('#16161b');
-                window.Telegram.WebApp.expand();
-                
-                // Скрываем главную кнопку и отключаем её
-                window.Telegram.WebApp.MainButton.hide();
-                
-                // Отключаем жест смахивания назад на iOS
-                window.Telegram.WebApp.disableSwipeBack();
-                
-                // Отключаем подтверждение закрытия
-                window.Telegram.WebApp.enableClosingConfirmation();
-                
-                // Отключаем возможность сворачивания вкладок
-                window.Telegram.WebApp.onEvent('back_button_pressed', function() {
-                    console.log('Попытка закрыть приложение предотвращена');
-                    return false;
-                });
+                try {
+                    // Инициализация Telegram WebApp
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
+                    console.log('Telegram WebApp инициализирован');
+                    
+                    // Скрываем главную кнопку и отключаем её
+                    if (window.Telegram.WebApp.MainButton) {
+                        window.Telegram.WebApp.MainButton.hide();
+                    }
+                    
+                    // Отключаем жест смахивания назад на iOS
+                    if (window.Telegram.WebApp.platform === 'ios') {
+                        window.Telegram.WebApp.disableSwipeBack();
+                    }
+                    
+                    // Установка цвета фона для WebApp
+                    window.Telegram.WebApp.setBackgroundColor('#16161b');
+                    
+                    // Предотвращаем закрытие с помощью BackButton
+                    window.Telegram.WebApp.BackButton.hide();
+                } catch (error) {
+                    console.error('Ошибка при инициализации Telegram WebApp:', error);
+                    telegramWebAppLoaded = false;
+                }
+            } else {
+                console.log('Telegram WebApp API не обнаружен, работаем как обычный веб-сайт');
             }
             
             // Инициализируем интерфейс одинаково для всех платформ
@@ -985,6 +1009,7 @@
             return;
         }
         
+        // Отмечаем активную кнопку
         buttons.forEach(btn => btn.classList.remove('active'));
         clickedButton.classList.add('active');
         
@@ -1156,29 +1181,10 @@
 
         // Установка обработчиков для кнопок в зависимости от вкладки
         if (section === 'tasks') {
-            console.log('Настройка кнопок задач');
-            const joinButton = document.querySelector('#join-community-btn');
-            if (joinButton) {
-                ['touchstart', 'click'].forEach(eventType => {
-                    joinButton.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Открытие ссылки сообщества');
-                        window.location.href = 'https://t.me/NotEarthCommunity';
-                    }, { passive: false });
-                });
-            } else {
-                console.warn('Кнопка подключения к сообществу не найдена');
-            }
+            setupTasksHandlers();
         } else if (section === 'planet') {
-            console.log('Настройка действий для вкладки Планета');
-            // Задержка для уверенности, что DOM полностью обновлен
-            setTimeout(() => {
                 setupPlanetActions();
-            }, 50);
         }
-        
-        console.log(`Вкладка ${section} полностью настроена`);
 
         // Добавляем обработчик события прокрутки для эффекта размытия верхней части
         tabInner.addEventListener('scroll', function() {
@@ -1189,28 +1195,67 @@
             }
         });
         
-        // Включаем поддержку прокрутки для вкладок в Telegram WebApp
+        // Расширяем Telegram WebApp при открытии вкладки
         if (window.Telegram && window.Telegram.WebApp) {
-            console.log('Настройка прокрутки для Telegram WebApp');
-            window.Telegram.WebApp.setBackgroundColor('#16161b');
+            try {
             window.Telegram.WebApp.expand();
             
-            // Разрешаем прокрутку внутри вкладки
-            window.Telegram.WebApp.onEvent('viewportChanged', function() {
-                const height = window.Telegram.WebApp.viewportHeight;
-                console.log(`Изменение высоты вьюпорта: ${height}px`);
+                // Меняем цвет фона для соответствия открытой вкладке
+                window.Telegram.WebApp.setBackgroundColor('#16161b');
                 
-                // Обновляем высоту вкладки для корректной прокрутки
+                // Настраиваем поведение при изменении высоты вьюпорта
+                window.Telegram.WebApp.onEvent('viewportChanged', function() {
                 if (tabContent && tabContent.classList.contains('active')) {
-                    tabContent.style.height = `${height}px`;
-                }
+                        // Убеждаемся, что прокрутка работает корректно
+                        const viewportHeight = window.Telegram.WebApp.viewportHeight || window.innerHeight;
+                        console.log(`Высота вьюпорта изменена: ${viewportHeight}px`);
+                        
+                        tabContent.style.height = `${viewportHeight}px`;
+                        
+                        // Убеждаемся, что контент можно прокручивать
+                        tabInner.style.overscrollBehavior = 'contain';
+                        tabInner.style.touchAction = 'pan-y';
+                    }
+                });
+                
+                // Немедленно получаем текущую высоту вьюпорта
+                const initialHeight = window.Telegram.WebApp.viewportHeight || window.innerHeight;
+                tabContent.style.height = `${initialHeight}px`;
+            } catch (error) {
+                console.error('Ошибка при настройке Telegram WebApp для вкладки:', error);
+            }
+        }
+        
+        console.log(`Вкладка ${section} полностью настроена`);
+    }
+
+    // Функция настройки обработчиков для вкладки Tasks
+    function setupTasksHandlers() {
+        console.log('Настройка кнопок задач');
+        const joinButton = document.querySelector('#join-community-btn');
+        if (joinButton) {
+            ['touchstart', 'click'].forEach(eventType => {
+                joinButton.addEventListener(eventType, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Открытие ссылки сообщества');
+                    window.location.href = 'https://t.me/NotEarthCommunity';
+                }, { passive: false });
             });
+        } else {
+            console.warn('Кнопка подключения к сообществу не найдена');
         }
     }
 
     // Функция для обновления отображения баланса токенов
     function updateTokenBalance() {
         console.log('Обновление отображения баланса токенов');
+        
+        // Инициализируем баланс токенов, если он не установлен
+        if (!localStorage.getItem('earthTokens')) {
+            console.log('Инициализация начального баланса токенов');
+            localStorage.setItem('earthTokens', '100');
+        }
         
         // Получаем текущий баланс токенов
         let tokens = localStorage.getItem('earthTokens');
@@ -1258,7 +1303,23 @@
             <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
         `;
         
+        // Убеждаемся, что элемент видим
+        tokenBalanceEl.style.display = 'flex';
+        tokenBalanceEl.style.opacity = '1';
+        
         console.log('Отображение баланса токенов обновлено');
+        
+        // Повторный вызов через некоторое время, если баланс не отображается в Telegram
+        if (window.Telegram && window.Telegram.WebApp) {
+            setTimeout(() => {
+                if (!document.getElementById('token-balance') || 
+                    document.getElementById('token-balance').style.display === 'none' || 
+                    document.getElementById('token-balance').style.opacity === '0') {
+                    console.log('Повторная попытка отображения баланса токенов');
+                    updateTokenBalance();
+                }
+            }, 1000);
+        }
     }
     
     // Функция добавления обработчиков к кнопкам действий планеты
@@ -1481,6 +1542,60 @@
         console.log('Инициализация начального уровня загрязнения');
         localStorage.setItem('earthPollution', '50');
         localStorage.setItem('pollutionLastUpdate', new Date().toDateString());
+    }
+    
+    // Функция для принудительной инициализации UI в Telegram WebApp
+    function forceUIInitialization() {
+        console.log('Принудительная инициализация UI');
+        
+        // Показываем панель навигации
+        const navPanel = document.querySelector('.nav-panel');
+        if (navPanel) {
+            navPanel.classList.add('visible');
+            console.log('Панель навигации показана принудительно');
+        }
+        
+        // Обновляем отображение баланса токенов
+        updateTokenBalance();
+        
+        // Если есть активная вкладка, обновляем ее
+        const activeButton = document.querySelector('.nav-button.active');
+        if (activeButton) {
+            const section = activeButton.getAttribute('data-section');
+            if (section) {
+                console.log(`Переоткрытие активной вкладки ${section}`);
+                handleNavClick(section, activeButton);
+            }
+        }
+    }
+    
+    // Если это Telegram WebApp, запустим принудительную инициализацию через некоторое время
+    if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.onEvent('mainButtonClicked', forceUIInitialization);
+        
+        // Показываем временно MainButton, чтобы пользователь мог инициализировать UI если автоматически не сработало
+        setTimeout(() => {
+            if (!document.getElementById('token-balance') || !document.querySelector('.nav-panel.visible')) {
+                console.log('UI не инициализирован, показываем кнопку для ручной инициализации');
+                
+                try {
+                    window.Telegram.WebApp.MainButton.setText('Показать интерфейс');
+                    window.Telegram.WebApp.MainButton.show();
+                    
+                    // Таймер автоматического закрытия кнопки
+                    setTimeout(() => {
+                        window.Telegram.WebApp.MainButton.hide();
+                        forceUIInitialization();
+                    }, 5000);
+                } catch (error) {
+                    console.error('Ошибка при отображении кнопки инициализации:', error);
+                    forceUIInitialization();
+                }
+            }
+        }, 2000);
+        
+        // В любом случае, принудительно инициализируем через некоторое время
+        setTimeout(forceUIInitialization, 3000);
     }
     </script>
     <script>
