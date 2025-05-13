@@ -621,9 +621,9 @@
             const avatarSvg = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23666"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="35" fill="%23fff">P</text></svg>';
             
             return `
-                <div style="color: white; padding: 20px;">
+                    <div style="color: white; padding: 20px;">
                     <div class="close-button"><i class="material-icons">close</i></div>
-                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Профиль</h2>
                     <div style="margin-top: 20px; display: flex; align-items: center; gap: 16px;">
                         <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.1);">
                             <img src="${avatarSvg}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
@@ -632,36 +632,36 @@
                             <p style="margin: 0 0 4px 0; font-size: 18px; font-weight: 600;">${userData.username}</p>
                             <p style="margin: 0; font-size: 14px; color: #aaa;">Подробная информация профиля будет доступна позже.</p>
                         </div>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
         }
 
         async function loadWallet() {
             console.log("[loadWallet] Generating wallet tab placeholder...");
             return `
-                <div style="color: white; padding: 20px;">
+                    <div style="color: white; padding: 20px;">
                     <div class="close-button"><i class="material-icons">close</i></div>
-                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Кошелек</h2>
                     <div style="margin-top: 20px;">
                         <p style="margin: 12px 0; font-size: 16px;">Подключение кошелька будет доступно ближе к аирдропу.</p>
                         <p style="margin: 12px 0; font-size: 16px;">Следите за новостями!</p>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
         }
 
         async function loadTasks() {
             console.log("[loadTasks] Generating tasks tab placeholder...");
             return `
-                <div style="color: white; padding: 20px;">
+                    <div style="color: white; padding: 20px;">
                     <div class="close-button"><i class="material-icons">close</i></div>
-                    <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Задания</h2>
-                    <div style="margin-top: 20px;">
-                        <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
+                        <h2 style="margin-top: 0; font-size: 24px; font-weight: 600;">Задания</h2>
+                        <div style="margin-top: 20px;">
+                            <p style="margin: 12px 0; font-size: 16px;">Раздел в разработке</p>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
         }
 
         async function loadPlanet() {
@@ -691,7 +691,7 @@
             return `
                 <h3>Планета</h3>
                 <button class="close-button" type="button">
-                    <i class="material-icons">close</i>
+                            <i class="material-icons">close</i>
                 </button>
                 <div class="planet-container" style="display: flex; flex-direction: column; gap: 24px; padding: 0;">
                     <!-- Статус планеты -->
@@ -705,10 +705,10 @@
                             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                                 <span style="font-size: 14px; color: rgba(255, 255, 255, 0.7);">Уровень загрязнения</span>
                                 <span id="pollution-value" style="font-size: 14px; font-weight: 600; font-family: 'Courier New', monospace;"></span>
-                            </div>
+                        </div>
                             <div style="height: 6px; width: 100%; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-bottom: 8px;">
                                 <div id="pollution-bar" style="height: 100%; width: ${pollution}%; transition: width 0.5s ease, background-color 0.5s ease;"></div>
-                            </div>
+                    </div>
                             <p id="pollution-status" style="margin: 4px 0 0; font-size: 13px; color: rgba(255, 255, 255, 0.6);"></p>
                         </div>
                         
@@ -819,7 +819,7 @@
             // Проверяем, происходит ли событие внутри канваса Three.js или активной вкладки
             if (!e.target.closest('#scene-container')) {
                 // Блокируем стандартное поведение свайпа только вне канваса
-                e.preventDefault();
+            e.preventDefault();
                 e.stopPropagation();
             }
         }, { passive: false });
@@ -1050,7 +1050,7 @@
                 });
 
                 await restoreState();
-                
+
                 // Обновляем отображение баланса токенов
                 updateTokenBalance();
                 
@@ -1059,7 +1059,7 @@
                 errorHandler.show('Ошибка инициализации приложения');
             }
         });
-        
+
         window.addEventListener('unload', () => {
             // Если вы хранили ссылки на обработчики в appState.eventListeners, здесь их нужно корректно удалять
             // appState.eventListeners.forEach(({ element, event, handler }) => {
@@ -1070,7 +1070,7 @@
             // appState.eventListeners.clear();
             console.log('Page unloading, listeners should be cleared if managed via appState.eventListeners');
         });
-            
+
         // Обработка изменения размера окна (например, при повороте экрана)
         window.addEventListener('resize', () => {
             if (window.Telegram?.WebApp) {

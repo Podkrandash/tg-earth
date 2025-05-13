@@ -8,6 +8,15 @@ const EARTH_TILT = 23.5 * Math.PI / 180; // Наклон оси Земли
 const MOON_DISTANCE = 10; // Расстояние от Земли до Луны
 const MOON_TILT = 5.14 * Math.PI / 180; // Наклон орбиты Луны к эклиптике
 
+// Константы для визуализации загрязнения
+const POLLUTION_LEVELS = {
+    NORMAL: { max: 30, atmosphereColor: [0.4, 0.7, 1.0], earthTint: [1.0, 1.0, 1.0] },
+    WARNING: { max: 50, atmosphereColor: [0.5, 0.6, 0.8], earthTint: [1.0, 0.95, 0.9] },
+    MODERATE: { max: 70, atmosphereColor: [0.6, 0.5, 0.4], earthTint: [0.9, 0.8, 0.7] },
+    HIGH: { max: 90, atmosphereColor: [0.7, 0.4, 0.3], earthTint: [0.8, 0.6, 0.5] },
+    CRITICAL: { max: 100, atmosphereColor: [0.8, 0.3, 0.2], earthTint: [0.6, 0.4, 0.3] }
+};
+
 class Earth {
     constructor() {
         this.initialized = false;
@@ -17,6 +26,8 @@ class Earth {
         this.renderer = null;
         this.scene = null;
         this.textures = [];
+        this.currentPollutionLevel = 0;
+        this.pollutionUpdateTimer = null;
         this.initGame().catch(error => {
             console.error('Failed to initialize game:', error);
             this.showError('Ошибка инициализации игры');
@@ -26,6 +37,14 @@ class Earth {
     setupEventListeners() {
         window.addEventListener('resize', this.onWindowResize.bind(this));
         window.addEventListener('beforeunload', this.cleanup.bind(this));
+        
+        // Подписываемся на событие изменения загрязнения
+        window.addEventListener('pollutionChanged', this.updatePlanetAppearance.bind(this));
+        
+        // Запускаем регулярную проверку уровня загрязнения каждые 2 секунды
+        this.pollutionUpdateTimer = setInterval(() => {
+            this.checkPollutionLevel();
+        }, 2000);
     }
 
     async initGame() {
@@ -106,8 +125,16 @@ class Earth {
                 }
             });
         }
+        
+        // Очищаем таймер проверки загрязнения
+        if (this.pollutionUpdateTimer) {
+            clearInterval(this.pollutionUpdateTimer);
+            this.pollutionUpdateTimer = null;
+        }
+        
         window.removeEventListener('resize', this.onWindowResize.bind(this));
         window.removeEventListener('beforeunload', this.cleanup.bind(this));
+        window.removeEventListener('pollutionChanged', this.updatePlanetAppearance.bind(this));
     }
 
     showError(message) {
@@ -281,6 +308,19 @@ class Earth {
             this.stars.material.uniforms.time.value = performance.now() * 0.001;
         }
         
+        // Анимация "разрушения" планеты при критическом уровне загрязнения
+        if (this.currentPollutionLevel >= 90 && this.earth) {
+            // Добавляем дрожание при критическом уровне загрязнения
+            const shakeAmount = (this.currentPollutionLevel - 90) * 0.002;
+            this.earthGroup.position.x = Math.sin(performance.now() * 0.01) * shakeAmount;
+            this.earthGroup.position.y = Math.cos(performance.now() * 0.01) * shakeAmount;
+            
+            // При 100% загрязнения - анимация разрушения
+            if (this.currentPollutionLevel >= 99.5) {
+                this.renderDestructionEffect();
+            }
+        }
+        
         // Обновляем контроли камеры
         this.controls.update();
         
@@ -412,7 +452,10 @@ class Earth {
                 normalMap: { value: normalTexture },
                 specularMap: { value: specularTexture },
                 cloudsTexture: { value: cloudsTexture },
-                sunDirection: { value: new THREE.Vector3(1, 0, 0) }
+                sunDirection: { value: new THREE.Vector3(1, 0, 0) },
+                // Добавляем новые униформы для эффекта загрязнения
+                pollutionTint: { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+                pollutionLevel: { value: 0.0 }
             },
             vertexShader: `
                 varying vec2 vUv;
@@ -433,6 +476,8 @@ class Earth {
                 uniform sampler2D specularMap;
                 uniform sampler2D cloudsTexture;
                 uniform vec3 sunDirection;
+                uniform vec3 pollutionTint;
+                uniform float pollutionLevel;
 
                 varying vec2 vUv;
                 varying vec3 vNormal;
@@ -446,18 +491,53 @@ class Earth {
                     vec4 nightColor = texture2D(nightTexture, vUv);
                     vec4 clouds = texture2D(cloudsTexture, vUv);
                     
-                    // Увеличиваем яркость и насыщенность дневной стороны
+                    // Изменяем цвет Земли в зависимости от загрязнения
+                    // В нормальных условиях увеличиваем яркость дневной стороны
                     dayColor.rgb *= 1.8;
                     dayColor.rgb = pow(dayColor.rgb, vec3(0.9)); // Увеличиваем контраст
                     
-                    // Настраиваем ночные огни
-                    vec4 nightLights = nightColor * vec4(2.5, 2.2, 1.8, 1.0);
+                    // Применяем тонирование в зависимости от уровня загрязнения
+                    dayColor.rgb *= pollutionTint;
+                    
+                    // С увеличением загрязнения уменьшаем блики воды
+                    // и делаем континенты более коричневыми
+                    if (pollutionLevel > 0.3) {
+                        // Более коричневые континенты
+                        vec3 brownTint = vec3(0.8, 0.6, 0.4);
+                        // Определяем "суша ли это" по зеленому каналу (он ярче на суше)
+                        float isLand = smoothstep(0.3, 0.5, dayColor.g);
+                        
+                        // Применяем коричневый оттенок к суше
+                        dayColor.rgb = mix(dayColor.rgb, dayColor.rgb * brownTint, isLand * pollutionLevel);
+                        
+                        // Уменьшаем блики воды (голубизну)
+                        float isWater = 1.0 - isLand;
+                        vec3 waterTint = vec3(0.7, 0.7, 0.8);
+                        dayColor.rgb = mix(dayColor.rgb, dayColor.rgb * waterTint, isWater * pollutionLevel);
+                    }
+                    
+                    // Настраиваем ночные огни - уменьшаем их при высоком загрязнении
+                    float lightFactor = 1.0 - pollutionLevel * 0.5;
+                    vec4 nightLights = nightColor * vec4(2.5 * lightFactor, 2.2 * lightFactor, 1.8 * lightFactor, 1.0);
                     
                     vec4 groundColor = mix(nightLights, dayColor, transition);
                     
-                    // Делаем облака ярче на дневной стороне
-                    clouds.rgb *= 1.5;
+                    // Меняем облака в зависимости от уровня загрязнения
+                    if (pollutionLevel > 0.3) {
+                        // Более грязные облака
+                        clouds.rgb *= mix(vec3(1.5), vec3(1.0, 0.9, 0.8), pollutionLevel);
+                    } else {
+                        // Чистые, яркие облака
+                        clouds.rgb *= 1.5;
+                    }
+                    
                     vec4 cloudColor = clouds * transition;
+                    
+                    // При очень высоком загрязнении добавляем красноватый оттенок
+                    if (pollutionLevel > 0.7) {
+                        float redTint = (pollutionLevel - 0.7) / 0.3; // 0 -> 1 при 0.7 -> 1.0
+                        groundColor.rgb = mix(groundColor.rgb, groundColor.rgb * vec3(1.3, 0.8, 0.7), redTint);
+                    }
                     
                     gl_FragColor = vec4(groundColor.rgb + cloudColor.rgb * 0.4, 1.0);
                 }
@@ -478,7 +558,10 @@ class Earth {
         const atmosphereMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 sunDirection: { value: new THREE.Vector3(1, 0, 0) },
-                cameraPosition: { value: this.camera.position }
+                cameraPosition: { value: this.camera.position },
+                // Добавляем униформы для эффекта загрязнения в атмосфере
+                pollutionColor: { value: new THREE.Vector3(0.4, 0.7, 1.0) },
+                pollutionLevel: { value: 0.0 }
             },
             vertexShader: `
                 varying vec3 vNormal;
@@ -497,6 +580,8 @@ class Earth {
             `,
             fragmentShader: `
                 uniform vec3 sunDirection;
+                uniform vec3 pollutionColor;
+                uniform float pollutionLevel;
                 varying vec3 vNormal;
                 varying vec3 vPosition;
                 varying float vAtmosphereHeight;
@@ -512,18 +597,36 @@ class Earth {
                     float rimLight = 1.0 - abs(dot(vViewDirection, vNormal));
                     rimLight = pow(rimLight, 4.0);
                     
-                    // Цвет атмосферы зависит от высоты и освещения
-                    vec3 dayColor = mix(
+                    // Цвет атмосферы зависит от высоты, освещения и загрязнения
+                    // Базовые цвета чистой атмосферы
+                    vec3 cleanDayColor = mix(
                         vec3(0.4, 0.7, 1.0),  // Голубой у поверхности
                         vec3(0.2, 0.4, 0.8),  // Темно-синий вверху
                         vAtmosphereHeight * 0.5 + 0.5
                     );
                     
-                    vec3 nightColor = mix(
+                    vec3 cleanNightColor = mix(
                         vec3(0.1, 0.1, 0.2),  // Темно-синий у поверхности
                         vec3(0.05, 0.05, 0.1), // Почти черный вверху
                         vAtmosphereHeight * 0.5 + 0.5
                     );
+                    
+                    // Цвета загрязненной атмосферы
+                    vec3 pollutedDayColor = mix(
+                        pollutionColor,  // Цвет загрязнения у поверхности
+                        pollutionColor * 0.7,  // Цвет загрязнения вверху
+                        vAtmosphereHeight * 0.5 + 0.5
+                    );
+                    
+                    vec3 pollutedNightColor = mix(
+                        pollutionColor * 0.3,  // Темный цвет загрязнения ночью
+                        pollutionColor * 0.1,  // Еще более темный вверху
+                        vAtmosphereHeight * 0.5 + 0.5
+                    );
+                    
+                    // Смешиваем чистые и загрязненные цвета
+                    vec3 dayColor = mix(cleanDayColor, pollutedDayColor, pollutionLevel);
+                    vec3 nightColor = mix(cleanNightColor, pollutedNightColor, pollutionLevel);
                     
                     // Интенсивность зависит от освещения
                     float sunEffect = smoothstep(-0.2, 0.3, cosAngle);
@@ -532,11 +635,27 @@ class Earth {
                     // Добавляем свечение на краях
                     float intensity = mix(0.3, 1.0, rimLight) * mix(0.2, 1.0, rayleigh);
                     
+                    // При высоком загрязнении увеличиваем плотность атмосферы
+                    if (pollutionLevel > 0.5) {
+                        intensity = intensity * (1.0 + pollutionLevel * 0.5);
+                    }
+                    
                     // Добавляем рассеивание света в атмосфере
                     vec3 finalColor = atmosphereColor * intensity;
-                    finalColor += vec3(1.0, 1.0, 1.0) * pow(rimLight, 8.0) * 0.3;
                     
-                    gl_FragColor = vec4(finalColor, intensity * 0.3);
+                    // При низком загрязнении добавляем белое свечение по краям
+                    if (pollutionLevel < 0.5) {
+                        finalColor += vec3(1.0, 1.0, 1.0) * pow(rimLight, 8.0) * 0.3 * (1.0 - pollutionLevel);
+                    } 
+                    // При высоком загрязнении добавляем красноватое свечение
+                    else {
+                        finalColor += vec3(1.0, 0.5, 0.3) * pow(rimLight, 6.0) * 0.4 * pollutionLevel;
+                    }
+                    
+                    // Подстраиваем прозрачность атмосферы - более мутная при загрязнении
+                    float alpha = intensity * 0.3 * (1.0 + pollutionLevel * 0.7);
+                    
+                    gl_FragColor = vec4(finalColor, alpha);
                 }
             `,
             transparent: true,
@@ -545,9 +664,14 @@ class Earth {
             depthWrite: false
         });
 
-        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-        atmosphere.renderOrder = 1; // Рендерим атмосферу после Земли
-        this.earthGroup.add(atmosphere);
+        this.atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        this.atmosphere.renderOrder = 1; // Рендерим атмосферу после Земли
+        this.earthGroup.add(this.atmosphere);
+        
+        // Проверяем текущий уровень загрязнения и обновляем внешний вид
+        const pollution = localStorage.getItem('earthPollution');
+        this.currentPollutionLevel = pollution ? parseFloat(pollution) : 50;
+        this.updatePlanetAppearance();
     }
 
     createMoon() {
@@ -684,6 +808,160 @@ class Earth {
         this.stars = new THREE.Points(starsGeometry, starsMaterial);
         this.stars.renderOrder = -1; // Рендерим звезды первыми
         this.scene.add(this.stars);
+    }
+
+    // Новый метод для проверки уровня загрязнения в localStorage
+    checkPollutionLevel() {
+        if (!this.initialized || this.disposed) return;
+        
+        const pollution = localStorage.getItem('earthPollution');
+        const pollutionValue = pollution ? parseFloat(pollution) : 50;
+        
+        // Если уровень загрязнения изменился, обновляем внешний вид планеты
+        if (pollutionValue !== this.currentPollutionLevel) {
+            this.currentPollutionLevel = pollutionValue;
+            this.updatePlanetAppearance();
+            
+            // Создаем событие изменения загрязнения для оповещения других частей приложения
+            const event = new CustomEvent('pollutionChanged', { 
+                detail: { level: pollutionValue } 
+            });
+            window.dispatchEvent(event);
+        }
+    }
+
+    // Новый метод для обновления внешнего вида планеты в зависимости от уровня загрязнения
+    updatePlanetAppearance() {
+        if (!this.initialized || this.disposed || !this.earth || !this.earth.material) return;
+        
+        console.log(`Обновление внешнего вида планеты. Уровень загрязнения: ${this.currentPollutionLevel}%`);
+        
+        // Определяем текущий уровень загрязнения
+        let pollutionLevel;
+        if (this.currentPollutionLevel <= POLLUTION_LEVELS.NORMAL.max) {
+            pollutionLevel = POLLUTION_LEVELS.NORMAL;
+        } else if (this.currentPollutionLevel <= POLLUTION_LEVELS.WARNING.max) {
+            pollutionLevel = POLLUTION_LEVELS.WARNING;
+        } else if (this.currentPollutionLevel <= POLLUTION_LEVELS.MODERATE.max) {
+            pollutionLevel = POLLUTION_LEVELS.MODERATE;
+        } else if (this.currentPollutionLevel <= POLLUTION_LEVELS.HIGH.max) {
+            pollutionLevel = POLLUTION_LEVELS.HIGH;
+        } else {
+            pollutionLevel = POLLUTION_LEVELS.CRITICAL;
+        }
+        
+        // Обновляем шейдер земли с учетом уровня загрязнения
+        if (this.earth.material.uniforms) {
+            // Добавляем параметр тонирования (оттенка) в шейдере Земли
+            if (!this.earth.material.uniforms.pollutionTint) {
+                this.earth.material.uniforms.pollutionTint = { value: new THREE.Vector3(...pollutionLevel.earthTint) };
+            } else {
+                this.earth.material.uniforms.pollutionTint.value.set(...pollutionLevel.earthTint);
+            }
+            
+            // Добавляем параметр уровня загрязнения
+            if (!this.earth.material.uniforms.pollutionLevel) {
+                this.earth.material.uniforms.pollutionLevel = { value: this.currentPollutionLevel / 100.0 };
+            } else {
+                this.earth.material.uniforms.pollutionLevel.value = this.currentPollutionLevel / 100.0;
+            }
+        }
+        
+        // Обновляем атмосферу
+        if (this.atmosphere && this.atmosphere.material.uniforms) {
+            // Добавляем параметр цвета атмосферы в зависимости от загрязнения
+            if (!this.atmosphere.material.uniforms.pollutionColor) {
+                this.atmosphere.material.uniforms.pollutionColor = { 
+                    value: new THREE.Vector3(...pollutionLevel.atmosphereColor) 
+                };
+            } else {
+                this.atmosphere.material.uniforms.pollutionColor.value.set(...pollutionLevel.atmosphereColor);
+            }
+            
+            // Добавляем параметр уровня загрязнения для атмосферы
+            if (!this.atmosphere.material.uniforms.pollutionLevel) {
+                this.atmosphere.material.uniforms.pollutionLevel = { value: this.currentPollutionLevel / 100.0 };
+            } else {
+                this.atmosphere.material.uniforms.pollutionLevel.value = this.currentPollutionLevel / 100.0;
+            }
+        }
+        
+        // Особые визуальные эффекты при критическом уровне загрязнения
+        if (this.currentPollutionLevel > 90) {
+            // Более выраженный наклон планеты для визуализации нестабильности
+            const extraTilt = (this.currentPollutionLevel - 90) * 0.01;
+            this.earthGroup.rotation.z = EARTH_TILT + extraTilt;
+        } else {
+            // Возвращаем нормальный наклон
+            this.earthGroup.rotation.z = EARTH_TILT;
+        }
+    }
+    
+    // Метод для создания эффекта разрушения планеты при 100% загрязнения
+    renderDestructionEffect() {
+        // Если уже запустили анимацию разрушения, то не запускаем снова
+        if (this.destructionStarted) return;
+        
+        this.destructionStarted = true;
+        console.log("Начало анимации разрушения планеты!");
+        
+        // Усиливаем тряску
+        const animateDestruction = () => {
+            if (this.disposed || !this.earth) return;
+            
+            const progress = (performance.now() - this.destructionStartTime) / 5000; // 5-секундная анимация
+            
+            if (progress < 1) {
+                // Увеличиваем тряску
+                const shakeAmount = 0.02 + progress * 0.1;
+                this.earthGroup.position.x = Math.sin(performance.now() * 0.01) * shakeAmount;
+                this.earthGroup.position.y = Math.cos(performance.now() * 0.01) * shakeAmount;
+                
+                // Изменяем скорость вращения
+                this.earth.rotation.y += EARTH_ROTATION_SPEED * (1 + progress * 3);
+                
+                // Постепенно меняем цвет планеты на красный
+                if (this.earth.material.uniforms.pollutionTint) {
+                    const red = 1.0 - progress * 0.4;
+                    const green = 0.4 - progress * 0.4;
+                    const blue = 0.3 - progress * 0.3;
+                    this.earth.material.uniforms.pollutionTint.value.set(red, green, blue);
+                }
+                
+                // Постепенно увеличиваем интенсивность атмосферы
+                if (this.atmosphere && this.atmosphere.material.uniforms) {
+                    // Атмосфера становится красной и плотной
+                    if (this.atmosphere.material.uniforms.pollutionColor) {
+                        const red = 0.8 + progress * 0.2;
+                        const green = 0.3 - progress * 0.2;
+                        const blue = 0.2 - progress * 0.2;
+                        this.atmosphere.material.uniforms.pollutionColor.value.set(red, green, blue);
+                    }
+                }
+                
+                requestAnimationFrame(animateDestruction);
+            } else {
+                // Завершающий этап - показываем сообщение о катастрофе
+                if (window.errorHandler) {
+                    window.errorHandler.show("Планета уничтожена! Начните заново, чтобы спасти Землю.");
+                } else {
+                    alert("Планета уничтожена! Начните заново, чтобы спасти Землю.");
+                }
+                
+                // Сбрасываем уровень загрязнения до 80%
+                localStorage.setItem('earthPollution', "80");
+                this.currentPollutionLevel = 80;
+                this.updatePlanetAppearance();
+                this.destructionStarted = false;
+                
+                // Возвращаем планету в нормальное положение
+                this.earthGroup.position.x = 0;
+                this.earthGroup.position.y = 0;
+            }
+        };
+        
+        this.destructionStartTime = performance.now();
+        animateDestruction();
     }
 }
 

@@ -921,8 +921,8 @@
                 
             } catch (error) {
                 console.error('Ошибка ранней инициализации Telegram WebApp:', error);
-            }
         }
+    }
     </script>
 </head>
 <body>
@@ -1074,7 +1074,7 @@
                         }
                     });
                     
-                } catch (error) {
+            } catch (error) {
                     console.error('Ошибка при инициализации Telegram WebApp:', error);
                     telegramWebAppLoaded = false;
                 }
@@ -1187,29 +1187,29 @@
         });
         
         // Функция для закрытия вкладки
-        window.closeTab = function() {
+            window.closeTab = function() {
             console.log('Закрытие вкладки');
-            const tabContent = document.querySelector('.tab-content');
-            const tabInner = document.querySelector('.tab-content-inner');
-            const activeButton = document.querySelector('.nav-button.active');
-            
-            if (activeButton) {
-                activeButton.classList.remove('active');
-            }
-            
-            tabContent.classList.add('closing');
-            tabContent.style.transform = 'translateY(100%)';
-            tabContent.style.borderTopLeftRadius = '0';
-            tabContent.style.borderTopRightRadius = '0';
-            tabInner.style.opacity = '0';
-            
-            setTimeout(() => {
-                tabContent.classList.remove('active', 'closing');
-                tabContent.style.transform = '';
-                tabContent.style.borderTopLeftRadius = '';
-                tabContent.style.borderTopRightRadius = '';
-            }, 300);
-        };
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
+                const activeButton = document.querySelector('.nav-button.active');
+                
+                if (activeButton) {
+                    activeButton.classList.remove('active');
+                }
+                
+                tabContent.classList.add('closing');
+                tabContent.style.transform = 'translateY(100%)';
+                tabContent.style.borderTopLeftRadius = '0';
+                tabContent.style.borderTopRightRadius = '0';
+                tabInner.style.opacity = '0';
+                
+                setTimeout(() => {
+                    tabContent.classList.remove('active', 'closing');
+                    tabContent.style.transform = '';
+                    tabContent.style.borderTopLeftRadius = '';
+                    tabContent.style.borderTopRightRadius = '';
+                }, 300);
+            };
     </script>
     <script type="module" src="/js/main.js"></script>
     <script>
@@ -1229,10 +1229,10 @@
             window.Telegram.WebApp.setBackgroundColor('#16161b');
         }
         
-        const buttons = document.querySelectorAll('.nav-button');
-        const tabContent = document.querySelector('.tab-content');
-        const tabInner = document.querySelector('.tab-content-inner');
-        
+                const buttons = document.querySelectorAll('.nav-button');
+                const tabContent = document.querySelector('.tab-content');
+                const tabInner = document.querySelector('.tab-content-inner');
+                
         if (!tabContent || !tabInner) {
             console.error('Элементы вкладки не найдены!');
             return;
@@ -1244,42 +1244,42 @@
         tabInner.style.overscrollBehaviorY = 'contain';
         
         // Отмечаем активную кнопку
-        buttons.forEach(btn => btn.classList.remove('active'));
-        clickedButton.classList.add('active');
-        
-        let content = '';
-        
-        switch(section) {
-            case 'wallet':
+                buttons.forEach(btn => btn.classList.remove('active'));
+                clickedButton.classList.add('active');
+                
+                let content = '';
+                
+                switch(section) {
+                    case 'wallet':
                 console.log('Загрузка содержимого вкладки "Wallet"');
-                content = `
-                    <h3>Wallet</h3>
-                    <button class="close-button" type="button">
-                        <i class="material-icons">close</i>
-                    </button>
-                    <div class="wallet-container">
-                        <div class="wallet-header">
-                            <i class="material-icons">account_balance_wallet</i>
-                            <span>TON Wallet</span>
-                        </div>
-                        <div class="wallet-content">
+                        content = `
+                            <h3>Wallet</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <div class="wallet-container">
+                                <div class="wallet-header">
+                                    <i class="material-icons">account_balance_wallet</i>
+                                    <span>TON Wallet</span>
+                                </div>
+                                <div class="wallet-content">
                             <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Подключение кошелька будет доступно ближе к аирдропу.</p>
                             <p style="margin: 16px 0; font-size: 16px; text-align: center; color: white;">Следите за новостями!</p>
-                        </div>
-                    </div>
-                `;
-                break;
-            case 'profile':
+                                </div>
+                            </div>
+                        `;
+                        break;
+                    case 'profile':
                 console.log('Загрузка содержимого вкладки "Profile"');
-                showProfile();
-                break;
-            case 'planet':
+                        showProfile();
+                        break;
+                    case 'planet':
                 console.log('Загрузка содержимого вкладки "Planet"');
-                content = `
+                        content = `
                     <h3>Планета</h3>
-                    <button class="close-button" type="button">
-                        <i class="material-icons">close</i>
-                    </button>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
+                            </button>
                     <div class="planet-container" style="display: flex; flex-direction: column; gap: 24px; padding: 0 0 20px 0; width: 100%;">
                         <!-- Статус планеты -->
                         <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box; touch-action: auto;">
@@ -1301,7 +1301,7 @@
                             
                             <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px; margin-top: 8px; touch-action: auto;">
                                 <i class="material-icons" style="font-size: 20px; color: #FFCC00; margin-right: 10px;">info_outline</i>
-                                <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.4;">Загрязнение автоматически увеличивается на 10% каждый день. Снижайте уровень загрязнения, чтобы получать больше EARTH токенов.</p>
+                                <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.4;">Загрязнение автоматически увеличивается на <strong style="color: #F44336;">50%</strong> каждые 24 часа. Снижайте уровень загрязнения, чтобы получать больше EARTH токенов. Каждое действие доступно раз в 4 часа.</p>
                             </div>
                         </div>
                         
@@ -1357,64 +1357,64 @@
                             </div>
                         </div>
                     </div>
-                `;
-                break;
-            case 'tasks':
+                        `;
+                        break;
+                    case 'tasks':
                 console.log('Загрузка содержимого вкладки "Tasks"');
-                content = `
-                    <h3>Available Tasks</h3>
-                    <button class="close-button" type="button">
-                        <i class="material-icons">close</i>
-                    </button>
-                    <div class="task-container">
-                        <div class="task-item">
-                            <div class="task-header">
-                                <i class="material-icons">group</i>
-                                <span>Join Community</span>
-                            </div>
-                            <p class="task-description">Join our Earth Community to stay updated!</p>
-                            <button class="task-button" id="join-community-btn">
-                                <i class="material-icons">telegram</i>
-                                Join Community
+                        content = `
+                            <h3>Available Tasks</h3>
+                            <button class="close-button" type="button">
+                                <i class="material-icons">close</i>
                             </button>
-                        </div>
-                    </div>
-                `;
-                break;
+                            <div class="task-container">
+                                <div class="task-item">
+                                    <div class="task-header">
+                                        <i class="material-icons">group</i>
+                                        <span>Join Community</span>
+                                    </div>
+                                    <p class="task-description">Join our Earth Community to stay updated!</p>
+                                    <button class="task-button" id="join-community-btn">
+                                        <i class="material-icons">telegram</i>
+                                        Join Community
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        break;
             default:
                 console.error(`Неизвестная секция: ${section}`);
                 return;
-        }
-        
+                }
+                
         if (section !== 'profile') {
-            tabInner.innerHTML = content;
+                tabInner.innerHTML = content;
         }
         
         console.log(`Содержимое вкладки ${section} загружено`);
-        
-        // Update close button handler
-        const closeButton = tabInner.querySelector('.close-button');
+                
+                // Update close button handler
+                const closeButton = tabInner.querySelector('.close-button');
         if (closeButton) {
-            ['touchstart', 'click'].forEach(eventType => {
-                closeButton.addEventListener(eventType, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                ['touchstart', 'click'].forEach(eventType => {
+                    closeButton.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                     console.log('Закрытие вкладки по кнопке');
                     window.closeTab();
-                }, { passive: false });
-            });
+                    }, { passive: false });
+                });
         } else {
             console.warn('Кнопка закрытия не найдена в текущей вкладке');
         }
-        
-        // Show tab content
-        tabContent.classList.add('active');
-        setTimeout(() => {
-            tabInner.style.opacity = '1';
-        }, 50);
+                
+                // Show tab content
+                tabContent.classList.add('active');
+                setTimeout(() => {
+                    tabInner.style.opacity = '1';
+                }, 50);
 
         // Установка обработчиков для кнопок в зависимости от вкладки
-        if (section === 'tasks') {
+                if (section === 'tasks') {
             setupTasksHandlers();
         } else if (section === 'planet') {
             // Специальные настройки для вкладки планеты
@@ -1572,16 +1572,16 @@
     // Функция настройки обработчиков для вкладки Tasks
     function setupTasksHandlers() {
         console.log('Настройка кнопок задач');
-        const joinButton = document.querySelector('#join-community-btn');
-        if (joinButton) {
-            ['touchstart', 'click'].forEach(eventType => {
-                joinButton.addEventListener(eventType, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    const joinButton = document.querySelector('#join-community-btn');
+                    if (joinButton) {
+                        ['touchstart', 'click'].forEach(eventType => {
+                            joinButton.addEventListener(eventType, (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                     console.log('Открытие ссылки сообщества');
-                    window.location.href = 'https://t.me/NotEarthCommunity';
-                }, { passive: false });
-            });
+                                    window.location.href = 'https://t.me/NotEarthCommunity';
+                            }, { passive: false });
+                        });
         } else {
             console.warn('Кнопка подключения к сообществу не найдена');
         }
@@ -1672,17 +1672,8 @@
         
         console.log(`Текущий уровень загрязнения: ${pollution}%`);
         
-        // Проверяем, был ли обновлен в текущий день
-        const lastUpdate = localStorage.getItem('pollutionLastUpdate');
-        const currentDate = new Date().toDateString();
-        
-        // Если новый день, увеличиваем загрязнение на 10%
-        if (lastUpdate !== currentDate) {
-            console.log('Новый день, увеличиваем загрязнение на 10%');
-            pollution = Math.min(100, pollution + 10);
-            localStorage.setItem('earthPollution', pollution.toString());
-            localStorage.setItem('pollutionLastUpdate', currentDate);
-        }
+        // Проверяем, был ли обновлен загрязнение в соответствии с реальным временем
+        checkPollutionTimeUpdate();
         
         // Обновляем отображение уровня загрязнения
         const pollutionBar = document.getElementById('pollution-bar');
@@ -1727,18 +1718,139 @@
             return;
         }
         
+        // Функция проверки доступности кнопки (последнее использование должно быть не менее 4 часов назад)
+        function isButtonAvailable(buttonId) {
+            const lastUsed = localStorage.getItem(`action_${buttonId}_lastUsed`);
+            if (!lastUsed) return true;
+            
+            const now = new Date().getTime();
+            const lastUsedTime = parseInt(lastUsed);
+            const hoursDiff = (now - lastUsedTime) / (1000 * 60 * 60); // разница в часах
+            
+            return hoursDiff >= 4;
+        }
+        
+        // Функция для получения оставшегося времени до доступности кнопки
+        function getTimeRemaining(buttonId) {
+            const lastUsed = localStorage.getItem(`action_${buttonId}_lastUsed`);
+            if (!lastUsed) return null;
+            
+            const now = new Date().getTime();
+            const lastUsedTime = parseInt(lastUsed);
+            const diffMs = now - lastUsedTime;
+            const fourHoursMs = 4 * 60 * 60 * 1000;
+            
+            if (diffMs >= fourHoursMs) return null;
+            
+            const remainingMs = fourHoursMs - diffMs;
+            const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+            const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            return { hours, minutes };
+        }
+        
         actionButtons.forEach((button, index) => {
             console.log(`Настройка кнопки действия ${index}`);
+            
+            // Присваиваем уникальный ID каждой кнопке, если его нет
+            if (!button.id) {
+                button.id = `action-button-${index}`;
+            }
+            
+            // Проверяем доступность кнопки
+            const buttonId = button.id;
+            const isAvailable = isButtonAvailable(buttonId);
+            const timeRemaining = getTimeRemaining(buttonId);
             
             // Удаляем предыдущие обработчики, чтобы избежать дублирования
             const newButton = button.cloneNode(true);
             button.parentNode.replaceChild(newButton, button);
             
-            newButton.addEventListener('click', function() {
+            // Если кнопка недоступна, обновляем её внешний вид
+            if (!isAvailable && timeRemaining) {
+                // Сохраняем оригинальный контент для восстановления
+                const originalContent = newButton.innerHTML;
+                
+                // Делаем кнопку неактивной
+                newButton.disabled = true;
+                newButton.style.opacity = '0.6';
+                newButton.style.cursor = 'not-allowed';
+                
+                // Добавляем информацию о времени до разблокировки
+                const timeText = `${timeRemaining.hours}ч ${timeRemaining.minutes}м`;
+                
+                // Находим div для описания действия (третий div в кнопке)
+                const descriptionDiv = newButton.querySelectorAll('div')[2];
+                if (descriptionDiv) {
+                    // Сохраняем оригинальный текст
+                    const originalDescription = descriptionDiv.innerHTML;
+                    
+                    // Обновляем с информацией о времени
+                    descriptionDiv.innerHTML = `
+                        <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">
+                            <span style="color: #FF9800;">Перезарядка</span>
+                        </div>
+                        <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">
+                            Доступно через ${timeText}
+                        </div>
+                    `;
+                    
+                    // Обновляем кнопку каждую минуту для обновления обратного отсчета
+                    const updateTimer = setInterval(() => {
+                        const updatedTime = getTimeRemaining(buttonId);
+                        
+                        if (!updatedTime) {
+                            // Кнопка стала доступна
+                            clearInterval(updateTimer);
+                            newButton.disabled = false;
+                            newButton.style.opacity = '1';
+                            newButton.style.cursor = 'pointer';
+                            
+                            // Восстанавливаем оригинальное содержимое
+                            if (descriptionDiv) {
+                                descriptionDiv.innerHTML = originalDescription;
+                            }
+                            setupButtonListeners(newButton);
+                            return;
+                        }
+                        
+                        const timeText = `${updatedTime.hours}ч ${updatedTime.minutes}м`;
+                        descriptionDiv.innerHTML = `
+                            <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">
+                                <span style="color: #FF9800;">Перезарядка</span>
+                            </div>
+                            <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">
+                                Доступно через ${timeText}
+                            </div>
+                        `;
+                    }, 60000); // обновляем каждую минуту
+                }
+                
+                // Добавляем обработчик только для отображения сообщения
+                newButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Показываем сообщение о недоступности
+                    alert(`Это действие будет доступно через ${timeText}`);
+                });
+            } else {
+                // Если кнопка доступна, добавляем стандартные обработчики
+                setupButtonListeners(newButton);
+            }
+        });
+        
+        // Общая функция настройки обработчиков для доступных кнопок
+        function setupButtonListeners(button) {
+            button.addEventListener('click', function() {
                 const reduction = parseFloat(this.getAttribute('data-reduction'));
                 const reward = parseInt(this.getAttribute('data-reward'));
+                const buttonId = this.id;
                 
                 console.log(`Действие: снижение загрязнения на ${reduction}%, награда ${reward} токенов`);
+                
+                // Сохраняем время использования кнопки
+                localStorage.setItem(`action_${buttonId}_lastUsed`, new Date().getTime().toString());
                 
                 // Получаем текущий уровень загрязнения
                 let pollution = localStorage.getItem('earthPollution');
@@ -1783,6 +1895,10 @@
                 `;
                 
                 // Обновляем отображение полосы загрязнения
+                const pollutionBar = document.getElementById('pollution-bar');
+                const pollutionValue = document.getElementById('pollution-value');
+                const pollutionStatus = document.getElementById('pollution-status');
+                
                 if (pollutionBar && pollutionValue && pollutionStatus) {
                     // Плавно меняем ширину полосы
                     pollutionBar.style.transition = 'width 0.5s ease, background-color 0.5s ease';
@@ -1809,53 +1925,150 @@
                     }
                 }
                 
-                // Блокируем кнопку на время
+                // Блокируем кнопку 
                 this.disabled = true;
                 
-                // Через 2 секунды восстанавливаем кнопку
+                // Через 2 секунды меняем внешний вид на недоступную кнопку
                 setTimeout(() => {
-                    this.disabled = false;
-                    this.innerHTML = originalContent;
+                    this.disabled = true;
+                    this.style.opacity = '0.6';
+                    this.style.cursor = 'not-allowed';
                     this.style.background = originalBackground;
+                    
+                    // Находим div для описания действия (третий div в кнопке)
+                    const descriptionDiv = this.querySelectorAll('div')[2];
+                    if (descriptionDiv) {
+                        descriptionDiv.innerHTML = `
+                            <div style="font-weight: 500; font-size: 16px; margin-bottom: 4px;">
+                                <span style="color: #FF9800;">Перезарядка</span>
+                            </div>
+                            <div style="font-size: 13px; color: rgba(255, 255, 255, 0.6);">
+                                Доступно через 4ч 0м
+                            </div>
+                        `;
+                    }
+                    
+                    // Удаляем текущий обработчик и добавляем новый для отображения сообщения
+                    this.replaceWith(this.cloneNode(true));
+                    setupPlanetActions(); // Перенастраиваем все кнопки
                 }, 2000);
             });
             
             // Добавляем также обработчик touchend для лучшей мобильной поддержки
-            newButton.addEventListener('touchend', function(e) {
+            button.addEventListener('touchend', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.click(); // Имитируем клик
+                if (!this.disabled) {
+                    this.click(); // Имитируем клик
+                }
             }, { passive: false });
-        });
+        }
     }
     
-    // Функция для проверки и обновления загрязнения планеты
-    function updatePlanetPollution() {
-        // Получаем текущий уровень загрязнения
-        let pollution = localStorage.getItem('earthPollution');
-        let lastUpdated = localStorage.getItem('pollutionLastUpdate');
+    // Функция для проверки и обновления загрязнения в соответствии с реальным временем
+    function checkPollutionTimeUpdate() {
+        console.log('Проверка и обновление уровня загрязнения по времени');
         
-        const currentDate = new Date().toDateString();
+        // Получаем текущее время и последнее время обновления
+        const currentTime = new Date().getTime();
+        let lastUpdateTime = localStorage.getItem('pollutionLastUpdateTime');
         
-        // Если загрязнение не инициализировано, устанавливаем значение по умолчанию
-        if (!pollution) {
-            pollution = 50; // начальное значение 50%
-            localStorage.setItem('earthPollution', pollution);
-            localStorage.setItem('pollutionLastUpdate', currentDate);
-        } else {
-            pollution = parseFloat(pollution);
-            
-            // Если с последнего обновления прошел хотя бы день
-            if (lastUpdated !== currentDate) {
-                // Увеличиваем загрязнение на 10%
-                pollution = Math.min(100, pollution + 10);
-                localStorage.setItem('earthPollution', pollution.toString());
-                localStorage.setItem('pollutionLastUpdate', currentDate);
-            }
+        // Если нет записи о последнем обновлении, создаем её
+        if (!lastUpdateTime) {
+            localStorage.setItem('pollutionLastUpdateTime', currentTime.toString());
+            console.log('Установлено начальное время последнего обновления загрязнения');
+            return;
         }
         
-        return pollution;
+        lastUpdateTime = parseInt(lastUpdateTime);
+        
+        // Разница во времени в миллисекундах
+        const timeDifference = currentTime - lastUpdateTime;
+        
+        // Количество часов, прошедших с последнего обновления
+        const hoursPassed = timeDifference / (1000 * 60 * 60);
+        
+        // Если прошло хотя бы 24 часа (86400000 мс)
+        if (hoursPassed >= 24) {
+            console.log(`Прошло ${hoursPassed.toFixed(2)} часов с последнего обновления`);
+            
+            // Количество полных дней
+            const daysPassed = Math.floor(hoursPassed / 24);
+            
+            // Получаем текущий уровень загрязнения
+            let pollution = localStorage.getItem('earthPollution');
+            pollution = pollution ? parseFloat(pollution) : 50;
+            
+            // Увеличиваем загрязнение на 50% за каждый прошедший день
+            for (let i = 0; i < daysPassed; i++) {
+                pollution = Math.min(100, pollution + 50);
+                console.log(`День ${i+1}: загрязнение увеличено до ${pollution}%`);
+            }
+            
+            // Сохраняем новое значение загрязнения
+            localStorage.setItem('earthPollution', pollution.toString());
+            
+            // Обновляем время последнего обновления, учитывая только полные прошедшие дни
+            const newLastUpdateTime = lastUpdateTime + (daysPassed * 24 * 60 * 60 * 1000);
+            localStorage.setItem('pollutionLastUpdateTime', newLastUpdateTime.toString());
+            
+            console.log(`Загрязнение обновлено: ${pollution}%, следующее обновление через 24 часа`);
+            
+            // Если у нас есть функция обновления внешнего вида планеты, вызываем её
+            if (window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent('pollutionChanged', { 
+                    detail: { level: pollution } 
+                }));
+            }
+        } else {
+            console.log(`С последнего обновления прошло ${hoursPassed.toFixed(2)} часов, следующее обновление через ${(24 - hoursPassed).toFixed(2)} часов`);
+        }
     }
+
+    // Обновляем информацию о задачах
+    function setupTasksTab() {
+        const tasksInfo = `
+            <div class="tasks-info">
+                <h2>Задания по спасению планеты</h2>
+                <p>
+                    Загрязнение планеты увеличивается на <strong style="color: #F44336;">50%</strong> каждые 24 часа.
+                    Выполняйте действия для снижения уровня загрязнения и получения токенов.
+                </p>
+                <p>
+                    Каждое действие доступно один раз в 4 часа.
+                </p>
+                <p>
+                    Заходите в приложение ежедневно, чтобы не допустить критического уровня загрязнения!
+                </p>
+            </div>
+        `;
+        
+        // Вставляем информацию в таб задач, когда он открывается
+        const tabContent = document.querySelector('.tab-content-inner');
+        if (tabContent) {
+            // Вставляем информацию о задачах при открытии вкладки Tasks
+            const tasksBtn = document.querySelector('.nav-button[data-section="tasks"]');
+            if (tasksBtn) {
+                tasksBtn.addEventListener('click', function() {
+                    if (tabContent.innerHTML.indexOf('tasks-info') === -1) {
+                        tabContent.innerHTML = tasksInfo + tabContent.innerHTML;
+                    }
+                });
+            }
+        }
+    }
+
+    // Запускаем первую проверку времени при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        // Проверяем время и обновляем загрязнение при загрузке страницы
+        checkPollutionTimeUpdate();
+        
+        // Настраиваем регулярные проверки каждый час
+        setInterval(checkPollutionTimeUpdate, 60 * 60 * 1000);
+        
+        // Добавляем информацию в таб заданий
+        setupTasksTab();
+    });
 
     // Показываем панель навигации при первом касании экрана
     let isFirstTouch = true;
@@ -1942,28 +2155,180 @@
     // Функция показа профиля
     function showProfile() {
         const tabInner = document.querySelector('.tab-content-inner');
-        // Используем локальное изображение вместо внешнего placeholder
-        const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23666"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="35" fill="%23fff">P</text></svg>';
         
+        // Получаем информацию о пользователе и количестве токенов
+        let tokens = localStorage.getItem('earthTokens');
+        tokens = tokens ? parseInt(tokens) : 0;
+        
+        // Определяем рейтинг на основе токенов
+        let rating = "";
+        let ratingColor = "";
+        let ratingTitle = "";
+        
+        if (tokens >= 500) {
+            rating = "S";
+            ratingColor = "#FFD700"; // золотой
+            ratingTitle = "Защитник планеты";
+        } else if (tokens >= 300) {
+            rating = "A";
+            ratingColor = "#4CAF50"; // зеленый
+            ratingTitle = "Эколог";
+        } else if (tokens >= 200) {
+            rating = "B";
+            ratingColor = "#2196F3"; // синий
+            ratingTitle = "Хранитель природы"; 
+        } else if (tokens >= 100) {
+            rating = "C";
+            ratingColor = "#FFC107"; // желтый
+            ratingTitle = "Начинающий эколог";
+        } else {
+            rating = "D";
+            ratingColor = "#FF9800"; // оранжевый
+            ratingTitle = "Новичок";
+        }
+        
+        // Создаем аватар с эмодзи земли
+        const avatarStyle = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(25, 118, 210, 0.8), rgba(66, 165, 245, 0.8));
+            border-radius: 50%;
+            font-size: 36px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        `;
+            
         tabInner.innerHTML = `
-            <h3>Profile</h3>
-            <button class="close-button" type="button" onclick="window.closeTab()">
+            <h3>Профиль</h3>
+            <button class="close-button" type="button">
                 <i class="material-icons">close</i>
             </button>
-            <div class="profile-header">
-                <div class="profile-avatar">
-                    <img src="${defaultAvatar}" alt="Profile Avatar">
+            <div style="display: flex; flex-direction: column; gap: 24px; padding: 0 0 20px 0; width: 100%;">
+                <!-- Основная информация профиля -->
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <!-- Аватар с эмодзи земли -->
+                        <div style="${avatarStyle}">
+                            <span style="font-size: 42px;">🌍</span>
+                        </div>
+                        
+                        <!-- Информация пользователя -->
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Пользователь Earth 3D</h4>
+                            <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.6);">${ratingTitle}</p>
+                        </div>
+                        
+                        <!-- Рейтинг -->
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 60px;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(${ratingColor === '#FFD700' ? '255, 215, 0' : ratingColor === '#4CAF50' ? '76, 175, 80' : ratingColor === '#2196F3' ? '33, 150, 243' : ratingColor === '#FFC107' ? '255, 193, 7' : '255, 152, 0'}, 0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+                                <span style="font-weight: 700; font-size: 24px; color: ${ratingColor};">${rating}</span>
+                            </div>
+                            <span style="font-size: 12px; color: rgba(255, 255, 255, 0.5);">Рейтинг</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-info">
-                    <h4 class="profile-name">Пользователь Earth 3D</h4>
-                    <p class="profile-bio">Подробная информация профиля будет доступна позже</p>
+                
+                <!-- Статистика токенов -->
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box;">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <i class="material-icons" style="font-size: 28px; color: #FFD700; margin-right: 12px;">toll</i>
+                        <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Токены EARTH</h4>
+                    </div>
+                    
+                    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.6);">Текущий баланс</p>
+                            <h3 style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">${tokens}</h3>
+                        </div>
+                        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 215, 0, 0.1); display: flex; align-items: center; justify-content: center;">
+                            <i class="material-icons" style="font-size: 24px; color: #FFD700;">toll</i>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 16px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px;">
+                        <div style="display: flex; align-items: center;">
+                            <i class="material-icons" style="font-size: 20px; color: #FFCC00; margin-right: 10px;">info_outline</i>
+                            <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.4;">
+                                Токены EARTH начисляются за выполнение действий по защите планеты. Чем больше токенов, тем выше ваш рейтинг.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-rating">
-                    <p class="rating-number">#-</p>
-                    <p class="rating-label">Rating</p>
+                
+                <!-- Таблица рейтингов -->
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box;">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <i class="material-icons" style="font-size: 28px; color: #64B5F6; margin-right: 12px;">leaderboard</i>
+                        <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Система рейтингов</h4>
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'S' ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'S' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 215, 0, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="font-weight: 700; font-size: 18px; color: #FFD700;">S</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Защитник планеты</p>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">500+ токенов</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'A' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'A' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(76, 175, 80, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="font-weight: 700; font-size: 18px; color: #4CAF50;">A</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Эколог</p>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">300+ токенов</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'B' ? 'rgba(33, 150, 243, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'B' ? 'rgba(33, 150, 243, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(33, 150, 243, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="font-weight: 700; font-size: 18px; color: #2196F3;">B</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Хранитель природы</p>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">200+ токенов</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'C' ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'C' ? 'rgba(255, 193, 7, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 193, 7, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="font-weight: 700; font-size: 18px; color: #FFC107;">C</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Начинающий эколог</p>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">100+ токенов</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'D' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'D' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 152, 0, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                                <span style="font-weight: 700; font-size: 18px; color: #FF9800;">D</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Новичок</p>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">0-99 токенов</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
+        
+        // Добавляем обработчик для кнопки закрытия
+        const closeButton = tabInner.querySelector('.close-button');
+        if (closeButton) {
+            closeButton.addEventListener('click', function() {
+                window.closeTab();
+            });
+        }
     }
     </script>
     <script>
