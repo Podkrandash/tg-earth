@@ -836,6 +836,27 @@
             tg.ready(() => {
                 console.log('Telegram WebApp ready');
                 tg.expand();
+                
+                // Делаем ряд дополнительных проверок для запуска в Telegram
+                if (document.querySelector('.nav-panel')) {
+                    document.querySelector('.nav-panel').classList.add('visible');
+                }
+                
+                // Обрабатываем события касания для навигационной панели
+                const navButtons = document.querySelectorAll('.nav-button');
+                navButtons.forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const section = button.getAttribute('data-section');
+                        handleNavClick(section, button);
+                    }, { passive: false });
+                });
+                
+                // Важно: инициализируем баланс токенов
+                updateTokenBalance();
+                
+                // Дополнительные проверки для Telegram инициализации
                 updateUserProfile();
                 checkTasksCompletion();
                 
@@ -843,9 +864,6 @@
                 if (tg.initDataUnsafe?.user) {
                     sendUserData(tg.initDataUnsafe.user);
                 }
-                
-                // Обновляем баланс токенов при инициализации
-                updateTokenBalance();
             });
         }
 
@@ -1119,13 +1137,6 @@
     </script>
     <script type="module" src="/js/main.js"></script>
     <script>
-        // Удаляем дублирование кода - весь слушатель DOMContentLoaded уже определен выше
-        // document.addEventListener('DOMContentLoaded', () => {
-        //     ...
-        // });
-    </script>
-    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
-    <script>
     // Функция проверки Telegram окружения
     function isRunningInTelegram() {
         return window.Telegram?.WebApp !== undefined;
@@ -1163,216 +1174,7 @@
         `;
     }
     
-    // Функция для проверки и обновления загрязнения планеты
-    function updatePlanetPollution() {
-        // Получаем текущий уровень загрязнения
-        let pollution = localStorage.getItem('earthPollution');
-        let lastUpdated = localStorage.getItem('pollutionLastUpdated');
-        
-        const currentDate = new Date().toDateString();
-        
-        // Если загрязнение не инициализировано, устанавливаем значение по умолчанию
-        if (!pollution) {
-            pollution = 50; // начальное значение 50%
-            localStorage.setItem('earthPollution', pollution);
-            localStorage.setItem('pollutionLastUpdated', currentDate);
-        } else {
-            pollution = parseFloat(pollution);
-            
-            // Если с последнего обновления прошел хотя бы день
-            if (lastUpdated !== currentDate) {
-                // Увеличиваем загрязнение на 10%
-                pollution = Math.min(100, pollution + 10);
-                localStorage.setItem('earthPollution', pollution);
-                localStorage.setItem('pollutionLastUpdated', currentDate);
-            }
-        }
-        
-        return pollution;
-    }
-    
-    // Функция установки цвета полосы загрязнения
-    function setPollutionBarColor(bar, level) {
-        if (level < 20) {
-            bar.style.background = '#4CAF50'; // зеленый
-        } else if (level < 50) {
-            bar.style.background = '#FFC107'; // желтый
-        } else if (level < 80) {
-            bar.style.background = '#FF9800'; // оранжевый
-        } else {
-            bar.style.background = '#F44336'; // красный
-        }
-    }
-    
-    // Функция добавления обработчиков к кнопкам действий планеты
-    function setupPlanetActions() {
-        // Получаем текущий уровень загрязнения
-        let pollution = localStorage.getItem('earthPollution');
-        pollution = pollution ? parseFloat(pollution) : 50;
-        
-        // Обновляем отображение уровня загрязнения
-        const pollutionBar = document.getElementById('pollution-bar');
-        const pollutionValue = document.getElementById('pollution-value');
-        const pollutionStatus = document.getElementById('pollution-status');
-        
-        if (pollutionBar && pollutionValue && pollutionStatus) {
-            // Устанавливаем ширину полосы
-            pollutionBar.style.width = `${pollution}%`;
-            pollutionValue.textContent = `${pollution.toFixed(1)}%`;
-            
-            // Устанавливаем цвет и текст статуса в зависимости от уровня загрязнения
-            if (pollution < 20) {
-                pollutionBar.style.background = '#4CAF50'; // зеленый
-                pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
-                pollutionStatus.style.color = '#4CAF50';
-            } else if (pollution < 50) {
-                pollutionBar.style.background = '#FFC107'; // желтый
-                pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
-                pollutionStatus.style.color = '#FFC107';
-            } else if (pollution < 80) {
-                pollutionBar.style.background = '#FF9800'; // оранжевый
-                pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
-                pollutionStatus.style.color = '#FF9800';
-            } else {
-                pollutionBar.style.background = '#F44336'; // красный
-                pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
-                pollutionStatus.style.color = '#F44336';
-            }
-        }
-        
-        // Обрабатываем нажатие на кнопки очистки
-        const actionButtons = document.querySelectorAll('.action-button');
-        if (!actionButtons.length) return;
-        
-        actionButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const reduction = parseFloat(this.getAttribute('data-reduction'));
-                const reward = parseInt(this.getAttribute('data-reward'));
-                
-                // Получаем текущий уровень загрязнения
-                let pollution = localStorage.getItem('earthPollution');
-                pollution = pollution ? parseFloat(pollution) : 50;
-                
-                // Получаем текущий баланс токенов
-                let tokens = localStorage.getItem('earthTokens');
-                tokens = tokens ? parseInt(tokens) : 0;
-                
-                // Снижаем загрязнение и начисляем токены
-                pollution = Math.max(0, pollution - reduction);
-                tokens += reward;
-                
-                // Сохраняем новые значения
-                localStorage.setItem('earthPollution', pollution.toString());
-                localStorage.setItem('earthTokens', tokens.toString());
-                
-                // Обновляем отображение баланса токенов
-                updateTokenBalance();
-                
-                // Создаем эффект пульсации токена при начислении
-                const tokenBalanceEl = document.getElementById('token-balance');
-                if (tokenBalanceEl) {
-                    tokenBalanceEl.style.animation = 'pulse 0.5s ease';
-                    setTimeout(() => {
-                        tokenBalanceEl.style.animation = '';
-                    }, 500);
-                }
-                
-                // Временно показываем сообщение об успехе
-                const originalContent = this.innerHTML;
-                const originalBackground = this.style.background;
-                
-                this.style.background = 'rgba(76, 175, 80, 0.2)';
-                this.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
-                        <i class="material-icons" style="color: #4CAF50; margin-right: 8px;">check_circle</i>
-                        <span style="color: #4CAF50; font-weight: 500;">Успешно!</span>
-                    </div>
-                `;
-                
-                // Обновляем отображение полосы загрязнения
-                if (pollutionBar && pollutionValue && pollutionStatus) {
-                    // Плавно меняем ширину полосы
-                    pollutionBar.style.transition = 'width 0.5s ease, background-color 0.5s ease';
-                    pollutionBar.style.width = `${pollution}%`;
-                    pollutionValue.textContent = `${pollution.toFixed(1)}%`;
-                    
-                    // Обновляем цвет и текст статуса
-                    if (pollution < 20) {
-                        pollutionBar.style.background = '#4CAF50'; // зеленый
-                        pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
-                        pollutionStatus.style.color = '#4CAF50';
-                    } else if (pollution < 50) {
-                        pollutionBar.style.background = '#FFC107'; // желтый
-                        pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
-                        pollutionStatus.style.color = '#FFC107';
-                    } else if (pollution < 80) {
-                        pollutionBar.style.background = '#FF9800'; // оранжевый
-                        pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
-                        pollutionStatus.style.color = '#FF9800';
-                    } else {
-                        pollutionBar.style.background = '#F44336'; // красный
-                        pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
-                        pollutionStatus.style.color = '#F44336';
-                    }
-                }
-                
-                // Блокируем кнопку на время
-                this.disabled = true;
-                
-                // Через 2 секунды восстанавливаем кнопку
-                setTimeout(() => {
-                    this.disabled = false;
-                    this.innerHTML = originalContent;
-                    this.style.background = originalBackground;
-                }, 2000);
-            });
-        });
-    }
-    
-    // Функция обновления отображения баланса токенов
-    function updateTokenBalance() {
-        // Получаем текущий баланс токенов
-        let tokens = localStorage.getItem('earthTokens');
-        tokens = tokens ? parseInt(tokens) : 0;
-        
-        // Проверяем, существует ли уже элемент баланса
-        let tokenBalanceEl = document.getElementById('token-balance');
-        
-        // Если элемент не существует, создаем его
-        if (!tokenBalanceEl) {
-            tokenBalanceEl = document.createElement('div');
-            tokenBalanceEl.id = 'token-balance';
-            tokenBalanceEl.style.cssText = `
-                position: fixed;
-                top: 60px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 16px;
-                padding: 10px 18px;
-                color: #FFFFFF;
-                font-family: 'Courier New', monospace;
-                font-weight: bold;
-                font-size: 18px;
-                backdrop-filter: blur(12px);
-                -webkit-backdrop-filter: blur(12px);
-                z-index: 997;
-                display: flex;
-                align-items: center;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 255, 255, 0.1);
-            `;
-            document.body.appendChild(tokenBalanceEl);
-        }
-        
-        // Обновляем содержимое с белым цветом
-        tokenBalanceEl.innerHTML = `
-            <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFFFFF; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">toll</i>
-            <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
-        `;
-    }
-
-    // Добавляем функцию обработки нажатий на кнопки навигации
+    // Функция для обработки навигации
     function handleNavClick(section, clickedButton) {
         const buttons = document.querySelectorAll('.nav-button');
         const tabContent = document.querySelector('.tab-content');
@@ -1517,38 +1319,6 @@
             tabInner.innerHTML = content;
         }
         
-        // Initialize TON Connect if wallet tab
-        if (section === 'wallet') {
-            // Функционал подключения кошелька будет доступен позже
-            console.log('Wallet functionality will be available later');
-        }
-        
-        // Fix rating scroll if profile tab
-        if (section === 'profile') {
-            // Настройка элементов профиля
-            console.log('Profile tab initialized');
-            
-            // Добавляем обработчики для контейнера рейтинга (если он существует)
-            const ratingContainer = document.querySelector('.rating-list-container');
-            if (ratingContainer) {
-                ratingContainer.addEventListener('touchstart', (e) => {
-                    e.stopPropagation();
-                }, { passive: true });
-                
-                ratingContainer.addEventListener('touchmove', (e) => {
-                    e.stopPropagation();
-                }, { passive: true });
-            }
-            
-            // Add telegram connect button handler (если он существует)
-            const connectButton = document.querySelector('#telegram-connect');
-            if (connectButton) {
-                connectButton.addEventListener('click', () => {
-                    window.location.href = 'https://t.me/your_bot_username';
-                });
-            }
-        }
-        
         // Настройка вкладки планеты
         if (section === 'planet') {
             // Инициализируем обработчики действий планеты
@@ -1597,6 +1367,218 @@
                 });
             }
         }
+    }
+
+    // Функция для обновления отображения баланса токенов
+    function updateTokenBalance() {
+        // Получаем текущий баланс токенов
+        let tokens = localStorage.getItem('earthTokens');
+        tokens = tokens ? parseInt(tokens) : 0;
+        
+        // Проверяем, существует ли уже элемент баланса
+        let tokenBalanceEl = document.getElementById('token-balance');
+        
+        // Если элемент не существует, создаем его
+        if (!tokenBalanceEl) {
+            tokenBalanceEl = document.createElement('div');
+            tokenBalanceEl.id = 'token-balance';
+            tokenBalanceEl.style.cssText = `
+                position: fixed;
+                top: 60px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 16px;
+                padding: 10px 18px;
+                color: #FFFFFF;
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+                font-size: 18px;
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                z-index: 997;
+                display: flex;
+                align-items: center;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 255, 255, 0.1);
+            `;
+            document.body.appendChild(tokenBalanceEl);
+        }
+        
+        // Обновляем содержимое с белым цветом
+        tokenBalanceEl.innerHTML = `
+            <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFFFFF; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">toll</i>
+            <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
+        `;
+    }
+    
+    // Функция добавления обработчиков к кнопкам действий планеты
+    function setupPlanetActions() {
+        // Получаем текущий уровень загрязнения
+        let pollution = localStorage.getItem('earthPollution');
+        pollution = pollution ? parseFloat(pollution) : 50;
+        
+        // Проверяем, был ли обновлен в текущий день
+        const lastUpdate = localStorage.getItem('pollutionLastUpdate');
+        const currentDate = new Date().toDateString();
+        
+        // Если новый день, увеличиваем загрязнение на 10%
+        if (lastUpdate !== currentDate) {
+            pollution = Math.min(100, pollution + 10);
+            localStorage.setItem('earthPollution', pollution.toString());
+            localStorage.setItem('pollutionLastUpdate', currentDate);
+        }
+        
+        // Обновляем отображение уровня загрязнения
+        const pollutionBar = document.getElementById('pollution-bar');
+        const pollutionValue = document.getElementById('pollution-value');
+        const pollutionStatus = document.getElementById('pollution-status');
+        
+        if (pollutionBar && pollutionValue && pollutionStatus) {
+            // Устанавливаем ширину полосы
+            pollutionBar.style.width = `${pollution}%`;
+            pollutionValue.textContent = `${pollution.toFixed(1)}%`;
+            
+            // Устанавливаем цвет и текст статуса в зависимости от уровня загрязнения
+            if (pollution < 20) {
+                pollutionBar.style.background = '#4CAF50'; // зеленый
+                pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
+                pollutionStatus.style.color = '#4CAF50';
+            } else if (pollution < 50) {
+                pollutionBar.style.background = '#FFC107'; // желтый
+                pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
+                pollutionStatus.style.color = '#FFC107';
+            } else if (pollution < 80) {
+                pollutionBar.style.background = '#FF9800'; // оранжевый
+                pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
+                pollutionStatus.style.color = '#FF9800';
+            } else {
+                pollutionBar.style.background = '#F44336'; // красный
+                pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
+                pollutionStatus.style.color = '#F44336';
+            }
+        }
+        
+        // Обрабатываем нажатие на кнопки очистки
+        const actionButtons = document.querySelectorAll('.action-button');
+        if (!actionButtons.length) return;
+        
+        actionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const reduction = parseFloat(this.getAttribute('data-reduction'));
+                const reward = parseInt(this.getAttribute('data-reward'));
+                
+                // Получаем текущий уровень загрязнения
+                let pollution = localStorage.getItem('earthPollution');
+                pollution = pollution ? parseFloat(pollution) : 50;
+                
+                // Получаем текущий баланс токенов
+                let tokens = localStorage.getItem('earthTokens');
+                tokens = tokens ? parseInt(tokens) : 0;
+                
+                // Снижаем загрязнение и начисляем токены
+                pollution = Math.max(0, pollution - reduction);
+                tokens += reward;
+                
+                // Сохраняем новые значения
+                localStorage.setItem('earthPollution', pollution.toString());
+                localStorage.setItem('earthTokens', tokens.toString());
+                
+                // Обновляем отображение баланса токенов
+                updateTokenBalance();
+                
+                // Создаем эффект пульсации токена при начислении
+                const tokenBalanceEl = document.getElementById('token-balance');
+                if (tokenBalanceEl) {
+                    tokenBalanceEl.style.animation = 'pulse 0.5s ease';
+                    setTimeout(() => {
+                        tokenBalanceEl.style.animation = '';
+                    }, 500);
+                }
+                
+                // Временно показываем сообщение об успехе
+                const originalContent = this.innerHTML;
+                const originalBackground = this.style.background;
+                
+                this.style.background = 'rgba(76, 175, 80, 0.2)';
+                this.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; width: 100%;">
+                        <i class="material-icons" style="color: #4CAF50; margin-right: 8px;">check_circle</i>
+                        <span style="color: #4CAF50; font-weight: 500;">Успешно!</span>
+                    </div>
+                `;
+                
+                // Обновляем отображение полосы загрязнения
+                if (pollutionBar && pollutionValue && pollutionStatus) {
+                    // Плавно меняем ширину полосы
+                    pollutionBar.style.transition = 'width 0.5s ease, background-color 0.5s ease';
+                    pollutionBar.style.width = `${pollution}%`;
+                    pollutionValue.textContent = `${pollution.toFixed(1)}%`;
+                    
+                    // Обновляем цвет и текст статуса
+                    if (pollution < 20) {
+                        pollutionBar.style.background = '#4CAF50'; // зеленый
+                        pollutionStatus.textContent = 'Отличное состояние, экосистема здорова';
+                        pollutionStatus.style.color = '#4CAF50';
+                    } else if (pollution < 50) {
+                        pollutionBar.style.background = '#FFC107'; // желтый
+                        pollutionStatus.textContent = 'Умеренное загрязнение, нужны действия по очистке';
+                        pollutionStatus.style.color = '#FFC107';
+                    } else if (pollution < 80) {
+                        pollutionBar.style.background = '#FF9800'; // оранжевый
+                        pollutionStatus.textContent = 'Высокое загрязнение, требуются срочные меры';
+                        pollutionStatus.style.color = '#FF9800';
+                    } else {
+                        pollutionBar.style.background = '#F44336'; // красный
+                        pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
+                        pollutionStatus.style.color = '#F44336';
+                    }
+                }
+                
+                // Блокируем кнопку на время
+                this.disabled = true;
+                
+                // Через 2 секунды восстанавливаем кнопку
+                setTimeout(() => {
+                    this.disabled = false;
+                    this.innerHTML = originalContent;
+                    this.style.background = originalBackground;
+                }, 2000);
+            });
+        });
+    }
+    
+    // Функция для проверки и обновления загрязнения планеты
+    function updatePlanetPollution() {
+        // Получаем текущий уровень загрязнения
+        let pollution = localStorage.getItem('earthPollution');
+        let lastUpdated = localStorage.getItem('pollutionLastUpdated');
+        
+        const currentDate = new Date().toDateString();
+        
+        // Если загрязнение не инициализировано, устанавливаем значение по умолчанию
+        if (!pollution) {
+            pollution = 50; // начальное значение 50%
+            localStorage.setItem('earthPollution', pollution);
+            localStorage.setItem('pollutionLastUpdated', currentDate);
+        } else {
+            pollution = parseFloat(pollution);
+            
+            // Если с последнего обновления прошел хотя бы день
+            if (lastUpdated !== currentDate) {
+                // Увеличиваем загрязнение на 10%
+                pollution = Math.min(100, pollution + 10);
+                localStorage.setItem('earthPollution', pollution.toString());
+                localStorage.setItem('pollutionLastUpdated', currentDate);
+            }
+        }
+        
+        return pollution;
+    }
+
+    // Функция для обновления профиля пользователя (чтобы не было ошибок)
+    function updateUserProfile() {
+        console.log('Updating user profile from Telegram data');
     }
     </script>
 </body>
