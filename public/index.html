@@ -245,6 +245,9 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
+            /* Предотвращаем сворачивание мини-аппа при прокрутке */
+            overscroll-behavior: contain;
+            overscroll-behavior-y: contain;
         }
         
         /* Добавляем размытие при прокрутке */
@@ -797,6 +800,19 @@
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
                 window.Telegram.WebApp.setBackgroundColor('#000000');
+                
+                // Предотвращаем сворачивание мини-аппа
+                window.Telegram.WebApp.enableClosingConfirmation();
+                
+                // Отключаем BackButton для предотвращения закрытия
+                if (window.Telegram.WebApp.BackButton) {
+                    window.Telegram.WebApp.BackButton.hide();
+                }
+                
+                // Отключаем жест свайпа на iOS
+                if (window.Telegram.WebApp.platform === 'ios') {
+                    window.Telegram.WebApp.disableSwipeBack();
+                }
             } catch (error) {
                 console.error('Ошибка ранней инициализации Telegram WebApp:', error);
             }
@@ -860,6 +876,18 @@
                     
                     // Предотвращаем закрытие с помощью BackButton
                     window.Telegram.WebApp.BackButton.hide();
+                    
+                    // Предотвращаем сворачивание мини-аппа
+                    window.Telegram.WebApp.enableClosingConfirmation();
+                    
+                    // Обрабатываем события скроллинга для всего документа
+                    document.addEventListener('touchmove', function(e) {
+                        // Если это не внутри tab-content-inner, блокируем прокрутку
+                        if (!e.target.closest('.tab-content-inner') || 
+                            (e.target.closest('.tab-content-inner').scrollTop <= 0 && e.touches[0].clientY > 100)) {
+                            e.preventDefault();
+                        }
+                    }, { passive: false });
                 } catch (error) {
                     console.error('Ошибка при инициализации Telegram WebApp:', error);
                     telegramWebAppLoaded = false;
@@ -1221,6 +1249,39 @@
                 // Немедленно получаем текущую высоту вьюпорта
                 const initialHeight = window.Telegram.WebApp.viewportHeight || window.innerHeight;
                 tabContent.style.height = `${initialHeight}px`;
+                
+                // Предотвращаем скрытие мини-аппа при прокрутке вкладки
+                tabInner.addEventListener('touchstart', function(e) {
+                    // Проверяем, находимся ли мы в верхней части прокрутки
+                    if (this.scrollTop <= 0 && e.touches[0].clientY > 100) {
+                        e.stopPropagation();
+                    }
+                }, { passive: false });
+                
+                tabInner.addEventListener('touchmove', function(e) {
+                    // Если уже в верхней части и пытаемся прокрутить дальше вверх
+                    if (this.scrollTop <= 0 && e.touches[0].clientY > this.dataset.lastY) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    this.dataset.lastY = e.touches[0].clientY;
+                }, { passive: false });
+                
+                tabInner.addEventListener('scroll', function() {
+                    // При достижении верха заблокируем дальнейшую прокрутку вверх
+                    if (this.scrollTop <= 0) {
+                        this.style.overscrollBehavior = 'none';
+                    } else {
+                        this.style.overscrollBehavior = 'contain';
+                    }
+                    
+                    // Обновляем размытие вверху
+                    if (this.scrollTop > 10) {
+                        this.classList.add('scrolled');
+                    } else {
+                        this.classList.remove('scrolled');
+                    }
+                });
             } catch (error) {
                 console.error('Ошибка при настройке Telegram WebApp для вкладки:', error);
             }
