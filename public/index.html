@@ -222,7 +222,7 @@
             will-change: transform, border-radius;
         }
         .tab-content.active {
-            transform: translateY(80px);
+            transform: translateY(85px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
@@ -235,7 +235,7 @@
         }
         .tab-content-inner {
             width: 100%;
-            height: calc(100% - 80px);
+            height: calc(100% - 85px);
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -245,6 +245,25 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             touch-action: pan-y;
+        }
+        
+        /* Добавляем размытие при прокрутке */
+        .tab-content-inner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(to bottom, rgba(22, 22, 27, 1) 0%, rgba(22, 22, 27, 0) 100%);
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .tab-content-inner.scrolled::before {
+            opacity: 1;
         }
         .profile-connecting {
             display: flex;
@@ -761,6 +780,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script async src="https://unpkg.com/es-module-shims/dist/es-module-shims.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script type="importmap">
     {
         "imports": {
@@ -800,7 +820,31 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM полностью загружен - начинаем инициализацию');
             
-            // Инициализируем интерфейс одинаково для всех платформ, вне зависимости от Telegram WebApp
+            // Инициализация для Telegram WebApp (если доступно)
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('Инициализация для Telegram WebApp');
+                
+                // Устанавливаем фон и расширяем приложение
+                window.Telegram.WebApp.setBackgroundColor('#16161b');
+                window.Telegram.WebApp.expand();
+                
+                // Скрываем главную кнопку и отключаем её
+                window.Telegram.WebApp.MainButton.hide();
+                
+                // Отключаем жест смахивания назад на iOS
+                window.Telegram.WebApp.disableSwipeBack();
+                
+                // Отключаем подтверждение закрытия
+                window.Telegram.WebApp.enableClosingConfirmation();
+                
+                // Отключаем возможность сворачивания вкладок
+                window.Telegram.WebApp.onEvent('back_button_pressed', function() {
+                    console.log('Попытка закрыть приложение предотвращена');
+                    return false;
+                });
+            }
+            
+            // Инициализируем интерфейс одинаково для всех платформ
             const navPanel = document.querySelector('.nav-panel');
             if (navPanel) {
                 navPanel.classList.add('visible');
@@ -1135,6 +1179,33 @@
         }
         
         console.log(`Вкладка ${section} полностью настроена`);
+
+        // Добавляем обработчик события прокрутки для эффекта размытия верхней части
+        tabInner.addEventListener('scroll', function() {
+            if (this.scrollTop > 10) {
+                this.classList.add('scrolled');
+            } else {
+                this.classList.remove('scrolled');
+            }
+        });
+        
+        // Включаем поддержку прокрутки для вкладок в Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            console.log('Настройка прокрутки для Telegram WebApp');
+            window.Telegram.WebApp.setBackgroundColor('#16161b');
+            window.Telegram.WebApp.expand();
+            
+            // Разрешаем прокрутку внутри вкладки
+            window.Telegram.WebApp.onEvent('viewportChanged', function() {
+                const height = window.Telegram.WebApp.viewportHeight;
+                console.log(`Изменение высоты вьюпорта: ${height}px`);
+                
+                // Обновляем высоту вкладки для корректной прокрутки
+                if (tabContent && tabContent.classList.contains('active')) {
+                    tabContent.style.height = `${height}px`;
+                }
+            });
+        }
     }
 
     // Функция для обновления отображения баланса токенов
@@ -1157,7 +1228,7 @@
             tokenBalanceEl.id = 'token-balance';
             tokenBalanceEl.style.cssText = `
                 position: fixed;
-                top: 80px;
+                top: 85px;
                 left: 50%;
                 transform: translateX(-50%);
                 background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
@@ -1178,7 +1249,7 @@
             document.body.appendChild(tokenBalanceEl);
         } else {
             // Обновляем позицию, если элемент уже существует
-            tokenBalanceEl.style.top = '80px';
+            tokenBalanceEl.style.top = '85px';
         }
         
         // Обновляем содержимое с белым цветом
