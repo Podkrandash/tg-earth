@@ -220,12 +220,17 @@
             z-index: 999;
             pointer-events: none;
             will-change: transform, border-radius;
+            /* Предотвращаем любые взаимодействия, которые могут привести к сворачиванию */
+            overscroll-behavior: none;
+            touch-action: none;
         }
         .tab-content.active {
             transform: translateY(90px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
+            /* Даже в активном состоянии блокируем все взаимодействия, которые могут привести к сворачиванию */
+            overscroll-behavior: none;
         }
         .tab-content.dragging {
             transition: none;
@@ -244,10 +249,15 @@
             position: relative;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            /* Разрешаем только вертикальную прокрутку, но предотвращаем сворачивание */
             touch-action: pan-y;
             /* Предотвращаем сворачивание мини-аппа при прокрутке */
             overscroll-behavior: contain;
             overscroll-behavior-y: contain;
+            /* Дополнительные свойства для предотвращения сворачивания при прокрутке */
+            -ms-scroll-chaining: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
         }
         
         /* Добавляем размытие при прокрутке */
@@ -817,15 +827,17 @@
         if (window.Telegram && window.Telegram.WebApp) {
             try {
                 console.log('Ранняя инициализация Telegram WebApp');
+                
+                // Инициализируем WebApp и сразу расширяем на весь экран
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
                 window.Telegram.WebApp.setBackgroundColor('#000000');
                 
-                // Усиленное предотвращение сворачивания мини-аппа
+                // Максимально усиленное предотвращение сворачивания мини-аппа
                 window.Telegram.WebApp.enableClosingConfirmation();
                 window.Telegram.WebApp.isClosingConfirmationEnabled = true;
                 
-                // Отключаем BackButton для предотвращения закрытия
+                // Скрываем кнопку "Назад" для предотвращения закрытия
                 if (window.Telegram.WebApp.BackButton) {
                     window.Telegram.WebApp.BackButton.hide();
                     window.Telegram.WebApp.BackButton.isVisible = false;
@@ -836,26 +848,68 @@
                     window.Telegram.WebApp.disableSwipeBack();
                 }
                 
+                // Интервал для удержания приложения в расширенном состоянии
+                // Вызывается каждые 200мс для гарантии полноэкранного режима
+                const keepExpanded = setInterval(() => {
+                    window.Telegram.WebApp.expand();
+                    window.Telegram.WebApp.enableClosingConfirmation();
+                    if (window.Telegram.WebApp.BackButton) {
+                        window.Telegram.WebApp.BackButton.hide();
+                    }
+                }, 200);
+                
+                // Удаляем интервал, если страница закрывается
+                window.addEventListener('beforeunload', () => {
+                    clearInterval(keepExpanded);
+                });
+                
                 // Глобальные обработчики для предотвращения сворачивания
-                document.addEventListener('touchmove', function(e) {
-                    if (!e.target.closest('.tab-content-inner') || 
-                        (e.target.closest('.tab-content-inner').scrollTop <= 0 && e.touches[0].clientY > 100)) {
+                document.addEventListener('touchstart', function(e) {
+                    // Спецификаторы для мест, где разрешен скролл
+                    const isScrollableElement = e.target.closest('.tab-content-inner');
+                    
+                    // Запоминаем начальную точку касания для скролла
+                    if (isScrollableElement) {
+                        isScrollableElement.dataset.touchStartY = e.touches[0].clientY;
+                    } else {
+                        // Предотвращаем все касания вне скроллируемых областей
                         e.preventDefault();
+                    }
+                    
+                    // Принудительно разворачиваем WebApp при каждом касании
+                    window.Telegram.WebApp.expand();
+                }, { passive: false });
+                
+                document.addEventListener('touchmove', function(e) {
+                    const element = e.target.closest('.tab-content-inner');
+                    // Если элемент не скроллируемый или мы в верхней части и пытаемся скроллить вниз
+                    if (!element || 
+                        (element.scrollTop <= 0 && 
+                         e.touches[0].clientY > parseFloat(element.dataset.touchStartY || 0))) {
+                        e.preventDefault();
+                        // Дополнительно расширяем WebApp для предотвращения сворачивания
+                        window.Telegram.WebApp.expand();
                     }
                 }, { passive: false });
                 
-                // Блокируем жесты масштабирования, которые могут привести к сворачиванию
-                document.addEventListener('gesturestart', function(e) {
-                    e.preventDefault();
-                }, { passive: false });
+                // Блокируем все жесты масштабирования
+                const preventGesture = function(e) { e.preventDefault(); };
+                document.addEventListener('gesturestart', preventGesture, { passive: false });
+                document.addEventListener('gesturechange', preventGesture, { passive: false });
+                document.addEventListener('gestureend', preventGesture, { passive: false });
                 
-                document.addEventListener('gesturechange', function(e) {
-                    e.preventDefault();
-                }, { passive: false });
+                // Предотвращаем любые события, которые могут вызвать сворачивание
+                document.addEventListener('scroll', function() {
+                    window.Telegram.WebApp.expand();
+                }, { passive: true });
                 
-                document.addEventListener('gestureend', function(e) {
-                    e.preventDefault();
-                }, { passive: false });
+                // Устанавливаем стили для тела документа, чтобы предотвратить любые скроллы
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                document.body.style.height = '100%';
+                document.body.style.overscrollBehavior = 'none';
+                
             } catch (error) {
                 console.error('Ошибка ранней инициализации Telegram WebApp:', error);
             }
@@ -897,6 +951,7 @@
             document.body.style.position = 'fixed';
             document.body.style.width = '100%';
             document.body.style.height = '100%';
+            document.body.style.overscrollBehavior = 'none';
             
             // Убеждаемся, что Telegram WebApp API доступен
             let telegramWebAppLoaded = !!window.Telegram?.WebApp;
@@ -924,17 +979,29 @@
                     window.Telegram.WebApp.setBackgroundColor('#16161b');
                     
                     // Предотвращаем закрытие с помощью BackButton
+                    if (window.Telegram.WebApp.BackButton) {
                     window.Telegram.WebApp.BackButton.hide();
+                    }
                     
                     // Предотвращаем сворачивание мини-аппа
                     window.Telegram.WebApp.enableClosingConfirmation();
                     
-                    // Периодически проверяем и переустанавливаем защиту от сворачивания
+                    // Агрессивный режим предотвращения сворачивания - вызываем expand и проверки часто
+                    // Период 100мс позволяет приложению быстро реагировать на попытки свернуть его
                     const protectFromCollapsing = setInterval(() => {
                         window.Telegram.WebApp.expand();
                         window.Telegram.WebApp.enableClosingConfirmation();
+                        if (window.Telegram.WebApp.BackButton) {
                         window.Telegram.WebApp.BackButton.hide();
-                    }, 1000);
+                        }
+                    }, 100);
+                    
+                    // Дополнительная защита - удваиваем интервал для надежности
+                    setTimeout(() => {
+                        setInterval(() => {
+                            window.Telegram.WebApp.expand();
+                        }, 200);
+                    }, 50);
                     
                     // Останавливаем интервал при закрытии страницы
                     window.addEventListener('beforeunload', () => {
@@ -944,14 +1011,16 @@
                     // Глобальные обработчики для предотвращения сворачивания мини-аппа
                     document.addEventListener('touchstart', function(e) {
                         // Если мы не внутри tab-content-inner, предотвращаем событие
-                        if (!e.target.closest('.tab-content-inner')) {
+                        const scrollableElement = e.target.closest('.tab-content-inner');
+                        if (!scrollableElement) {
                             e.preventDefault();
+                        } else {
+                            // Сохраняем начальную позицию Y для касаний в скроллируемой области
+                            scrollableElement.dataset.startY = e.touches[0].clientY;
                         }
                         
-                        // Сохраняем начальную позицию Y для всех касаний
-                        if (e.target.closest('.tab-content-inner')) {
-                            e.target.closest('.tab-content-inner').dataset.startY = e.touches[0].clientY;
-                        }
+                        // Расширяем WebApp при каждом касании
+                        window.Telegram.WebApp.expand();
                     }, { passive: false });
                     
                     // Блокируем скроллинг для всего документа, кроме контента вкладок
@@ -962,25 +1031,40 @@
                             (innerTab.scrollTop <= 0 && e.touches[0].clientY > parseFloat(innerTab.dataset.startY || 0))) {
                             e.preventDefault();
                             
-                            // Дополнительно расширяем WebApp для большей надежности
-                            if (window.Telegram && window.Telegram.WebApp) {
+                            // Расширяем WebApp для большей надежности
                                 window.Telegram.WebApp.expand();
-                            }
                         }
                     }, { passive: false });
                     
                     // Предотвращаем любые жесты масштабирования
-                    document.addEventListener('gesturestart', function(e) {
+                    const preventGesture = function(e) { 
                         e.preventDefault();
-                    }, { passive: false });
+                        window.Telegram.WebApp.expand();
+                    };
+                    document.addEventListener('gesturestart', preventGesture, { passive: false });
+                    document.addEventListener('gesturechange', preventGesture, { passive: false });
+                    document.addEventListener('gestureend', preventGesture, { passive: false });
                     
-                    document.addEventListener('gesturechange', function(e) {
-                        e.preventDefault();
-                    }, { passive: false });
+                    // Дополнительные обработчики для предотвращения сворачивания
+                    document.addEventListener('scroll', function() {
+                        window.Telegram.WebApp.expand();
+                    }, { passive: true });
                     
-                    document.addEventListener('gestureend', function(e) {
-                        e.preventDefault();
-                    }, { passive: false });
+                    window.addEventListener('resize', function() {
+                        window.Telegram.WebApp.expand();
+                    });
+                    
+                    window.addEventListener('focus', function() {
+                        window.Telegram.WebApp.expand();
+                    });
+                    
+                    // Обработчик для любых событий, которые могут вызвать системный UI
+                    document.addEventListener('visibilitychange', function() {
+                        if (document.visibilityState === 'visible') {
+                            window.Telegram.WebApp.expand();
+                        }
+                    });
+                    
                 } catch (error) {
                     console.error('Ошибка при инициализации Telegram WebApp:', error);
                     telegramWebAppLoaded = false;
@@ -1124,6 +1208,18 @@
     function handleNavClick(section, clickedButton) {
         console.log(`handleNavClick: открытие вкладки ${section}`);
         
+        // Расширяем Telegram WebApp при открытии вкладки
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.expand();
+            window.Telegram.WebApp.enableClosingConfirmation();
+            if (window.Telegram.WebApp.BackButton) {
+                window.Telegram.WebApp.BackButton.hide();
+            }
+            
+            // Обновляем цвет фона WebApp при открытии вкладки
+            window.Telegram.WebApp.setBackgroundColor('#16161b');
+        }
+        
         const buttons = document.querySelectorAll('.nav-button');
         const tabContent = document.querySelector('.tab-content');
         const tabInner = document.querySelector('.tab-content-inner');
@@ -1132,6 +1228,11 @@
             console.error('Элементы вкладки не найдены!');
             return;
         }
+        
+        // Настраиваем параметры CSS для элементов вкладки
+        tabContent.style.overscrollBehavior = 'none';
+        tabInner.style.overscrollBehavior = 'contain';
+        tabInner.style.overscrollBehaviorY = 'contain';
         
         // Отмечаем активную кнопку
         buttons.forEach(btn => btn.classList.remove('active'));
@@ -1845,38 +1946,105 @@
     <script>
     // Добавляем функцию для настройки скроллинга планеты
     function setupPlanetScrollHandlers() {
-        // Корректируем высоту контейнера для правильного скроллинга
+        console.log('Настройка обработчиков скроллинга для вкладки планеты');
+        
+        // Корректируем контейнеры для правильного скроллинга
         const planetContainer = document.querySelector('.planet-container');
         const tabInner = document.querySelector('.tab-content-inner');
+        const tabContent = document.querySelector('.tab-content');
         
-        if (planetContainer && tabInner) {
-            // Убеждаемся, что контейнер планеты имеет правильные стили для скроллинга
+        if (planetContainer && tabInner && tabContent) {
+            // Убеждаемся, что WebApp развернут и подготовлен для скроллинга
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.expand();
+                window.Telegram.WebApp.enableClosingConfirmation();
+                if (window.Telegram.WebApp.BackButton) {
+                    window.Telegram.WebApp.BackButton.hide();
+                }
+            }
+            
+            // Настраиваем CSS-свойства для вкладки планеты
+            tabContent.style.overscrollBehavior = 'none';
+            
+            // Настройка контейнера планеты
             planetContainer.style.overflowY = 'visible';
             planetContainer.style.touchAction = 'pan-y';
             planetContainer.style.webkitOverflowScrolling = 'touch';
+            planetContainer.style.overscrollBehavior = 'contain';
             
-            // Повторно назначаем обработчики скроллинга для tabInner
-            tabInner.addEventListener('scroll', function() {
-                // При достижении верха заблокируем дальнейшую прокрутку вверх
+            // Настройка внутреннего контейнера вкладки
+            tabInner.style.overscrollBehavior = 'contain';
+            tabInner.style.overscrollBehaviorY = 'contain';
+            tabInner.style.touchAction = 'pan-y';
+            tabInner.style.webkitOverflowScrolling = 'touch';
+            
+            // Сохраняем начальную позицию касания для обработки
+            let touchStartY = 0;
+            
+            // Удаляем существующие обработчики, чтобы избежать дублирования
+            tabInner.removeEventListener('touchstart', planetTouchStartHandler);
+            tabInner.removeEventListener('touchmove', planetTouchMoveHandler);
+            tabInner.removeEventListener('scroll', planetScrollHandler);
+            
+            // Настраиваем обработчики сенсорных событий
+            function planetTouchStartHandler(e) {
+                touchStartY = e.touches[0].clientY;
+                
+                // Расширяем WebApp при каждом касании
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.expand();
+                }
+            }
+            
+            function planetTouchMoveHandler(e) {
+                // Если в верхней части скролла и пытаемся скроллить вниз
+                if (tabInner.scrollTop <= 0 && e.touches[0].clientY > touchStartY) {
+                    // Предотвращаем скролл, который может привести к сворачиванию
+                    e.preventDefault();
+                    
+                    // Принудительно разворачиваем WebApp
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.expand();
+                    }
+                }
+            }
+            
+            function planetScrollHandler() {
+                // При достижении верха примениям особую обработку
                 if (this.scrollTop <= 0) {
                     this.style.overscrollBehavior = 'none';
+                    
+                    // Расширяем WebApp при достижении верха
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.expand();
+                    }
                 } else {
                     this.style.overscrollBehavior = 'contain';
                 }
                 
-                // Обновляем размытие вверху
+                // Обновляем размытие вверху при скролле
                 if (this.scrollTop > 10) {
                     this.classList.add('scrolled');
                 } else {
                     this.classList.remove('scrolled');
                 }
-            });
+            }
             
-            // Добавляем обработчик для действий по очистке планеты
+            // Добавляем обработчики
+            tabInner.addEventListener('touchstart', planetTouchStartHandler, { passive: false });
+            tabInner.addEventListener('touchmove', planetTouchMoveHandler, { passive: false });
+            tabInner.addEventListener('scroll', planetScrollHandler, { passive: true });
+            
+            // Настраиваем кнопки действий для корректной работы с касаниями
             const actionButtons = document.querySelectorAll('.action-button');
             actionButtons.forEach(button => {
-                button.style.touchAction = 'auto';
+                button.style.touchAction = 'manipulation';
+                button.style.webkitTapHighlightColor = 'transparent';
             });
+            
+            console.log('Обработчики скроллинга для вкладки планеты настроены');
+        } else {
+            console.error('Не найдены необходимые элементы для настройки скроллинга планеты');
         }
     }
     </script>
