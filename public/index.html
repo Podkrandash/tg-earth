@@ -796,54 +796,15 @@
         <div class="tab-content-inner">
         </div>
     </div>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM полностью загружен - начинаем инициализацию');
             
-            // Единая инициализация для Telegram WebApp и обычного сайта
-            const tg = window.Telegram?.WebApp;
-            console.log('Telegram WebApp:', tg ? 'доступен' : 'недоступен');
-            
-            // Инициализируем интерфейс одинаково для всех платформ
+            // Инициализируем интерфейс одинаково для всех платформ, вне зависимости от Telegram WebApp
             const navPanel = document.querySelector('.nav-panel');
             if (navPanel) {
                 navPanel.classList.add('visible');
                 console.log('Панель навигации отображена');
-            }
-            
-            // Специфичная настройка для Telegram WebApp, если он доступен
-            if (tg) {
-                console.log('Настройка Telegram WebApp');
-                tg.setBackgroundColor('#000000');
-                tg.expand();
-                tg.disableClosingConfirmation();
-                
-                // Отключаем кнопки Telegram
-                if (tg.MainButton) {
-                    tg.MainButton.hide();
-                }
-                if (tg.BackButton) {
-                    tg.BackButton.hide();
-                }
-                if (tg.platform === 'ios') {
-                    tg.enableSwipeBack(false);
-                }
-                
-                // Запрещаем скрытие приложения при свайпе
-                tg.onEvent('viewportChanged', () => {
-                    tg.expand();
-                });
-                
-                // Инициализация Telegram WebApp
-                tg.ready(() => {
-                    console.log('Telegram WebApp ready');
-                    
-                    // Отправляем информацию о пользователе на сервер, если доступна
-                    if (tg.initDataUnsafe?.user) {
-                        sendUserData(tg.initDataUnsafe.user);
-                    }
-                });
             }
             
             // Блокируем стандартные жесты на мобильных устройствах для всех платформ
@@ -853,11 +814,9 @@
                 }
             }, { passive: false });
             
-            // Общая инициализация для всех платформ - убедимся, что это выполняется в любом случае
+            // Общая инициализация для всех платформ
             console.log('Выполняем общую инициализацию');
             updateTokenBalance();
-            updateUserProfile();
-            checkTasksCompletion();
             setupNavigationButtons();
             setupSceneInteraction();
             
@@ -942,38 +901,9 @@
             }
         });
         
-        // Функция для отправки данных пользователя
-        async function sendUserData(user) {
-            try {
-                const tg = window.Telegram?.WebApp;
-                if (!tg || !tg.initDataUnsafe) return;
-                
-                const response = await fetch('https://tg-earth-4dzw.vercel.app/api/users', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        id: user.id,
-                        first_name: user.first_name,
-                        last_name: user.last_name,
-                        username: user.username,
-                        photo_url: user.photo_url,
-                        auth_date: tg.initDataUnsafe.auth_date,
-                        hash: tg.initDataUnsafe.hash
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to send user data');
-                }
-            } catch (error) {
-                console.error('Error sending user data:', error);
-            }
-        }
-
         // Функция для закрытия вкладки
         window.closeTab = function() {
+            console.log('Закрытие вкладки');
             const tabContent = document.querySelector('.tab-content');
             const tabInner = document.querySelector('.tab-content-inner');
             const activeButton = document.querySelector('.nav-button.active');
@@ -995,113 +925,9 @@
                 tabContent.style.borderTopRightRadius = '';
             }, 300);
         };
-
-        // Функция для проверки выполнения заданий
-        function checkTasksCompletion() {
-            console.log('Checking task completion status');
-            
-            // Если в Telegram, проверяем выполнение заданий через API
-            if (window.Telegram?.WebApp?.initDataUnsafe) {
-                const tg = window.Telegram.WebApp;
-                
-                try {
-                    fetch('https://tg-earth-4dzw.vercel.app/api/check-tasks', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            userId: tg.initDataUnsafe?.user?.id,
-                            auth_date: tg.initDataUnsafe?.auth_date,
-                            hash: tg.initDataUnsafe?.hash
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        // Обновляем состояние кнопки подписки
-                        const joinButton = document.querySelector('#join-community-btn');
-                        if (joinButton && data.isSubscribed) {
-                            joinButton.classList.add('completed');
-                            joinButton.disabled = true;
-                            joinButton.innerHTML = `
-                                <i class="material-icons">check_circle</i>
-                                Completed
-                            `;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Failed to check tasks completion:', error);
-                    });
-                } catch (error) {
-                    console.error('Error checking tasks:', error);
-                }
-            }
-        }
-
-        // Функция для обновления профиля пользователя
-        function updateUserProfile() {
-            console.log('Updating user profile from Telegram data');
-            
-            const tg = window.Telegram?.WebApp;
-            if (!tg || !tg.initDataUnsafe?.user) return;
-            
-            const user = tg.initDataUnsafe.user;
-            
-            // Сохраняем информацию о пользователе
-            localStorage.setItem('telegramUserId', user.id);
-            if (user.username) localStorage.setItem('telegramUsername', user.username);
-            if (user.first_name) localStorage.setItem('telegramFirstName', user.first_name);
-            if (user.last_name) localStorage.setItem('telegramLastName', user.last_name);
-            
-            // Обновляем отображение профиля, если вкладка с профилем открыта
-            const profileTab = document.querySelector('.tab-content-inner');
-            const activeButton = document.querySelector('.nav-button.active');
-            
-            if (profileTab && activeButton && activeButton.getAttribute('data-section') === 'profile') {
-                // Запускаем функцию showProfile с данными пользователя
-                showProfile();
-            }
-        }
     </script>
     <script type="module" src="/js/main.js"></script>
     <script>
-    // Функция проверки Telegram окружения
-    function isRunningInTelegram() {
-        return window.Telegram?.WebApp !== undefined;
-    }
-
-    // Функция получения реальных пользователей (заглушка, пока нет бэкенда)
-    function getRealUsers() {
-        return [];
-    }
-
-    // Функция показа профиля
-    function showProfile() {
-        const tabInner = document.querySelector('.tab-content-inner');
-        // Используем локальное изображение вместо внешнего placeholder
-        const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23666"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="35" fill="%23fff">P</text></svg>';
-        
-        tabInner.innerHTML = `
-            <h3>Profile</h3>
-            <button class="close-button" type="button" onclick="window.closeTab()">
-                <i class="material-icons">close</i>
-            </button>
-            <div class="profile-header">
-                <div class="profile-avatar">
-                    <img src="${defaultAvatar}" alt="Profile Avatar">
-                </div>
-                <div class="profile-info">
-                    <h4 class="profile-name">Пользователь Earth 3D</h4>
-                    <p class="profile-bio">Подробная информация профиля будет доступна позже</p>
-                </div>
-                <div class="profile-rating">
-                    <p class="rating-number">#-</p>
-                    <p class="rating-label">Rating</p>
-                </div>
-            </div>
-        `;
-    }
-    
     // Функция для обработки навигации
     function handleNavClick(section, clickedButton) {
         console.log(`handleNavClick: открытие вкладки ${section}`);
@@ -1294,14 +1120,7 @@
                         e.preventDefault();
                         e.stopPropagation();
                         console.log('Открытие ссылки сообщества');
-                        
-                        if (window.Telegram?.WebApp) {
-                            window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
-                                try_instant_view: false
-                            });
-                        } else {
-                            window.location.href = 'https://t.me/NotEarthCommunity';
-                        }
+                        window.location.href = 'https://t.me/NotEarthCommunity';
                     }, { passive: false });
                 });
             } else {
@@ -1588,6 +1407,34 @@
         console.log('Инициализация начального уровня загрязнения');
         localStorage.setItem('earthPollution', '50');
         localStorage.setItem('pollutionLastUpdate', new Date().toDateString());
+    }
+    </script>
+    <script>
+    // Функция показа профиля
+    function showProfile() {
+        const tabInner = document.querySelector('.tab-content-inner');
+        // Используем локальное изображение вместо внешнего placeholder
+        const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="%23666"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="35" fill="%23fff">P</text></svg>';
+        
+        tabInner.innerHTML = `
+            <h3>Profile</h3>
+            <button class="close-button" type="button" onclick="window.closeTab()">
+                <i class="material-icons">close</i>
+            </button>
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <img src="${defaultAvatar}" alt="Profile Avatar">
+                </div>
+                <div class="profile-info">
+                    <h4 class="profile-name">Пользователь Earth 3D</h4>
+                    <p class="profile-bio">Подробная информация профиля будет доступна позже</p>
+                </div>
+                <div class="profile-rating">
+                    <p class="rating-number">#-</p>
+                    <p class="rating-label">Rating</p>
+                </div>
+            </div>
+        `;
     }
     </script>
 </body>
