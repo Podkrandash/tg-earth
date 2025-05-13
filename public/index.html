@@ -222,7 +222,7 @@
             will-change: transform, border-radius;
         }
         .tab-content.active {
-            transform: translateY(60px);
+            transform: translateY(80px);
             pointer-events: auto;
             border-top-left-radius: 24px;
             border-top-right-radius: 24px;
@@ -235,7 +235,7 @@
         }
         .tab-content-inner {
             width: 100%;
-            height: calc(100% - 60px);
+            height: calc(100% - 80px);
             padding: 24px;
             box-sizing: border-box;
             color: rgba(255, 255, 255, 0.9);
@@ -1157,7 +1157,7 @@
             tokenBalanceEl.id = 'token-balance';
             tokenBalanceEl.style.cssText = `
                 position: fixed;
-                top: 60px;
+                top: 80px;
                 left: 50%;
                 transform: translateX(-50%);
                 background: linear-gradient(135deg, rgba(18, 18, 23, 0.9), rgba(34, 34, 42, 0.9));
@@ -1176,6 +1176,9 @@
                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(255, 255, 255, 0.1);
             `;
             document.body.appendChild(tokenBalanceEl);
+        } else {
+            // Обновляем позицию, если элемент уже существует
+            tokenBalanceEl.style.top = '80px';
         }
         
         // Обновляем содержимое с белым цветом
