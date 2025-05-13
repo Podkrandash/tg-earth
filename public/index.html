@@ -799,17 +799,22 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM полностью загружен - начинаем инициализацию');
+            
             // Единая инициализация для Telegram WebApp и обычного сайта
             const tg = window.Telegram?.WebApp;
+            console.log('Telegram WebApp:', tg ? 'доступен' : 'недоступен');
             
             // Инициализируем интерфейс одинаково для всех платформ
             const navPanel = document.querySelector('.nav-panel');
             if (navPanel) {
                 navPanel.classList.add('visible');
+                console.log('Панель навигации отображена');
             }
             
             // Специфичная настройка для Telegram WebApp, если он доступен
             if (tg) {
+                console.log('Настройка Telegram WebApp');
                 tg.setBackgroundColor('#000000');
                 tg.expand();
                 tg.disableClosingConfirmation();
@@ -848,34 +853,59 @@
                 }
             }, { passive: false });
             
-            // Общая инициализация для всех платформ
-            // Обновляем отображение и настраиваем интерфейс
+            // Общая инициализация для всех платформ - убедимся, что это выполняется в любом случае
+            console.log('Выполняем общую инициализацию');
             updateTokenBalance();
             updateUserProfile();
             checkTasksCompletion();
             setupNavigationButtons();
-            
-            // Настройка взаимодействия со сценой
             setupSceneInteraction();
             
             // Настройка обработчиков для кнопок навигации
             function setupNavigationButtons() {
+                console.log('Настройка кнопок навигации');
                 const navButtons = document.querySelectorAll('.nav-button');
-                if (!navButtons.length) return;
+                console.log(`Найдено ${navButtons.length} кнопок навигации`);
                 
-                navButtons.forEach(button => {
+                if (!navButtons.length) {
+                    console.error('Кнопки навигации не найдены!');
+                    return;
+                }
+                
+                navButtons.forEach((button, index) => {
                     // Удаляем существующие обработчики перед добавлением новых
                     const newButton = button.cloneNode(true);
                     button.parentNode.replaceChild(newButton, button);
+                    
+                    const section = newButton.getAttribute('data-section');
+                    console.log(`Настройка кнопки ${index}: ${section}`);
                     
                     newButton.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         
                         const section = this.getAttribute('data-section');
-                        if (!section) return;
+                        if (!section) {
+                            console.error('Секция не указана для кнопки');
+                            return;
+                        }
                         
-                        console.log(`[Navigation] Clicked on ${section} button`);
+                        console.log(`[Navigation] Клик по кнопке ${section}`);
+                        handleNavClick(section, this);
+                    }, { passive: false });
+                    
+                    // Добавляем также обработчик touchend для лучшей мобильной поддержки
+                    newButton.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const section = this.getAttribute('data-section');
+                        if (!section) {
+                            console.error('Секция не указана для кнопки (touchend)');
+                            return;
+                        }
+                        
+                        console.log(`[Navigation] Touchend на кнопке ${section}`);
                         handleNavClick(section, this);
                     }, { passive: false });
                 });
@@ -883,6 +913,7 @@
             
             // Настройка обработчиков для сцены
             function setupSceneInteraction() {
+                console.log('Настройка взаимодействия со сценой');
                 const sceneContainer = document.getElementById('scene-container');
                 if (sceneContainer) {
                     sceneContainer.addEventListener('click', function(e) {
@@ -892,8 +923,11 @@
                         const navPanel = document.querySelector('.nav-panel');
                         if (navPanel && !navPanel.classList.contains('visible')) {
                             navPanel.classList.add('visible');
+                            console.log('Панель навигации показана по клику на сцену');
                         }
                     }, { passive: false });
+                } else {
+                    console.error('Контейнер сцены не найден!');
                 }
                 
                 // Обработка закрытия вкладки
@@ -901,6 +935,7 @@
                     if (e.target.closest('.close-button')) {
                         e.preventDefault();
                         e.stopPropagation();
+                        console.log('Закрытие вкладки по клику на кнопку закрытия');
                         window.closeTab();
                     }
                 }, { passive: false });
@@ -1069,9 +1104,16 @@
     
     // Функция для обработки навигации
     function handleNavClick(section, clickedButton) {
+        console.log(`handleNavClick: открытие вкладки ${section}`);
+        
         const buttons = document.querySelectorAll('.nav-button');
         const tabContent = document.querySelector('.tab-content');
         const tabInner = document.querySelector('.tab-content-inner');
+        
+        if (!tabContent || !tabInner) {
+            console.error('Элементы вкладки не найдены!');
+            return;
+        }
         
         buttons.forEach(btn => btn.classList.remove('active'));
         clickedButton.classList.add('active');
@@ -1080,6 +1122,7 @@
         
         switch(section) {
             case 'wallet':
+                console.log('Загрузка содержимого вкладки "Wallet"');
                 content = `
                     <h3>Wallet</h3>
                     <button class="close-button" type="button">
@@ -1098,9 +1141,11 @@
                 `;
                 break;
             case 'profile':
+                console.log('Загрузка содержимого вкладки "Profile"');
                 showProfile();
                 break;
             case 'planet':
+                console.log('Загрузка содержимого вкладки "Planet"');
                 content = `
                     <h3>Планета</h3>
                     <button class="close-button" type="button">
@@ -1186,6 +1231,7 @@
                 `;
                 break;
             case 'tasks':
+                console.log('Загрузка содержимого вкладки "Tasks"');
                 content = `
                     <h3>Available Tasks</h3>
                     <button class="close-button" type="button">
@@ -1206,19 +1252,16 @@
                     </div>
                 `;
                 break;
+            default:
+                console.error(`Неизвестная секция: ${section}`);
+                return;
         }
         
         if (section !== 'profile') {
             tabInner.innerHTML = content;
         }
         
-        // Настройка вкладки планеты
-        if (section === 'planet') {
-            // Инициализируем обработчики действий планеты
-            setTimeout(() => {
-                setupPlanetActions();
-            }, 100);
-        }
+        console.log(`Содержимое вкладки ${section} загружено`);
         
         // Update close button handler
         const closeButton = tabInner.querySelector('.close-button');
@@ -1227,11 +1270,12 @@
                 closeButton.addEventListener(eventType, (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('Закрытие вкладки по кнопке');
                     window.closeTab();
                 }, { passive: false });
             });
         } else {
-            console.warn('Close button not found in the current tab');
+            console.warn('Кнопка закрытия не найдена в текущей вкладке');
         }
         
         // Show tab content
@@ -1240,14 +1284,16 @@
             tabInner.style.opacity = '1';
         }, 50);
 
-        // Update task button handler
+        // Установка обработчиков для кнопок в зависимости от вкладки
         if (section === 'tasks') {
+            console.log('Настройка кнопок задач');
             const joinButton = document.querySelector('#join-community-btn');
             if (joinButton) {
                 ['touchstart', 'click'].forEach(eventType => {
                     joinButton.addEventListener(eventType, (e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        console.log('Открытие ссылки сообщества');
                         
                         if (window.Telegram?.WebApp) {
                             window.Telegram.WebApp.openLink('https://t.me/NotEarthCommunity', {
@@ -1258,21 +1304,36 @@
                         }
                     }, { passive: false });
                 });
+            } else {
+                console.warn('Кнопка подключения к сообществу не найдена');
             }
+        } else if (section === 'planet') {
+            console.log('Настройка действий для вкладки Планета');
+            // Задержка для уверенности, что DOM полностью обновлен
+            setTimeout(() => {
+                setupPlanetActions();
+            }, 50);
         }
+        
+        console.log(`Вкладка ${section} полностью настроена`);
     }
 
     // Функция для обновления отображения баланса токенов
     function updateTokenBalance() {
+        console.log('Обновление отображения баланса токенов');
+        
         // Получаем текущий баланс токенов
         let tokens = localStorage.getItem('earthTokens');
         tokens = tokens ? parseInt(tokens) : 0;
+        
+        console.log(`Текущий баланс токенов: ${tokens}`);
         
         // Проверяем, существует ли уже элемент баланса
         let tokenBalanceEl = document.getElementById('token-balance');
         
         // Если элемент не существует, создаем его
         if (!tokenBalanceEl) {
+            console.log('Создаем элемент баланса токенов');
             tokenBalanceEl = document.createElement('div');
             tokenBalanceEl.id = 'token-balance';
             tokenBalanceEl.style.cssText = `
@@ -1303,13 +1364,19 @@
             <i class="material-icons" style="margin-right: 10px; font-size: 20px; color: #FFFFFF; text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);">toll</i>
             <span style="letter-spacing: 1.2px;">${tokens} EARTH</span>
         `;
+        
+        console.log('Отображение баланса токенов обновлено');
     }
     
     // Функция добавления обработчиков к кнопкам действий планеты
     function setupPlanetActions() {
+        console.log('Настройка действий планеты');
+        
         // Получаем текущий уровень загрязнения
         let pollution = localStorage.getItem('earthPollution');
         pollution = pollution ? parseFloat(pollution) : 50;
+        
+        console.log(`Текущий уровень загрязнения: ${pollution}%`);
         
         // Проверяем, был ли обновлен в текущий день
         const lastUpdate = localStorage.getItem('pollutionLastUpdate');
@@ -1317,6 +1384,7 @@
         
         // Если новый день, увеличиваем загрязнение на 10%
         if (lastUpdate !== currentDate) {
+            console.log('Новый день, увеличиваем загрязнение на 10%');
             pollution = Math.min(100, pollution + 10);
             localStorage.setItem('earthPollution', pollution.toString());
             localStorage.setItem('pollutionLastUpdate', currentDate);
@@ -1328,6 +1396,8 @@
         const pollutionStatus = document.getElementById('pollution-status');
         
         if (pollutionBar && pollutionValue && pollutionStatus) {
+            console.log('Обновляем индикаторы загрязнения');
+            
             // Устанавливаем ширину полосы
             pollutionBar.style.width = `${pollution}%`;
             pollutionValue.textContent = `${pollution.toFixed(1)}%`;
@@ -1350,16 +1420,31 @@
                 pollutionStatus.textContent = 'Критический уровень, планета в опасности!';
                 pollutionStatus.style.color = '#F44336';
             }
+        } else {
+            console.error('Элементы индикаторов загрязнения не найдены!');
         }
         
         // Обрабатываем нажатие на кнопки очистки
         const actionButtons = document.querySelectorAll('.action-button');
-        if (!actionButtons.length) return;
+        console.log(`Найдено ${actionButtons.length} кнопок действий`);
         
-        actionButtons.forEach(button => {
-            button.addEventListener('click', function() {
+        if (!actionButtons.length) {
+            console.error('Кнопки действий не найдены!');
+            return;
+        }
+        
+        actionButtons.forEach((button, index) => {
+            console.log(`Настройка кнопки действия ${index}`);
+            
+            // Удаляем предыдущие обработчики, чтобы избежать дублирования
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+            
+            newButton.addEventListener('click', function() {
                 const reduction = parseFloat(this.getAttribute('data-reduction'));
                 const reward = parseInt(this.getAttribute('data-reward'));
+                
+                console.log(`Действие: снижение загрязнения на ${reduction}%, награда ${reward} токенов`);
                 
                 // Получаем текущий уровень загрязнения
                 let pollution = localStorage.getItem('earthPollution');
@@ -1372,6 +1457,8 @@
                 // Снижаем загрязнение и начисляем токены
                 pollution = Math.max(0, pollution - reduction);
                 tokens += reward;
+                
+                console.log(`Новый уровень загрязнения: ${pollution}%, новый баланс: ${tokens} токенов`);
                 
                 // Сохраняем новые значения
                 localStorage.setItem('earthPollution', pollution.toString());
@@ -1438,6 +1525,13 @@
                     this.style.background = originalBackground;
                 }, 2000);
             });
+            
+            // Добавляем также обработчик touchend для лучшей мобильной поддержки
+            newButton.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.click(); // Имитируем клик
+            }, { passive: false });
         });
     }
     
@@ -1445,7 +1539,7 @@
     function updatePlanetPollution() {
         // Получаем текущий уровень загрязнения
         let pollution = localStorage.getItem('earthPollution');
-        let lastUpdated = localStorage.getItem('pollutionLastUpdated');
+        let lastUpdated = localStorage.getItem('pollutionLastUpdate');
         
         const currentDate = new Date().toDateString();
         
@@ -1453,7 +1547,7 @@
         if (!pollution) {
             pollution = 50; // начальное значение 50%
             localStorage.setItem('earthPollution', pollution);
-            localStorage.setItem('pollutionLastUpdated', currentDate);
+            localStorage.setItem('pollutionLastUpdate', currentDate);
         } else {
             pollution = parseFloat(pollution);
             
@@ -1462,11 +1556,38 @@
                 // Увеличиваем загрязнение на 10%
                 pollution = Math.min(100, pollution + 10);
                 localStorage.setItem('earthPollution', pollution.toString());
-                localStorage.setItem('pollutionLastUpdated', currentDate);
+                localStorage.setItem('pollutionLastUpdate', currentDate);
             }
         }
         
         return pollution;
+    }
+
+    // Показываем панель навигации при первом касании экрана
+    let isFirstTouch = true;
+    
+    document.addEventListener('touchstart', function(e) {
+        if (isFirstTouch) {
+            console.log('Первое касание, показываем панель навигации');
+            const navPanel = document.querySelector('.nav-panel');
+            if (navPanel) {
+                navPanel.classList.add('visible');
+            }
+            isFirstTouch = false;
+        }
+    }, { passive: true });
+    
+    // Инициализируем баланс токенов, если он не установлен
+    if (!localStorage.getItem('earthTokens')) {
+        console.log('Инициализация начального баланса токенов');
+        localStorage.setItem('earthTokens', '100');
+    }
+    
+    // Инициализируем уровень загрязнения, если он не установлен
+    if (!localStorage.getItem('earthPollution')) {
+        console.log('Инициализация начального уровня загрязнения');
+        localStorage.setItem('earthPollution', '50');
+        localStorage.setItem('pollutionLastUpdate', new Date().toDateString());
     }
     </script>
 </body>
