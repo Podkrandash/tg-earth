@@ -2162,8 +2162,13 @@
         
         // Получаем имя пользователя из Telegram
         let username = 'Пользователь Earth 3D';
+        let userId = 'user123'; // Значение по умолчанию
+        
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             const user = window.Telegram.WebApp.initDataUnsafe.user;
+            if (user.id) {
+                userId = user.id;
+            }
             if (user.first_name) {
                 username = user.first_name;
                 if (user.last_name) {
@@ -2172,7 +2177,7 @@
             }
         }
         
-        // Определяем рейтинг на основе токенов с новой шкалой
+        // Определяем рейтинг на основе токенов с новой шкалой (сохраняем логику, но не показываем блок)
         let rating = "";
         let ratingColor = "";
         let ratingTitle = "";
@@ -2214,13 +2219,16 @@
             position: relative;
             overflow: hidden;
         `;
+        
+        // Создаем реферальную ссылку на основе ID пользователя
+        const refLink = `https://t.me/notEarthbot?start=ref_${userId}`;
             
         tabInner.innerHTML = `
             <h3>Профиль</h3>
             <button class="close-button" type="button">
                 <i class="material-icons">close</i>
             </button>
-            <div class="profile-container" style="display: flex; flex-direction: column; gap: 24px; padding: 0 0 40px 0; width: 100%;">
+            <div class="profile-container" style="display: flex; flex-direction: column; gap: 24px; padding: 0 0 20px 0; width: 100%;">
                 <!-- Основная информация профиля -->
                 <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box; touch-action: auto; pointer-events: auto;">
                     <div style="display: flex; align-items: center; gap: 20px;">
@@ -2245,134 +2253,104 @@
                     </div>
                 </div>
                 
-                <!-- Статистика токенов -->
+                <!-- Реферальная программа -->
                 <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box; touch-action: auto; pointer-events: auto;">
                     <div style="display: flex; align-items: center; margin-bottom: 16px;">
-                        <i class="material-icons" style="font-size: 28px; color: #FFD700; margin-right: 12px;">toll</i>
-                        <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Токены EARTH</h4>
+                        <i class="material-icons" style="font-size: 28px; color: #64B5F6; margin-right: 12px;">group_add</i>
+                        <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Реферальная программа</h4>
                     </div>
                     
-                    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 16px; display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.6);">Текущий баланс</p>
-                            <h3 style="margin: 8px 0 0 0; font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">${tokens}</h3>
+                    <div style="background: rgba(100, 181, 246, 0.1); border-radius: 16px; padding: 16px; margin-bottom: 16px;">
+                        <p style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255, 255, 255, 0.9); line-height: 1.5;">
+                            Пригласите друзей и получайте <b>30%</b> от их вознаграждений за спасение планеты!
+                        </p>
+                        <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 12px; border: 1px dashed rgba(255, 255, 255, 0.1);">
+                            <input type="text" readonly value="${refLink}" id="ref-link" style="background: transparent; border: none; flex: 1; color: #64B5F6; font-family: monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; outline: none;">
+                            <button onclick="copyRefLink()" style="background: rgba(100, 181, 246, 0.2); border: none; border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                <i class="material-icons" style="font-size: 18px; color: #64B5F6;">content_copy</i>
+                            </button>
                         </div>
-                        <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 215, 0, 0.1); display: flex; align-items: center; justify-content: center;">
-                            <i class="material-icons" style="font-size: 24px; color: #FFD700;">toll</i>
+                        <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Приглашено друзей</p>
+                                <h5 style="margin: 0; font-size: 20px; font-weight: 600;">0</h5>
+                            </div>
+                            <div>
+                                <p style="margin: 0 0 4px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Заработано токенов</p>
+                                <h5 style="margin: 0; font-size: 20px; font-weight: 600;">0</h5>
+                            </div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 16px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div style="display: flex; align-items: center;">
-                            <i class="material-icons" style="font-size: 20px; color: #FFCC00; margin-right: 10px;">info_outline</i>
-                            <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.8); line-height: 1.4;">
-                                Токены EARTH начисляются за выполнение действий по защите планеты. Чем больше токенов, тем выше ваш рейтинг.
-                            </p>
+                            <i class="material-icons" style="font-size: 20px; color: #64B5F6; margin-right: 12px; background: rgba(100, 181, 246, 0.1); padding: 8px; border-radius: 50%;">share</i>
+                            <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.8);">Поделитесь ссылкой с друзьями</p>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <i class="material-icons" style="font-size: 20px; color: #64B5F6; margin-right: 12px; background: rgba(100, 181, 246, 0.1); padding: 8px; border-radius: 50%;">group</i>
+                            <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.8);">Друзья регистрируются по вашей ссылке</p>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <i class="material-icons" style="font-size: 20px; color: #64B5F6; margin-right: 12px; background: rgba(100, 181, 246, 0.1); padding: 8px; border-radius: 50%;">toll</i>
+                            <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.8);">Получайте 30% от их наград</p>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Таблица рейтингов -->
-                <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box; touch-action: auto; pointer-events: auto;">
-                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
-                        <i class="material-icons" style="font-size: 28px; color: #64B5F6; margin-right: 12px;">leaderboard</i>
-                        <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Система рейтингов</h4>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'S' ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'S' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 215, 0, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <span style="font-weight: 700; font-size: 18px; color: #FFD700;">S</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Защитник планеты</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">100,000+ токенов</p>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'A' ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'A' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(76, 175, 80, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <span style="font-weight: 700; font-size: 18px; color: #4CAF50;">A</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Эколог</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">10,000+ токенов</p>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'B' ? 'rgba(33, 150, 243, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'B' ? 'rgba(33, 150, 243, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(33, 150, 243, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <span style="font-weight: 700; font-size: 18px; color: #2196F3;">B</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Хранитель природы</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">1,000+ токенов</p>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'C' ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'C' ? 'rgba(255, 193, 7, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 193, 7, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <span style="font-weight: 700; font-size: 18px; color: #FFC107;">C</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Начинающий эколог</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">100+ токенов</p>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; padding: 10px; border-radius: 12px; background: ${rating === 'D' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; border: 1px solid ${rating === 'D' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)'};">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 152, 0, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <span style="font-weight: 700; font-size: 18px; color: #FF9800;">D</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Новичок</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">0-99 токенов</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Дополнительный блок для демонстрации скроллинга -->
-                <div style="background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.05); width: 100%; box-sizing: border-box; touch-action: auto; pointer-events: auto;">
-                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
-                        <i class="material-icons" style="font-size: 28px; color: #4CAF50; margin-right: 12px;">eco</i>
-                        <h4 style="margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em;">Статистика эко-активности</h4>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div style="display: flex; align-items: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.05);">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(76, 175, 80, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <i class="material-icons" style="font-size: 18px; color: #4CAF50;">park</i>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Посаженные деревья</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Пока нет данных</p>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.05);">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(33, 150, 243, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <i class="material-icons" style="font-size: 18px; color: #2196F3;">water</i>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Очищенные океаны</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Пока нет данных</p>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.05);">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 193, 7, 0.15); display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                <i class="material-icons" style="font-size: 18px; color: #FFC107;">recycling</i>
-                            </div>
-                            <div style="flex: 1;">
-                                <p style="margin: 0; font-size: 14px; font-weight: 500;">Переработанные отходы</p>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Пока нет данных</p>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Токены (просто для отображения баланса, без блока) -->
+                <div style="display: none;">
+                    <p>Текущий баланс: ${tokens} EARTH</p>
                 </div>
             </div>
         `;
+        
+        // Добавляем функцию для копирования реферальной ссылки
+        window.copyRefLink = function() {
+            const linkInput = document.getElementById('ref-link');
+            if (linkInput) {
+                linkInput.select();
+                linkInput.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+                
+                // Показываем всплывающее уведомление
+                const notification = document.createElement('div');
+                notification.textContent = 'Ссылка скопирована!';
+                notification.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(100, 181, 246, 0.9);
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    z-index: 9999;
+                    animation: fadeInOut 2s ease-in-out forwards;
+                `;
+                
+                // Добавляем анимацию
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes fadeInOut {
+                        0% { opacity: 0; transform: translate(-50%, 20px); }
+                        20% { opacity: 1; transform: translate(-50%, 0); }
+                        80% { opacity: 1; transform: translate(-50%, 0); }
+                        100% { opacity: 0; transform: translate(-50%, -20px); }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                document.body.appendChild(notification);
+                
+                // Удаляем уведомление через 2 секунды
+                setTimeout(() => {
+                    notification.remove();
+                    style.remove();
+                }, 2000);
+            }
+        };
         
         // Добавляем обработчик для кнопки закрытия
         const closeButton = tabInner.querySelector('.close-button');
