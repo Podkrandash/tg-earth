@@ -1864,6 +1864,9 @@
                 pollution = Math.max(0, pollution - reduction);
                 tokens += reward;
                 
+                // Обрабатываем реферальную систему - начисляем токены пригласившему пользователю
+                processReferralReward(reward);
+                
                 console.log(`Новый уровень загрязнения: ${pollution}%, новый баланс: ${tokens} токенов`);
                 
                 // Сохраняем новые значения
@@ -2266,18 +2269,18 @@
                         </p>
                         <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px; margin-bottom: 12px; border: 1px dashed rgba(255, 255, 255, 0.1);">
                             <input type="text" readonly value="${refLink}" id="ref-link" style="background: transparent; border: none; flex: 1; color: #64B5F6; font-family: monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; outline: none;">
-                            <button onclick="copyRefLink()" style="background: rgba(100, 181, 246, 0.2); border: none; border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <button id="copy-ref-button" style="background: rgba(100, 181, 246, 0.2); border: none; border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                 <i class="material-icons" style="font-size: 18px; color: #64B5F6;">content_copy</i>
                             </button>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 12px;">
                             <div>
                                 <p style="margin: 0 0 4px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Приглашено друзей</p>
-                                <h5 style="margin: 0; font-size: 20px; font-weight: 600;">0</h5>
+                                <h5 id="invited-friends-count" style="margin: 0; font-size: 20px; font-weight: 600;">0</h5>
                             </div>
                             <div>
                                 <p style="margin: 0 0 4px 0; font-size: 12px; color: rgba(255, 255, 255, 0.6);">Заработано токенов</p>
-                                <h5 style="margin: 0; font-size: 20px; font-weight: 600;">0</h5>
+                                <h5 id="referral-tokens-earned" style="margin: 0; font-size: 20px; font-weight: 600;">0</h5>
                             </div>
                         </div>
                     </div>
@@ -2305,52 +2308,16 @@
             </div>
         `;
         
-        // Добавляем функцию для копирования реферальной ссылки
-        window.copyRefLink = function() {
-            const linkInput = document.getElementById('ref-link');
-            if (linkInput) {
-                linkInput.select();
-                linkInput.setSelectionRange(0, 99999);
-                document.execCommand('copy');
-                
-                // Показываем всплывающее уведомление
-                const notification = document.createElement('div');
-                notification.textContent = 'Ссылка скопирована!';
-                notification.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: rgba(100, 181, 246, 0.9);
-                    color: white;
-                    padding: 8px 16px;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    z-index: 9999;
-                    animation: fadeInOut 2s ease-in-out forwards;
-                `;
-                
-                // Добавляем анимацию
-                const style = document.createElement('style');
-                style.textContent = `
-                    @keyframes fadeInOut {
-                        0% { opacity: 0; transform: translate(-50%, 20px); }
-                        20% { opacity: 1; transform: translate(-50%, 0); }
-                        80% { opacity: 1; transform: translate(-50%, 0); }
-                        100% { opacity: 0; transform: translate(-50%, -20px); }
-                    }
-                `;
-                document.head.appendChild(style);
-                
-                document.body.appendChild(notification);
-                
-                // Удаляем уведомление через 2 секунды
-                setTimeout(() => {
-                    notification.remove();
-                    style.remove();
-                }, 2000);
-            }
-        };
+        // Обновляем статистику реферальной программы
+        updateReferralStats(userId);
+        
+        // Добавляем обработчик для кнопки копирования реферальной ссылки
+        const copyButton = document.getElementById('copy-ref-button');
+        if (copyButton) {
+            copyButton.addEventListener('click', function() {
+                copyReferralLink();
+            });
+        }
         
         // Добавляем обработчик для кнопки закрытия
         const closeButton = tabInner.querySelector('.close-button');
@@ -2364,6 +2331,194 @@
         setupProfileScrollHandlers();
     }
     
+    // Функция для копирования реферальной ссылки (улучшенная версия)
+    function copyReferralLink() {
+        const linkInput = document.getElementById('ref-link');
+        if (!linkInput) return;
+        
+        try {
+            // Современный API для буфера обмена
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(linkInput.value).then(() => {
+                    showCopyNotification('Ссылка скопирована!');
+                }).catch(err => {
+                    console.error('Не удалось скопировать ссылку через API буфера обмена:', err);
+                    fallbackCopyMethod();
+                });
+            } else {
+                fallbackCopyMethod();
+            }
+        } catch (err) {
+            console.error('Ошибка при копировании ссылки:', err);
+            fallbackCopyMethod();
+        }
+        
+        // Резервный метод копирования
+        function fallbackCopyMethod() {
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopyNotification('Ссылка скопирована!');
+                } else {
+                    showCopyNotification('Не удалось скопировать. Скопируйте вручную.', 'error');
+                }
+            } catch (err) {
+                console.error('Fallback: Не удалось скопировать ссылку', err);
+                showCopyNotification('Не удалось скопировать. Скопируйте вручную.', 'error');
+            }
+        }
+    }
+    
+    // Функция для показа уведомления о копировании
+    function showCopyNotification(message, type = 'success') {
+        // Удаляем предыдущее уведомление, если оно есть
+        const oldNotification = document.getElementById('copy-notification');
+        if (oldNotification) oldNotification.remove();
+        
+        // Создаем новое уведомление
+        const notification = document.createElement('div');
+        notification.id = 'copy-notification';
+        notification.textContent = message;
+        
+        // Стили в зависимости от типа
+        const bgColor = type === 'success' ? 'rgba(100, 181, 246, 0.9)' : 'rgba(244, 67, 54, 0.9)';
+        
+        notification.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: ${bgColor};
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            animation: fadeInOut 2s ease-in-out forwards;
+        `;
+        
+        // Добавляем анимацию
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translate(-50%, 20px); }
+                20% { opacity: 1; transform: translate(-50%, 0); }
+                80% { opacity: 1; transform: translate(-50%, 0); }
+                100% { opacity: 0; transform: translate(-50%, -20px); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(notification);
+        
+        // Удаляем уведомление через 2 секунды
+        setTimeout(() => {
+            notification.remove();
+            style.remove();
+        }, 2000);
+    }
+    
+    // Функция для обновления статистики реферальной программы
+    function updateReferralStats(userId) {
+        // Получаем данные о приглашенных друзьях
+        let referralData = localStorage.getItem(`referral_data_${userId}`);
+        if (!referralData) {
+            referralData = {
+                invitedCount: 0,
+                tokensEarned: 0,
+                invitedUsers: []
+            };
+            localStorage.setItem(`referral_data_${userId}`, JSON.stringify(referralData));
+        } else {
+            try {
+                referralData = JSON.parse(referralData);
+            } catch (e) {
+                referralData = {
+                    invitedCount: 0,
+                    tokensEarned: 0,
+                    invitedUsers: []
+                };
+                localStorage.setItem(`referral_data_${userId}`, JSON.stringify(referralData));
+            }
+        }
+        
+        // Обновляем отображение
+        const invitedFriendsCount = document.getElementById('invited-friends-count');
+        const referralTokensEarned = document.getElementById('referral-tokens-earned');
+        
+        if (invitedFriendsCount) {
+            invitedFriendsCount.textContent = referralData.invitedCount || '0';
+        }
+        
+        if (referralTokensEarned) {
+            referralTokensEarned.textContent = referralData.tokensEarned || '0';
+        }
+        
+        return referralData;
+    }
+    
+    // Функция для обработки реферальных кодов из URL
+    function processReferralCode() {
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const startParam = window.Telegram.WebApp.initDataUnsafe?.start_param;
+                
+                if (startParam && startParam.startsWith('ref_')) {
+                    const referrerId = startParam.replace('ref_', '');
+                    
+                    // Проверяем, не себя ли пригласил пользователь
+                    const currentUserId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+                    if (currentUserId && referrerId === String(currentUserId)) {
+                        console.log('Пользователь не может пригласить сам себя');
+                        return;
+                    }
+                    
+                    // Проверяем, не был ли уже приглашен пользователь
+                    const invitedKey = `invited_by_${currentUserId}`;
+                    const alreadyInvited = localStorage.getItem(invitedKey);
+                    
+                    if (!alreadyInvited) {
+                        // Сохраняем информацию о том, кто пригласил пользователя
+                        localStorage.setItem(invitedKey, referrerId);
+                        
+                        // Обновляем статистику пригласившего пользователя
+                        let referralData = localStorage.getItem(`referral_data_${referrerId}`);
+                        
+                        try {
+                            referralData = referralData ? JSON.parse(referralData) : {
+                                invitedCount: 0,
+                                tokensEarned: 0,
+                                invitedUsers: []
+                            };
+                            
+                            // Добавляем нового приглашенного пользователя
+                            if (!referralData.invitedUsers.includes(String(currentUserId))) {
+                                referralData.invitedCount += 1;
+                                referralData.invitedUsers.push(String(currentUserId));
+                                localStorage.setItem(`referral_data_${referrerId}`, JSON.stringify(referralData));
+                            }
+                        } catch (e) {
+                            console.error('Ошибка при обработке реферальных данных:', e);
+                        }
+                        
+                        console.log(`Пользователь ${currentUserId} был приглашен пользователем ${referrerId}`);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка при обработке реферального кода:', error);
+        }
+    }
+    
+    // Вызываем функцию обработки реферального кода при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(processReferralCode, 1000); // Даем время на инициализацию Telegram WebApp
+    });
+    </script>
+    <script>
     // Функция для настройки скроллинга вкладки профиля (по аналогии с планетой)
     function setupProfileScrollHandlers() {
         console.log('Настройка обработчиков скроллинга для вкладки профиля');
@@ -2611,6 +2766,66 @@
         } else {
             console.error('Не найдены необходимые элементы для настройки скроллинга планеты');
         }
+    }
+    </script>
+    <script>
+    // Функция для обработки реферальных наград
+    function processReferralReward(baseReward) {
+        console.log('Обработка реферальных наград');
+        try {
+            // Проверяем, есть ли доступ к объекту Telegram WebApp
+            if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initDataUnsafe || !window.Telegram.WebApp.initDataUnsafe.user) {
+                console.log('Нет доступа к данным пользователя Telegram');
+                return 0;
+            }
+            
+            const currentUserId = window.Telegram.WebApp.initDataUnsafe.user.id;
+            if (!currentUserId) {
+                console.log('ID пользователя не найден');
+                return 0;
+            }
+            
+            // Проверяем, был ли пользователь приглашен кем-то
+            const invitedKey = `invited_by_${currentUserId}`;
+            const referrerId = localStorage.getItem(invitedKey);
+            
+            if (!referrerId) {
+                console.log('Пользователь не был приглашен через реферальную ссылку');
+                return 0;
+            }
+            
+            // Проверяем, не пытается ли пользователь пригласить сам себя
+            if (referrerId === String(currentUserId)) {
+                console.log('Пользователь не может пригласить сам себя');
+                return 0;
+            }
+            
+            // Начисляем 30% от награды пригласившему пользователю
+            const referralReward = Math.floor(baseReward * 0.3);
+            console.log(`Рассчитана реферальная награда: ${referralReward} токенов для пользователя ${referrerId}`);
+            
+            // Получаем текущую статистику пригласившего
+            let referralData = localStorage.getItem(`referral_data_${referrerId}`);
+            try {
+                referralData = referralData ? JSON.parse(referralData) : {
+                    invitedCount: 0,
+                    tokensEarned: 0,
+                    invitedUsers: []
+                };
+                
+                // Увеличиваем заработанные токены
+                referralData.tokensEarned += referralReward;
+                localStorage.setItem(`referral_data_${referrerId}`, JSON.stringify(referralData));
+                
+                console.log(`Реферальное вознаграждение ${referralReward} токенов успешно начислено пользователю ${referrerId}`);
+                return referralReward;
+            } catch (e) {
+                console.error('Ошибка при обработке реферальных данных:', e);
+            }
+        } catch (error) {
+            console.error('Ошибка при начислении реферальной награды:', error);
+        }
+        return 0;
     }
     </script>
 </body>
